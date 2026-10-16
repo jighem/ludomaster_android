@@ -2175,21 +2175,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        menuexitbtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                ingamemenuitemslayout.setVisibility(GONE);
-                quitgamelayout.setScaleX(0.0f);
-                quitgamelayout.setScaleY(0.0f);
-                quitgamelayout.setVisibility(View.VISIBLE);
-                quitgamelayout.animate().scaleX(1.0f).scaleY(1.0f).setInterpolator(new OvershootInterpolator()).setDuration(200).setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        super.onAnimationEnd(animation);
-                        quitgamelayout.animate().setListener(null);
-                    }
-                }).start();
-            }
+        menuexitbtn.setOnClickListener(view -> {
+            ingamemenuitemslayout.setVisibility(GONE);
+            RoyalDialog.confirm(MainActivity.this, "LEAVE MATCH?",
+                "Your unfinished game will be lost if you leave.",
+                "EXIT MATCH", () -> {
+                    stopEverything();
+                    Intent i = new Intent(MainActivity.this,HomeActivity.class);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(i);
+                    finish();
+                });
         });
 
         // exit layout views
