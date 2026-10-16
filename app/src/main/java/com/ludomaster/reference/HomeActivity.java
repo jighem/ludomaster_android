@@ -2276,6 +2276,12 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /** Clean Ludo Masters entry page; preserve only the underlying offline match setup. */
+    private void startRoyalMatchSetup(boolean computer) {
+        Intent intent = new Intent(this, RoyalSetupActivity.class);
+        intent.putExtra("computer",computer);
+        startActivity(intent);
+    }
+
     private void installModernLanding() {
         androidx.constraintlayout.widget.ConstraintLayout root = findViewById(R.id.root);
         if (root == null) return;
@@ -2290,10 +2296,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         if(menuArt != 0) {
             // Exact interactive hit boxes for user-provided 941 x 1672 menu art.
             addRoyalHotspot(landing, .14f,.54f,.72f,.13f, () -> {
-                landing.setVisibility(View.GONE); computer.performClick();
+                startRoyalMatchSetup(true);
             });
             addRoyalHotspot(landing, .14f,.69f,.72f,.13f, () -> {
-                landing.setVisibility(View.GONE); passnplay.performClick();
+                startRoyalMatchSetup(false);
             });
         } else {
             // Fully functional fallback until original assets have been imported.
@@ -2304,11 +2310,11 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             android.widget.Button computerBtn = new android.widget.Button(this);
             computerBtn.setText("COMPUTER");
             controls.addView(computerBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
-            computerBtn.setOnClickListener(v -> {landing.setVisibility(View.GONE);computer.performClick();});
+            computerBtn.setOnClickListener(v -> {startRoyalMatchSetup(true);});
             android.widget.Button passBtn = new android.widget.Button(this);
             passBtn.setText("PASS N PLAY");
             controls.addView(passBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
-            passBtn.setOnClickListener(v -> {landing.setVisibility(View.GONE);passnplay.performClick();});
+            passBtn.setOnClickListener(v -> {startRoyalMatchSetup(false);});
             landing.addView(controls,new android.widget.FrameLayout.LayoutParams(-1,-1));
         }
         android.widget.Button login = new android.widget.Button(this);
