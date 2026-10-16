@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
 
     android:layout_height="match_parent"
-    android:background="@drawable/backgroundmaze"
+    android:background="@drawable/ludo_masters_game_background"
     tools:context=".MainActivity">
 
     <RelativeLayout
@@ -927,7 +927,7 @@
         app:layout_constraintWidth_percent="0.4" />
 
     <ImageView
-        android:id="@+id/winnercrownindex1"
+        android:id="@+id/lm_shieldindex1"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:scaleType="fitCenter"
@@ -937,7 +937,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/relativeLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/winnercrown" />
+        app:srcCompat="@drawable/lm_shield" />
 
     <ImageView
         android:id="@+id/winnerindexnumber1"
@@ -947,14 +947,14 @@
         android:scaleX="0.9"
         android:scaleY="0.9"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/winnercrownindex1"
-        app:layout_constraintEnd_toEndOf="@+id/winnercrownindex1"
-        app:layout_constraintStart_toStartOf="@+id/winnercrownindex1"
-        app:layout_constraintTop_toTopOf="@+id/winnercrownindex1"
+        app:layout_constraintBottom_toBottomOf="@+id/lm_shieldindex1"
+        app:layout_constraintEnd_toEndOf="@+id/lm_shieldindex1"
+        app:layout_constraintStart_toStartOf="@+id/lm_shieldindex1"
+        app:layout_constraintTop_toTopOf="@+id/lm_shieldindex1"
         app:srcCompat="@drawable/winner1number" />
 
     <ImageView
-        android:id="@+id/winnercrownindex2"
+        android:id="@+id/lm_shieldindex2"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="30dp"
@@ -965,7 +965,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/winnercrown" />
+        app:srcCompat="@drawable/lm_shield" />
 
     <ImageView
         android:id="@+id/winnerindexnumber2"
@@ -975,14 +975,14 @@
         android:scaleX="0.9"
         android:scaleY="0.9"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/winnercrownindex2"
-        app:layout_constraintEnd_toEndOf="@+id/winnercrownindex2"
-        app:layout_constraintStart_toStartOf="@+id/winnercrownindex2"
-        app:layout_constraintTop_toTopOf="@+id/winnercrownindex2"
+        app:layout_constraintBottom_toBottomOf="@+id/lm_shieldindex2"
+        app:layout_constraintEnd_toEndOf="@+id/lm_shieldindex2"
+        app:layout_constraintStart_toStartOf="@+id/lm_shieldindex2"
+        app:layout_constraintTop_toTopOf="@+id/lm_shieldindex2"
         app:srcCompat="@drawable/winner2number" />
 
     <ImageView
-        android:id="@+id/winnercrownindex3"
+        android:id="@+id/lm_shieldindex3"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="30dp"
@@ -993,7 +993,7 @@
         app:layout_constraintEnd_toEndOf="@+id/relativeLayout"
         app:layout_constraintTop_toTopOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/winnercrown" />
+        app:srcCompat="@drawable/lm_shield" />
 
     <ImageView
         android:id="@+id/winnerindexnumber3"
@@ -1003,14 +1003,14 @@
         android:scaleX="0.9"
         android:scaleY="0.9"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/winnercrownindex3"
-        app:layout_constraintEnd_toEndOf="@+id/winnercrownindex3"
-        app:layout_constraintStart_toStartOf="@+id/winnercrownindex3"
-        app:layout_constraintTop_toTopOf="@+id/winnercrownindex3"
+        app:layout_constraintBottom_toBottomOf="@+id/lm_shieldindex3"
+        app:layout_constraintEnd_toEndOf="@+id/lm_shieldindex3"
+        app:layout_constraintStart_toStartOf="@+id/lm_shieldindex3"
+        app:layout_constraintTop_toTopOf="@+id/lm_shieldindex3"
         app:srcCompat="@drawable/winner3number" />
 
     <ImageView
-        android:id="@+id/winnercrownindex4"
+        android:id="@+id/lm_shieldindex4"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:scaleType="fitCenter"
@@ -1020,7 +1020,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/relativeLayout"
         app:layout_constraintEnd_toEndOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/winnercrown" />
+        app:srcCompat="@drawable/lm_shield" />
 
     <ImageView
         android:id="@+id/winnerindexnumber4"
@@ -1030,10 +1030,10 @@
         android:scaleX="0.9"
         android:scaleY="0.9"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/winnercrownindex4"
-        app:layout_constraintEnd_toEndOf="@+id/winnercrownindex4"
-        app:layout_constraintStart_toStartOf="@+id/winnercrownindex4"
-        app:layout_constraintTop_toTopOf="@+id/winnercrownindex4"
+        app:layout_constraintBottom_toBottomOf="@+id/lm_shieldindex4"
+        app:layout_constraintEnd_toEndOf="@+id/lm_shieldindex4"
+        app:layout_constraintStart_toStartOf="@+id/lm_shieldindex4"
+        app:layout_constraintTop_toTopOf="@+id/lm_shieldindex4"
         app:srcCompat="@drawable/winner4number" />
 
     <ImageView
@@ -1190,14 +1190,14 @@
                         app:layout_constraintTop_toTopOf="@+id/winnerlistp1" />
 
                     <ImageView
-                        android:id="@+id/winnerliscrown1"
+                        android:id="@+id/winnerlisshield1"
                         android:layout_width="50dp"
                         android:layout_height="50dp"
                         android:layout_marginStart="5dp"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/listwinner1crown" />
+                        app:srcCompat="@drawable/lm_shield" />
 
                     <ImageView
                         android:id="@+id/winnerlistp1"
@@ -1205,7 +1205,7 @@
                         android:layout_height="36dp"
                         android:layout_marginStart="10dp"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintStart_toEndOf="@+id/winnerliscrown1"
+                        app:layout_constraintStart_toEndOf="@+id/winnerlisshield1"
                         app:layout_constraintTop_toTopOf="parent"
                         app:srcCompat="@drawable/bluepiece" />
 
@@ -1248,14 +1248,14 @@
                         app:layout_constraintTop_toTopOf="@+id/winnerlistp2" />
 
                     <ImageView
-                        android:id="@+id/winnerliscrown2"
+                        android:id="@+id/winnerlisshield2"
                         android:layout_width="50dp"
                         android:layout_height="50dp"
                         android:layout_marginStart="5dp"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/listwinner2crown" />
+                        app:srcCompat="@drawable/lm_shield" />
 
                     <ImageView
                         android:id="@+id/winnerlistp2"
@@ -1263,7 +1263,7 @@
                         android:layout_height="36dp"
                         android:layout_marginStart="10dp"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintStart_toEndOf="@+id/winnerliscrown2"
+                        app:layout_constraintStart_toEndOf="@+id/winnerlisshield2"
                         app:layout_constraintTop_toTopOf="parent"
                         app:srcCompat="@drawable/redpiece" />
 
@@ -1306,14 +1306,14 @@
                         app:layout_constraintTop_toTopOf="@+id/winnerlistp3" />
 
                     <ImageView
-                        android:id="@+id/winnerliscrown3"
+                        android:id="@+id/winnerlisshield3"
                         android:layout_width="50dp"
                         android:layout_height="50dp"
                         android:layout_marginStart="5dp"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/listwinner3crown" />
+                        app:srcCompat="@drawable/lm_shield" />
 
                     <ImageView
                         android:id="@+id/winnerlistp3"
@@ -1321,7 +1321,7 @@
                         android:layout_height="36dp"
                         android:layout_marginStart="10dp"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintStart_toEndOf="@+id/winnerliscrown3"
+                        app:layout_constraintStart_toEndOf="@+id/winnerlisshield3"
                         app:layout_constraintTop_toTopOf="parent"
                         app:srcCompat="@drawable/greenpiece" />
 
@@ -1364,7 +1364,7 @@
                         app:layout_constraintTop_toTopOf="@+id/winnerlistp4" />
 
                     <ImageView
-                        android:id="@+id/winnerliscrown4"
+                        android:id="@+id/winnerlisshield4"
                         android:layout_width="50dp"
                         android:layout_height="50dp"
                         android:layout_marginStart="5dp"
@@ -1372,7 +1372,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/listwinner1crown" />
+                        app:srcCompat="@drawable/lm_shield" />
 
                     <ImageView
                         android:id="@+id/winnerlistp4"
@@ -1380,7 +1380,7 @@
                         android:layout_height="36dp"
                         android:layout_marginStart="10dp"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintStart_toEndOf="@+id/winnerliscrown4"
+                        app:layout_constraintStart_toEndOf="@+id/winnerlisshield4"
                         app:layout_constraintTop_toTopOf="parent"
                         app:srcCompat="@drawable/yellowpiece" />
 
