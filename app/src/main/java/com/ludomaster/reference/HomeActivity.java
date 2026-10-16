@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.res.ResourcesCompat;
 
+import android.app.AlertDialog;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
@@ -871,7 +872,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     i.putExtra("player3name",p2l1player1name.getText().toString());
                     i.putExtra("player2name",p2l1player2name.getText().toString());
                     i.putExtra("normalPiece",tokenNormal);
-                    startActivity(i);
+                    launchOfflineMatch(i);
                     overridePendingTransition(0,0);
                 } else if(currentplayermode==3) {
                     String[] colours = {"blue","red","green","yellow"};
@@ -929,7 +930,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     i.putExtra("player4bot",bot4);
                     i.putExtra("player5bot",bot5);
                     i.putExtra("player6bot",bot6);
-                    startActivity(i);
+                    launchOfflineMatch(i);
                     overridePendingTransition(0,0);
                     //Toast.makeText(HomeActivity.this, colours[getLeftOverColour()], Toast.LENGTH_SHORT).show();
                 } else if(currentplayermode==4) {
@@ -948,7 +949,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     i.putExtra("player4bot",bot4);
                     i.putExtra("player5bot",bot5);
                     i.putExtra("player6bot",bot6);
-                    startActivity(i);
+                    launchOfflineMatch(i);
                     overridePendingTransition(0,0);
                 } else {
                     showNoInternet();
@@ -1617,7 +1618,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 i.putExtra("player4bot",false);
                 i.putExtra("player5bot",false);
                 i.putExtra("player6bot",false);
-                startActivity(i);
+                launchOfflineMatch(i);
                 overridePendingTransition(0,0);
             }
         });
@@ -1790,7 +1791,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     i.putExtra("player2bot", true);
                     i.putExtra("player3bot", false);
                     i.putExtra("player4bot", false);
-                    startActivity(i);
+                    launchOfflineMatch(i);
                     overridePendingTransition(0,0);
                 } else {
                     Intent i = new Intent(HomeActivity.this,MainActivity.class);
@@ -1806,7 +1807,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                     i.putExtra("player2bot",true);
                     i.putExtra("player3bot",true);
                     i.putExtra("player4bot",true);
-                    startActivity(i);
+                    launchOfflineMatch(i);
                     overridePendingTransition(0,0);
                 }
             }
@@ -2281,6 +2282,25 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         if (isMusicOn) {
             m.pause();
         }
+    }
+
+    private void launchOfflineMatch(Intent intent) {
+        boolean[] selected = new boolean[] {false, false, false};
+        new AlertDialog.Builder(this)
+            .setTitle("Ludo Masters - Optional Rules")
+            .setMultiChoiceItems(new String[]{
+                "Combat points (+5 capture, -5 death)",
+                "Immunity: earn and spend shields",
+                "Dynamic Home Shuffle (every 5 minutes)"
+            }, selected, (dialog, index, checked) -> selected[index] = checked)
+            .setPositiveButton("Start Offline Match", (dialog, which) -> {
+                intent.putExtra("rule_combat", selected[0]);
+                intent.putExtra("rule_immunity", selected[1]);
+                intent.putExtra("rule_shuffle", selected[2]);
+                startActivity(intent);
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     @Override
