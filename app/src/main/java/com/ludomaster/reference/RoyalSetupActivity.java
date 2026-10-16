@@ -163,6 +163,8 @@ public final class RoyalSetupActivity extends Activity {
         intent.putExtra("league_id",selectedLeagueId);
         int[] ids=new int[count];for(int i=0;i<count;i++)ids[i]=playerIds.get(i);
         intent.putExtra("league_player_ids",ids);
+        String[] mappedNames=new String[count];for(int i=0;i<count;i++)mappedNames[i]=name(i);
+        intent.putExtra("league_player_names",mappedNames);
         intent.putExtra("nop",count);
         intent.putExtra("type",computer?4:1);
         intent.putExtra("normalPiece",true);
