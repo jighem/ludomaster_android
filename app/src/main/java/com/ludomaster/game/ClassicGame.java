@@ -27,6 +27,12 @@ public final class ClassicGame {
     public static final String[] NAMES = {"Red","Green","Yellow","Blue"};
     public static final int[] SAFE = {0,8,13,21,26,34,39,47};
     private final SecureRandom random = new SecureRandom();
+    public final MatchOptions options;
+    public final CombatLedger[] ledgers = new CombatLedger[4];
+    public int pendingDefender = -1, pendingDefenderPawn = -1;
+    private final java.util.ArrayList<int[]> pendingVictims = new java.util.ArrayList<>();
+    private boolean moveGrantedExtraTurn;
+    private String lastMoveDescription = "";
     public final int[][] progress = new int[4][4]; // -1 yard, 0..51 track, 52..57 finish lane
     public final int[] captures = new int[4];
     public final int[] deaths = new int[4];
@@ -35,7 +41,10 @@ public final class ClassicGame {
     public boolean awaitingPawn = false;
     public String message = "Roll the dice to begin";
 
-    public ClassicGame(int count) {
+    public ClassicGame(int count) { this(count, new MatchOptions(false, false, false)); }
+    public ClassicGame(int count, MatchOptions options) {
+        this.options = options;
+        for (int c = 0; c < 4; c++) ledgers[c] = new CombatLedger(options);
         if (count < 2 || count > 4) throw new IllegalArgumentException("Choose 2–4 players");
         active[0] = true; active[2] = true;
         if (count >= 3) active[1] = true;
@@ -52,7 +61,7 @@ public final class ClassicGame {
         return TRACK[(START[color]+p)%52].clone();
     }
     public boolean canMove(int pawn) {
-        if (winner != -1 || !awaitingPawn || pawn < 0 || pawn >= 4) return false;
+        if (winner != -1 || !awaitingPawn || pendingDefender != -1 || pawn < 0 || pawn >= 4) return false;
         int p = progress[turn][pawn];
         return p == -1 ? die == 6 : p < 57 && p + die <= 57;
     }
@@ -62,7 +71,7 @@ public final class ClassicGame {
         return out;
     }
     public void roll() {
-        if (winner != -1 || awaitingPawn) return;
+        if (winner != -1 || awaitingPawn || pendingDefender != -1) return;
         die = random.nextInt(6) + 1;
         if (die == 6) consecutiveSixes++; else consecutiveSixes = 0;
         if (consecutiveSixes == 3) {
@@ -81,34 +90,82 @@ public final class ClassicGame {
         if (!canMove(pawn)) return false;
         int old = progress[turn][pawn];
         progress[turn][pawn] = old == -1 ? 0 : old + die;
-        boolean captured = false;
         int now = progress[turn][pawn];
+        pendingVictims.clear();
         if (now >= 0 && now < 52) {
             int cell = (START[turn] + now) % 52;
             if (!safe(cell)) {
-                for (int c=0;c<4;c++) if (c!=turn && active[c]) {
-                    for (int p=0;p<4;p++) {
+                for (int c = 0; c < 4; c++) if (c != turn && active[c]) {
+                    for (int p = 0; p < 4; p++) {
                         int other = progress[c][p];
-                        if (other>=0 && other<52 && (START[c]+other)%52==cell) {
-                            progress[c][p]=-1;captures[turn]++;deaths[c]++;captured=true;
-                        }
+                        if (other >= 0 && other < 52 && (START[c] + other) % 52 == cell)
+                            pendingVictims.add(new int[] {c,p});
                     }
                 }
             }
         }
-        boolean finished = now==57;
-        boolean allFinished = true;
-        for (int p=0;p<4;p++) if (progress[turn][p]!=57) allFinished=false;
-        awaitingPawn=false;
-        if (allFinished) {
-            winner=turn;message=NAMES[turn]+" wins!";die=0;return true;
-        }
-        boolean extra = die==6 || captured || finished;
-        message=NAMES[turn]+" moved pawn "+(pawn+1)+(captured?" and captured an opponent!":finished?" home!":".");
-        die=0;
-        if (!extra) {consecutiveSixes=0;nextTurn();}
+        moveGrantedExtraTurn = die == 6 || now == 57;
+        lastMoveDescription = NAMES[turn] + " moved pawn " + (pawn + 1);
+        awaitingPawn = false;
+        die = 0;
+        resolveNextVictim();
         return true;
     }
+
+    /** Resolve one defender decision at a time, so shields cannot be bypassed. */
+    private void resolveNextVictim() {
+        while (!pendingVictims.isEmpty()) {
+            int[] victim = pendingVictims.remove(0);
+            int color = victim[0], pawn = victim[1];
+            if (options.immunity && ledgers[color].shields() > 0) {
+                pendingDefender = color;
+                pendingDefenderPawn = pawn;
+                message = NAMES[color] + " can spend an immunity shield to avoid capture.";
+                return;
+            }
+            applyCapture(color, pawn);
+        }
+        finishMove();
+    }
+
+    public void decideShield(boolean useShield) {
+        if (pendingDefender == -1) return;
+        int color = pendingDefender, pawn = pendingDefenderPawn;
+        pendingDefender = -1;
+        pendingDefenderPawn = -1;
+        if (!useShield || !ledgers[color].spendShield())
+            applyCapture(color, pawn);
+        else
+            message = NAMES[color] + " blocked a capture with immunity.";
+        resolveNextVictim();
+    }
+
+    private void applyCapture(int color, int pawn) {
+        progress[color][pawn] = -1;
+        captures[turn]++;
+        deaths[color]++;
+        ledgers[turn].recordCapture();
+        ledgers[color].recordDeath();
+        moveGrantedExtraTurn = true;
+        lastMoveDescription += " and captured " + NAMES[color];
+    }
+
+    private void finishMove() {
+        boolean allFinished = true;
+        for (int p = 0; p < 4; p++) if (progress[turn][p] != 57) allFinished = false;
+        if (allFinished) {
+            winner = turn;
+            message = NAMES[turn] + " wins!";
+            return;
+        }
+        message = lastMoveDescription + ".";
+        if (!moveGrantedExtraTurn) {
+            consecutiveSixes = 0;
+            nextTurn();
+        }
+    }
+    public int combatPoints(int color) { return ledgers[color].combatPoints(); }
+    public int shields(int color) { return ledgers[color].shields(); }
     private static boolean safe(int cell) {
         for (int s:SAFE) if (s==cell) return true;
         return false;
