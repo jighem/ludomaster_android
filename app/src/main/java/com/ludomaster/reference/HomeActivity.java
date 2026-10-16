@@ -2336,10 +2336,6 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         boolean signedIn=getSharedPreferences("LudoModUser", MODE_PRIVATE).getBoolean("logged",false);
         login.setText(signedIn && !name.isEmpty() ? "PLAYER: "+name : "LOGIN TO LUDOHOJAYE");
     }
-    @Override protected void onResume() {
-        super.onResume();
-        updateRoyalLoginLabel();
-    }
     private void addRoyalHotspot(android.widget.FrameLayout root,float left,float top,float width,float height,Runnable action){
         android.view.View hotspot=new android.view.View(this);
         hotspot.setContentDescription("Open game mode");
@@ -2784,6 +2780,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onResume() {
         super.onResume();
+        updateRoyalLoginLabel();
         if(isMusicOn) {
             if(!m.isPlaying()) {
                 m.start();
