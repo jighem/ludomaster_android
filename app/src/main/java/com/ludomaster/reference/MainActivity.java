@@ -10,6 +10,12 @@ import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.res.ResourcesCompat;
 
 import android.app.AlertDialog;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
@@ -64,6 +70,12 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<String, Integer> killCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
+    private final java.util.Map<String, String> offlinePlayerNames = new java.util.LinkedHashMap<>();
+    private final java.util.Map<String, Integer> offlineFinishRanks = new java.util.HashMap<>();
+    private long offlineMatchStartedAt;
+    private String offlineMatchId;
+    private boolean offlineResultSaved;
+
 
     DisplayMetrics displayMetrics;
     double dpHeight;
@@ -733,6 +745,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void showGameOverScreen() {
+        saveOfflineMatchResult();
         congratulationslayout.setVisibility(View.VISIBLE);
         if (combatScoringEnabled || immunityEnabled) {
             new AlertDialog.Builder(this).setTitle("Ludo Masters Match Summary")
@@ -804,6 +817,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setCurrentPlayerAsWinnerAtCurrentPosition(int currentPlayerSelectedIndex,String colour,String playername) {
+        offlineFinishRanks.put(colour, currentWinnerPosition);
         switch ((currentPlayerSelectedIndex+1)) {
             case 1:
                 crownIndex1.setVisibility(View.VISIBLE);
@@ -1142,6 +1156,55 @@ public class MainActivity extends AppCompatActivity {
         } else {
             switchPlayers();
             d.isDiceClickable = true;
+        }
+    }
+
+    /** Persist match facts locally. No network is invoked here. */
+    private void saveOfflineMatchResult() {
+        if (offlineResultSaved || offlineMatchId == null || offlinePlayerNames.isEmpty()) return;
+        try {
+            JSONObject result = new JSONObject();
+            result.put("schemaVersion", 1);
+            result.put("clientMatchId", offlineMatchId);
+            result.put("startedAtEpochMs", offlineMatchStartedAt);
+            result.put("endedAtEpochMs", System.currentTimeMillis());
+            result.put("gameType", gametype);
+            result.put("syncStatus", "pending_player_mapping");
+            JSONObject rules = new JSONObject();
+            rules.put("combatScoring", combatScoringEnabled);
+            rules.put("immunity", immunityEnabled);
+            rules.put("dynamicHomeShuffle", homeShuffleEnabled);
+            result.put("rules", rules);
+            JSONArray slots = new JSONArray();
+            int defaultLastRank = offlinePlayerNames.size();
+            for (java.util.Map.Entry<String,String> player : offlinePlayerNames.entrySet()) {
+                String color = player.getKey();
+                JSONObject slot = new JSONObject();
+                slot.put("color", color);
+                slot.put("offlineName", player.getValue());
+                slot.put("leaguePlayerId", JSONObject.NULL);
+                slot.put("finishRank", offlineFinishRanks.containsKey(color) ?
+                    offlineFinishRanks.get(color) : defaultLastRank);
+                slot.put("kills", getCount(killCounts,color));
+                slot.put("deaths", getCount(deathCounts,color));
+                slot.put("remainingShields", getCount(immunityShields,color));
+                slot.put("combatPoints", combatScoringEnabled ?
+                    5 * (getCount(killCounts,color)-getCount(deathCounts,color)) : 0);
+                slots.put(slot);
+            }
+            result.put("players",slots);
+            File directory = new File(getFilesDir(),"offline-matches");
+            if (!directory.exists() && !directory.mkdirs())
+                throw new java.io.IOException("Cannot create offline match directory");
+            File target = new File(directory, offlineMatchId + ".json");
+            try (FileOutputStream out = new FileOutputStream(target)) {
+                out.write(result.toString(2).getBytes(StandardCharsets.UTF_8));
+                out.getFD().sync();
+            }
+            offlineResultSaved = true;
+        } catch (Exception exception) {
+            android.util.Log.e("LudoMasters", "Failed saving offline match", exception);
+            Toast.makeText(this,"Unable to save match history. Please report this error.",Toast.LENGTH_LONG).show();
         }
     }
 
@@ -1680,6 +1743,8 @@ public class MainActivity extends AppCompatActivity {
         initViews();
 
         globalHandler = new Handler();
+        offlineMatchStartedAt = System.currentTimeMillis();
+        offlineMatchId = UUID.randomUUID().toString();
 
         ObjectAnimator animator = ObjectAnimator.ofFloat(hintArrow, "translationX", -20, 20);
         animator.setRepeatCount(ValueAnimator.INFINITE);
@@ -2569,6 +2634,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createPieces(String color, int position,String playername,boolean isBot) {
+        offlinePlayerNames.put(color, playername == null ? color : playername);
         if(nop==2) {
             if(players.size()==0)
             { players.add(new Player(position, color, playername, isBot, 0)); }
