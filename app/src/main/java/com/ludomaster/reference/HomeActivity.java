@@ -2263,11 +2263,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onBackPressed() {
-        if(exitAppLayout.getVisibility()==View.VISIBLE) {
-            exitNoBtn.callOnClick();
-        } else {
-            exitgamebtn.callOnClick();
-        }
+        RoyalDialog.confirm(this, "Exit Ludo Masters?", "Your offline games remain available next time.",
+            "EXIT APP", () -> finishAffinity());
     }
 
     @Override
@@ -2281,48 +2278,72 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     /** Clean Ludo Masters entry page; preserve only the underlying offline match setup. */
     private void installModernLanding() {
         androidx.constraintlayout.widget.ConstraintLayout root = findViewById(R.id.root);
-        if(root == null) return;
-        android.widget.LinearLayout cover = new android.widget.LinearLayout(this);
-        cover.setOrientation(android.widget.LinearLayout.VERTICAL);
-        cover.setGravity(android.view.Gravity.CENTER);
-        cover.setPadding(38,24,38,24);
-        cover.setBackgroundResource(R.drawable.ludo_masters_game_background);
-        android.widget.ImageView brand = new android.widget.ImageView(this);
-        brand.setImageResource(R.drawable.ludo_masters_splash);
-        brand.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
-        cover.addView(brand, new android.widget.LinearLayout.LayoutParams(-1,0,3));
-        android.widget.TextView tagline = new android.widget.TextView(this);
-        tagline.setText("PLAY · COMPETE · MASTER");
-        tagline.setTextColor(0xffffd88b);
-        tagline.setTextSize(16);
-        tagline.setGravity(android.view.Gravity.CENTER);
-        tagline.setPadding(0,8,0,24);
-        cover.addView(tagline);
-        android.widget.Button offline = new android.widget.Button(this);
-        offline.setText("PLAY OFFLINE");
-        offline.setTextColor(android.graphics.Color.WHITE);
-        offline.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff2563eb));
-        cover.addView(offline, new android.widget.LinearLayout.LayoutParams(-1,72));
+        if (root == null) return;
+        android.widget.FrameLayout landing = new android.widget.FrameLayout(this);
+        landing.setBackgroundResource(R.drawable.ludo_masters_game_background);
+        android.widget.ImageView artwork = new android.widget.ImageView(this);
+        int menuArt = getResources().getIdentifier("lm_royal_menu","drawable",getPackageName());
+        if (menuArt != 0) artwork.setImageResource(menuArt);
+        else artwork.setImageResource(R.drawable.ludo_masters_splash);
+        artwork.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
+        landing.addView(artwork,new android.widget.FrameLayout.LayoutParams(-1,-1));
+        if(menuArt != 0) {
+            // Exact interactive hit boxes for user-provided 941 x 1672 menu art.
+            addRoyalHotspot(landing, .14f,.54f,.72f,.13f, () -> {
+                landing.setVisibility(View.GONE); computer.performClick();
+            });
+            addRoyalHotspot(landing, .14f,.69f,.72f,.13f, () -> {
+                landing.setVisibility(View.GONE); passnplay.performClick();
+            });
+        } else {
+            // Fully functional fallback until original assets have been imported.
+            android.widget.LinearLayout controls = new android.widget.LinearLayout(this);
+            controls.setOrientation(1);
+            controls.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+            controls.setPadding(24,24,24,110);
+            android.widget.Button computerBtn = new android.widget.Button(this);
+            computerBtn.setText("COMPUTER");
+            controls.addView(computerBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
+            computerBtn.setOnClickListener(v -> {landing.setVisibility(View.GONE);computer.performClick();});
+            android.widget.Button passBtn = new android.widget.Button(this);
+            passBtn.setText("PASS N PLAY");
+            controls.addView(passBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
+            passBtn.setOnClickListener(v -> {landing.setVisibility(View.GONE);passnplay.performClick();});
+            landing.addView(controls,new android.widget.FrameLayout.LayoutParams(-1,-1));
+        }
         android.widget.Button login = new android.widget.Button(this);
-        login.setText("LOGIN TO LUDOHOJAYE.COM");
-        login.setTextColor(0xff14273f);
-        login.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xffffd675));
-        cover.addView(login, new android.widget.LinearLayout.LayoutParams(-1,72));
-        android.widget.TextView note = new android.widget.TextView(this);
-        note.setText("Offline play needs no account or internet connection.");
-        note.setGravity(android.view.Gravity.CENTER);
-        note.setTextColor(android.graphics.Color.WHITE);
-        note.setPadding(0,20,0,0);
-        cover.addView(note);
-        cover.addView(new android.view.View(this),new android.widget.LinearLayout.LayoutParams(1,0,1));
-        root.addView(cover,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
-        cover.setElevation(1000f);
-        offline.setOnClickListener(view -> {
-            cover.setVisibility(android.view.View.GONE);
-            passnplay.performClick();
+        login.setText("LOGIN / PROFILE");
+        login.setTextColor(0xff17234a);
+        login.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xffffd36e));
+        android.widget.FrameLayout.LayoutParams loginParams = new android.widget.FrameLayout.LayoutParams(-2,52,android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+        loginParams.bottomMargin = 22;
+        landing.addView(login, loginParams);
+        login.setOnClickListener(v -> startActivity(new Intent(this,WebLoginActivity.class)));
+        root.addView(landing,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
+        landing.setElevation(1000f);
+        landing.bringToFront();
+        this.royalLanding=landing;
+        updateRoyalLoginLabel();
+    }
+    private android.widget.FrameLayout royalLanding;
+    private void updateRoyalLoginLabel() {
+        if(royalLanding==null)return;
+        android.widget.Button login=(android.widget.Button)royalLanding.getChildAt(royalLanding.getChildCount()-1);
+        String name = getSharedPreferences("LudoModUser", MODE_PRIVATE).getString("username","");
+        boolean signedIn=getSharedPreferences("LudoModUser", MODE_PRIVATE).getBoolean("logged",false);
+        login.setText(signedIn && !name.isEmpty() ? "PLAYER: "+name : "LOGIN TO LUDOHOJAYE");
+    }
+    private void addRoyalHotspot(android.widget.FrameLayout root,float left,float top,float width,float height,Runnable action){
+        android.view.View hotspot=new android.view.View(this);
+        hotspot.setContentDescription("Open game mode");
+        root.addView(hotspot);
+        root.post(() -> {
+            int w=root.getWidth(),h=root.getHeight();
+            android.widget.FrameLayout.LayoutParams p=new android.widget.FrameLayout.LayoutParams((int)(w*width),(int)(h*height));
+            p.leftMargin=(int)(left*w);p.topMargin=(int)(top*h);
+            hotspot.setLayoutParams(p);
         });
-        login.setOnClickListener(view ->
-            startActivity(new android.content.Intent(this,WebLoginActivity.class)));
+        hotspot.setOnClickListener(v -> action.run());
     }
 
     private void launchOfflineMatch(Intent intent) {
@@ -2756,6 +2777,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onResume() {
         super.onResume();
+        updateRoyalLoginLabel();
         if(isMusicOn) {
             if(!m.isPlaying()) {
                 m.start();
