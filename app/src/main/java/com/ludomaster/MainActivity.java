@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import com.ludomaster.board.BoardView;
 import com.ludomaster.game.ClassicGame;
+import com.ludomaster.game.MatchOptions;
 
 /** Offline pass-and-play prototype. No network access or external dependencies. */
 public final class MainActivity extends Activity {
@@ -21,6 +22,7 @@ public final class MainActivity extends Activity {
     private TextView dice;
     private Button rollButton;
     private final Button[] pawnButtons = new Button[4];
+    private boolean combatEnabled, immunityEnabled, shieldPromptVisible;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -92,23 +94,63 @@ public final class MainActivity extends Activity {
         new AlertDialog.Builder(this)
             .setTitle("Start offline match")
             .setItems(new String[]{"2 players · Red vs Yellow","3 players · Red / Green / Yellow","4 players · All colours"},(dialog,choice)->{
-                game=new ClassicGame(choice+2);
-                board.bind(game,pawn->{if(game.move(pawn))render();});
-                render();
+                chooseRules(choice+2);
             })
             .setCancelable(game!=null)
+            .show();
+    }
+
+    private void chooseRules(int playerCount) {
+        boolean[] enabled = {combatEnabled, immunityEnabled};
+        new AlertDialog.Builder(this)
+            .setTitle("Optional match rules")
+            .setMultiChoiceItems(new String[]{"Combat scoring (+5 capture / -5 death)",
+                "Earn immunity shields from captures"}, enabled, (d, index, checked) -> enabled[index] = checked)
+            .setPositiveButton("Start match", (d, which) -> {
+                combatEnabled = enabled[0]; immunityEnabled = enabled[1];
+                game = new ClassicGame(playerCount, new MatchOptions(combatEnabled, immunityEnabled, false));
+                board.bind(game, pawn -> {if (game.move(pawn)) render();});
+                shieldPromptVisible = false;
+                render();
+            })
+            .setNegativeButton("Back", (d, which) -> choosePlayers())
             .show();
     }
 
     private void render() {
         if(game==null)return;
         String turn=game.winner!=-1?"Winner: "+ClassicGame.NAMES[game.winner]:"Turn: "+ClassicGame.NAMES[game.turn];
-        status.setText(turn+"\n"+game.message);
+        StringBuilder score = new StringBuilder();
+        for (int c=0;c<4;c++) if (game.active[c]) {
+            if (score.length()>0) score.append("  |  ");
+            score.append(ClassicGame.NAMES[c]);
+            if (game.options.combatScoring) score.append(" ").append(game.combatPoints(c)).append(" pts");
+            if (game.options.immunity) score.append(" Shield:").append(game.shields(c));
+        }
+        status.setText(turn+"\n"+game.message+"\n"+score);
         dice.setText(game.awaitingPawn?"Dice: "+game.die+" · Tap a highlighted pawn":game.winner!=-1?"Match finished":"Tap Roll dice");
         rollButton.setEnabled(!game.awaitingPawn && game.winner==-1);
         rollButton.setTextColor(Color.BLACK);
         for(int p=0;p<4;p++)pawnButtons[p].setEnabled(game.canMove(p));
         board.invalidate();
+        if (game.pendingDefender != -1 && !shieldPromptVisible) {
+            shieldPromptVisible = true;
+            int defender = game.pendingDefender;
+            new AlertDialog.Builder(this)
+                .setTitle(ClassicGame.NAMES[defender] + " is under attack!")
+                .setMessage("Use one immunity shield to prevent this capture? Pass the phone to the defender.")
+                .setPositiveButton("Use shield", (d,which) -> {
+                    shieldPromptVisible = false;
+                    game.decideShield(true);
+                    render();
+                })
+                .setNegativeButton("Accept capture", (d,which) -> {
+                    shieldPromptVisible = false;
+                    game.decideShield(false);
+                    render();
+                })
+                .setCancelable(false).show();
+        }
     }
 
     private int dp(float x) {return (int)(x*getResources().getDisplayMetrics().density+0.5f);}
