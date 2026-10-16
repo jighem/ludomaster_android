@@ -132,6 +132,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_home);
         Objects.requireNonNull(getSupportActionBar()).hide();
         initViews();
+        findViewById(R.id.root).post(this::installModernLanding);
         View v = findViewById(R.id.homebackgroundview);
         ConstraintLayout.LayoutParams bgparams = new ConstraintLayout.LayoutParams((int)pxWidth,(int)(pxHeight+getStatusBarHeight()+60));
         v.setLayoutParams(bgparams);
@@ -198,7 +199,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
         if(!isPlayerLoggedIn) {
             int tempnum = (int) Math.floor(Math.random()*7777)+2145;
-            firstLoginLayout.setVisibility(View.VISIBLE);
+            firstLoginLayout.setVisibility(View.GONE);
             String generatedguestname = "Guest"+tempnum;
             stcsusernametextview.setText(generatedguestname);
             playerNameBtnComTextView.setText(generatedguestname);
@@ -468,7 +469,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onClick(View view) {
                 statisticslayout.setVisibility(View.GONE);
-                findViewById(R.id.guestprofilelayout).setVisibility(View.VISIBLE);
+                findViewById(R.id.guestprofilelayout).setVisibility(View.GONE);
             }
         });
         stcsprofpic.setOnClickListener(new View.OnClickListener() {
@@ -552,9 +553,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         stgssharebtn.setOnClickListener(noInternetOnClick);stgslikebtn.setOnClickListener(noInternetOnClick);stgsgeturpverifiedbtn.setOnClickListener(noInternetOnClick);stgsplaybtn.setOnClickListener(noInternetOnClick);stgslanguagebtn.setOnClickListener(noInternetOnClick);stgsselectbtn.setOnClickListener(noInternetOnClick);stgsviewbtn1.setOnClickListener(noInternetOnClick);stgsfaqbtn.setOnClickListener(noInternetOnClick);stgscomposebtn.setOnClickListener(noInternetOnClick);stgsrulesbtn.setOnClickListener(noInternetOnClick);stgsviewbtn2.setOnClickListener(noInternetOnClick);stgsmoregamesbtn.setOnClickListener(noInternetOnClick);stgslboardbtn.setOnClickListener(noInternetOnClick);stgsviewbtn3.setOnClickListener(noInternetOnClick);stgseditbtn.setOnClickListener(noInternetOnClick);stgsinfobtn.setOnClickListener(noInternetOnClick);stgsdelaccountbtn.setOnClickListener(noInternetOnClick);stgsfbbtn.setOnClickListener(noInternetOnClick);stgsinstabtn.setOnClickListener(noInternetOnClick);stgstwitterbtn.setOnClickListener(noInternetOnClick);stgsytbtn.setOnClickListener(noInternetOnClick);stgsmoregameslongbtn.setOnClickListener(noInternetOnClick);
 
 
+        // Offline play never requires an avatar, profile setup or third-party login.
+        firstLoginLayout.setVisibility(View.GONE);
+        guestprofilecreateoreditlayout.setVisibility(View.GONE);
+
         // setting listeners to first login layout views
         lgnwfbbtn.setOnTouchListener(clickEffect);snwgglbtn.setOnTouchListener(clickEffect);snwpgbtn.setOnTouchListener(clickEffect);playasguestbtn.setOnTouchListener(clickEffect);
-        lgnwfbbtn.performClick();
+        // Removed unsupported third-party authentication and forced login popup.
         lgnwfbbtn.setOnClickListener(noInternetOnClick);snwgglbtn.setOnClickListener(noInternetOnClick);snwpgbtn.setOnClickListener(noInternetOnClick);
         playasguestbtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -2271,6 +2276,53 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         if (isMusicOn) {
             m.pause();
         }
+    }
+
+    /** Clean Ludo Masters entry page; preserve only the underlying offline match setup. */
+    private void installModernLanding() {
+        androidx.constraintlayout.widget.ConstraintLayout root = findViewById(R.id.root);
+        if(root == null) return;
+        android.widget.LinearLayout cover = new android.widget.LinearLayout(this);
+        cover.setOrientation(android.widget.LinearLayout.VERTICAL);
+        cover.setGravity(android.view.Gravity.CENTER);
+        cover.setPadding(38,24,38,24);
+        cover.setBackgroundResource(R.drawable.ludo_masters_game_background);
+        android.widget.ImageView brand = new android.widget.ImageView(this);
+        brand.setImageResource(R.drawable.ludo_masters_splash);
+        brand.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        cover.addView(brand, new android.widget.LinearLayout.LayoutParams(-1,0,3));
+        android.widget.TextView tagline = new android.widget.TextView(this);
+        tagline.setText("PLAY · COMPETE · MASTER");
+        tagline.setTextColor(0xffffd88b);
+        tagline.setTextSize(16);
+        tagline.setGravity(android.view.Gravity.CENTER);
+        tagline.setPadding(0,8,0,24);
+        cover.addView(tagline);
+        android.widget.Button offline = new android.widget.Button(this);
+        offline.setText("PLAY OFFLINE");
+        offline.setTextColor(android.graphics.Color.WHITE);
+        offline.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff2563eb));
+        cover.addView(offline, new android.widget.LinearLayout.LayoutParams(-1,72));
+        android.widget.Button login = new android.widget.Button(this);
+        login.setText("LOGIN TO LUDOHOJAYE.COM");
+        login.setTextColor(0xff14273f);
+        login.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xffffd675));
+        cover.addView(login, new android.widget.LinearLayout.LayoutParams(-1,72));
+        android.widget.TextView note = new android.widget.TextView(this);
+        note.setText("Offline play needs no account or internet connection.");
+        note.setGravity(android.view.Gravity.CENTER);
+        note.setTextColor(android.graphics.Color.WHITE);
+        note.setPadding(0,20,0,0);
+        cover.addView(note);
+        cover.addView(new android.view.View(this),new android.widget.LinearLayout.LayoutParams(1,0,1));
+        root.addView(cover,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
+        cover.setElevation(1000f);
+        offline.setOnClickListener(view -> {
+            cover.setVisibility(android.view.View.GONE);
+            passnplay.performClick();
+        });
+        login.setOnClickListener(view ->
+            startActivity(new android.content.Intent(this,WebLoginActivity.class)));
     }
 
     private void launchOfflineMatch(Intent intent) {

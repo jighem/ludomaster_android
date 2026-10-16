@@ -260,24 +260,7 @@ public class MainActivity extends AppCompatActivity {
             this.piece.setVisibility(View.VISIBLE);
             this.endPosition = startPosition!=0?startPosition-2:50;
             if(!isBotPiece) {
-                this.piece.setOnClickListener(view -> {
-                    if (isAlive && isClickable && currentPlayerColor.equals(colour)) {
-                        diceValue = currentPlayerDice;
-                        currentPlayerDice = -1;
-                        for (Piece p : getPiecesByColor(colour)) {
-                            p.inactiveState();
-                        }
-                        checkAdjustments(currBlock);
-                        move(diceValue);
-                        //Toast.makeText(MainActivity.this, x+"", Toast.LENGTH_SHORT).show();
-                    } else if (!isAlive && currentPlayerColor.equals(colour) && currentPlayerDice == 6) {
-                        currentPlayerDice = -1;
-                        for (Piece p : getPiecesByColor(colour)) {
-                            p.inactiveState();
-                        }
-                        makeAlive();
-                    }
-                });
+                this.piece.setOnClickListener(view -> chooseStackedPieceOrMove(this));
             }
             if(!normalPiece) {
                 pieceIcon.setScaleX(0.8f);pieceIcon.setScaleY(0.8f);
@@ -1001,6 +984,48 @@ public class MainActivity extends AppCompatActivity {
                     else { piece.setTranslationY((yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i))-(pieceWidth * scale * 0.30f)); }
                 }
             }
+        }
+    }
+
+    /**
+     * A visible pawn may cover other pawns on the same square. Offer every
+     * selectable pawn explicitly instead of relying on z-order or tiny hitboxes.
+     */
+    private void chooseStackedPieceOrMove(Piece tapped) {
+        if (!currentPlayerColor.equals(tapped.colour) || currentPlayerDice < 1) return;
+        java.util.List<Piece> stack = new java.util.ArrayList<>();
+        for (Piece candidate : getPiecesByColor(tapped.colour)) {
+            if (candidate.currBlock == tapped.currBlock && candidate.isAlive
+                    && candidate.isClickable && !candidate.hasCompletedItsPurpose) {
+                stack.add(candidate);
+            }
+        }
+        if (stack.size() <= 1) {
+            executeSelectedPiece(tapped);
+            return;
+        }
+        CharSequence[] labels = new CharSequence[stack.size()];
+        java.util.List<Piece> all = getPiecesByColor(tapped.colour);
+        for (int i = 0; i < stack.size(); i++)
+            labels[i] = "Token " + (all.indexOf(stack.get(i)) + 1);
+        new AlertDialog.Builder(this).setTitle("Select token to move")
+            .setItems(labels, (dialog, index) -> executeSelectedPiece(stack.get(index)))
+            .setNegativeButton("Cancel", null).show();
+    }
+
+    private void executeSelectedPiece(Piece selected) {
+        if (!currentPlayerColor.equals(selected.colour) || currentPlayerDice < 1) return;
+        if (selected.isAlive && selected.isClickable && !selected.hasCompletedItsPurpose) {
+            int rolled = currentPlayerDice;
+            currentPlayerDice = -1;
+            for (Piece other : getPiecesByColor(selected.colour)) other.inactiveState();
+            checkAdjustments(selected.currBlock);
+            selected.diceValue = rolled;
+            selected.move(rolled);
+        } else if (!selected.isAlive && currentPlayerDice == 6) {
+            currentPlayerDice = -1;
+            for (Piece other : getPiecesByColor(selected.colour)) other.inactiveState();
+            selected.makeAlive();
         }
     }
 
