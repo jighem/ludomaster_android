@@ -51,6 +51,10 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
@@ -75,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
     private long offlineMatchStartedAt;
     private String offlineMatchId;
     private boolean offlineResultSaved;
+    private LinearLayout statsHud;
+    private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -150,7 +156,7 @@ public class MainActivity extends AppCompatActivity {
 
     private AnimatorSet[] animatorSets;
 
-    ImageView crownIndex1,crownIndex2,crownIndex3,crownIndex4;
+    ImageView shieldIndex1,shieldIndex2,shieldIndex3,shieldIndex4;
 
     int currentWinnerPosition = 1;
 
@@ -187,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView congratsmenubtn,congratssoundbtn,congratssharebtn,congratsreplaybtn;
 
     ConstraintLayout winnerlistp1layout,winnerlistp2layout,winnerlistp3layout,winnerlistp4layout;
-    ImageView wlistcrown1,wlistcrown2,wlistcrown3,wlistcrown4,wlistpiece1,wlistpiece2,wlistpiece3,wlistpiece4,wlistwinorlose1,wlistwinorlose2,wlistwinorlose3,wlistwinorlose4;
+    ImageView wlistshield1,wlistshield2,wlistshield3,wlistshield4,wlistpiece1,wlistpiece2,wlistpiece3,wlistpiece4,wlistwinorlose1,wlistwinorlose2,wlistwinorlose3,wlistwinorlose4;
     TextView wlistname1,wlistname2,wlistname3,wlistname4;
 
     boolean isbluegreenreadytowin=false,isredyellowreadytowin=false;
@@ -594,19 +600,19 @@ public class MainActivity extends AppCompatActivity {
 
                                     hideThisPlayerDiceBg(loserplayerselectedindex);
                                     if(nop==2) {
-                                        wlistcrown2.setVisibility(View.INVISIBLE);
+                                        wlistshield2.setVisibility(View.INVISIBLE);
                                         wlistname2.setText(name);
                                         wlistpiece2.setImageDrawable(getPieceDrawableByColor(colour));
                                         winnerlistp3layout.setVisibility(GONE);
                                         winnerlistp4layout.setVisibility(GONE);
                                     } else if(nop==3) {
                                         //makeThisPlayerLoserBasedOnSelectedIndexNOP3(colour,loserplayerselectedindex);
-                                        wlistcrown3.setVisibility(View.INVISIBLE);
+                                        wlistshield3.setVisibility(View.INVISIBLE);
                                         wlistname3.setText(getLoserNameBasedOnSelectedIndex(loserplayerselectedindex));
                                         wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                                         winnerlistp4layout.setVisibility(GONE);
                                     } else {
-                                        wlistcrown4.setVisibility(View.INVISIBLE);
+                                        wlistshield4.setVisibility(View.INVISIBLE);
                                         wlistname4.setText(getLoserNameBasedOnSelectedIndex(loserplayerselectedindex));
                                         wlistpiece4.setImageDrawable(getPieceDrawableByColor(colour));
                                     }
@@ -779,7 +785,7 @@ public class MainActivity extends AppCompatActivity {
         switch ((loserplayerselectedindex+1)) {
             case 1:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player3name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -788,7 +794,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case 2:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player1name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -797,7 +803,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case 3:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player2name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -806,7 +812,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case 4:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player4name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -820,7 +826,7 @@ public class MainActivity extends AppCompatActivity {
         offlineFinishRanks.put(colour, currentWinnerPosition);
         switch ((currentPlayerSelectedIndex+1)) {
             case 1:
-                crownIndex1.setVisibility(View.VISIBLE);
+                shieldIndex1.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber1).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber1)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 if(nop!=2) {
@@ -833,7 +839,7 @@ public class MainActivity extends AppCompatActivity {
                 hideThisPlayerDiceBg(1);
                 break;
             case 2:
-                crownIndex2.setVisibility(View.VISIBLE);
+                shieldIndex2.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber2).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber2)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 if(nop!=2) {
@@ -845,7 +851,7 @@ public class MainActivity extends AppCompatActivity {
                 hideThisPlayerDiceBg(2);
                 break;
             case 3:
-                crownIndex3.setVisibility(View.VISIBLE);
+                shieldIndex3.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber3).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber3)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 if(nop!=2) {
@@ -857,7 +863,7 @@ public class MainActivity extends AppCompatActivity {
                 hideThisPlayerDiceBg(3);
                 break;
             case 4:
-                crownIndex4.setVisibility(View.VISIBLE);
+                shieldIndex4.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber4).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber4)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 addCurrentPlayerToCongratsList(colour,playername,currentWinnerPosition);
@@ -870,29 +876,29 @@ public class MainActivity extends AppCompatActivity {
     private void addCurrentPlayerToCongratsList(String color,String name,int currentWinnerPosition) {
         switch (currentWinnerPosition) {
             case 1:
-                wlistcrown1.setVisibility(View.VISIBLE);
-                wlistcrown2.setVisibility(View.INVISIBLE);
+                wlistshield1.setVisibility(View.VISIBLE);
+                wlistshield2.setVisibility(View.INVISIBLE);
                 wlistpiece1.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname1.setText(name);
                 wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.winner1,null));
                 break;
             case 2:
-                wlistcrown2.setVisibility(View.VISIBLE);
-                wlistcrown3.setVisibility(View.INVISIBLE);
+                wlistshield2.setVisibility(View.VISIBLE);
+                wlistshield3.setVisibility(View.INVISIBLE);
                 wlistpiece2.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname2.setText(name);
                 wlistwinorlose2.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.winner1,null));
                 break;
             case 3:
-                wlistcrown3.setVisibility(View.VISIBLE);
-                wlistcrown4.setVisibility(View.INVISIBLE);
+                wlistshield3.setVisibility(View.VISIBLE);
+                wlistshield4.setVisibility(View.INVISIBLE);
                 wlistpiece3.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname3.setText(name);
                 wlistwinorlose3.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.winner1,null));
                 break;
             case 4:
-                wlistcrown4.setVisibility(View.VISIBLE);
-                wlistcrown4.setVisibility(View.INVISIBLE);
+                wlistshield4.setVisibility(View.VISIBLE);
+                wlistshield4.setVisibility(View.INVISIBLE);
                 wlistpiece1.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname1.setText(name);
                 wlistwinorlose4.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.loser1,null));
@@ -914,14 +920,14 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
-    Drawable getWinnerCrownDrawableByNumber(int x) {
+    Drawable getWinnershieldDrawableByNumber(int x) {
         switch (x) {
             case 1:
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.listwinner1crown,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lm_shield,null);
             case 2:
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.listwinner2crown,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lm_shield,null);
             case 3:
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.listwinner3crown,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lm_shield,null);
             case 4:
                 return null;
         }
@@ -1084,6 +1090,81 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private int hudDp(float amount) {
+        return Math.round(amount * getResources().getDisplayMetrics().density);
+    }
+
+    /** Always-visible, compact stats strip above the original board, without altering its tiles. */
+    private void initStatsHud() {
+        if (statsHud != null) return;
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        statsHud = new LinearLayout(this);
+        statsHud.setOrientation(LinearLayout.HORIZONTAL);
+        statsHud.setPadding(hudDp(4), hudDp(4), hudDp(4), hudDp(4));
+        statsHud.setClipChildren(false);
+        ConstraintLayout.LayoutParams hudParams = new ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(79));
+        hudParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.topMargin = hudDp(69);
+        root.addView(statsHud, hudParams);
+
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            TextView cell = new TextView(this);
+            cell.setTextSize(11);
+            cell.setTextColor(Color.WHITE);
+            cell.setGravity(Gravity.CENTER);
+            cell.setMaxLines(4);
+            cell.setPadding(hudDp(2),hudDp(3),hudDp(2),hudDp(3));
+            GradientDrawable background = new GradientDrawable();
+            background.setColor(Color.rgb(20,31,55));
+            background.setCornerRadius(hudDp(9));
+            int accent;
+            switch (color) {
+                case "red": accent=0xffe84248; break;
+                case "green": accent=0xff28b66e; break;
+                case "yellow": accent=0xffffca44; break;
+                default: accent=0xff428aff;
+            }
+            background.setStroke(hudDp(2),accent);
+            cell.setBackground(background);
+            LinearLayout.LayoutParams cellParams=new LinearLayout.LayoutParams(0,-1,1f);
+            cellParams.setMargins(hudDp(2),0,hudDp(2),0);
+            statsHud.addView(cell,cellParams);
+            statsCells.put(color,cell);
+        }
+        statsHud.bringToFront();
+        refreshStatsHud();
+    }
+
+    private void refreshStatsHud() {
+        if (statsHud == null) return;
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            TextView cell=statsCells.get(color);
+            if (cell == null) continue;
+            String name=offlinePlayerNames.get(color);
+            if (name==null) {
+                cell.setVisibility(View.GONE);
+                continue;
+            }
+            cell.setVisibility(View.VISIBLE);
+            if(name.length()>10) name=name.substring(0,9)+"…";
+            int kills=getCount(killCounts,color);
+            int deaths=getCount(deathCounts,color);
+            StringBuilder display=new StringBuilder();
+            display.append(name).append("\n");
+            display.append("K:").append(kills).append("  D:").append(deaths).append("\n");
+            display.append("Shield:").append(immunityEnabled?getCount(immunityShields,color):"OFF");
+            if (combatScoringEnabled) display.append("\nPts:").append(5*(kills-deaths));
+            cell.setText(display.toString());
+            cell.setContentDescription(color+" player "+name+
+                ", kills "+kills+", deaths "+deaths+
+                ", shields "+(immunityEnabled?getCount(immunityShields,color):0));
+            cell.setAlpha(color.equals(currentPlayerColor)?1f:0.84f);
+        }
+    }
+
     private int getCount(java.util.Map<String,Integer> values, String color) {
         Integer count = values.get(color);
         return count == null ? 0 : count;
@@ -1099,6 +1180,7 @@ public class MainActivity extends AppCompatActivity {
         incrementCount(killCounts, attacker.colour);
         incrementCount(deathCounts, defender.colour);
         if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
+        refreshStatsHud();
         if (combatScoringEnabled || immunityEnabled) {
             String summary = attacker.colour + " captured " + defender.colour;
             if (combatScoringEnabled) summary += " (+5 / -5)";
@@ -1128,6 +1210,7 @@ public class MainActivity extends AppCompatActivity {
                             .setMessage("Spend one immunity shield to protect this pawn? Hand the device to the defender.")
                             .setPositiveButton("Use Shield", (dialog, which) -> {
                                 immunityShields.put(colour, getCount(immunityShields,colour) - 1);
+                                refreshStatsHud();
                                 Toast.makeText(this, "Capture blocked by immunity", Toast.LENGTH_SHORT).show();
                                 continuation.accept(false);
                             })
@@ -1146,6 +1229,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void finishPieceMove(Piece piece, boolean captured) {
+        refreshStatsHud();
         globalHandler.postDelayed(() -> {
             if (!piece.isThisPlayerWon) checkAdjustments(piece.currBlock);
         },10);
@@ -1741,6 +1825,7 @@ public class MainActivity extends AppCompatActivity {
         Objects.requireNonNull(getSupportActionBar()).hide();
 
         initViews();
+        initStatsHud();
 
         globalHandler = new Handler();
         offlineMatchStartedAt = System.currentTimeMillis();
@@ -1822,10 +1907,10 @@ public class MainActivity extends AppCompatActivity {
 
         //
 
-        crownIndex1.getLayoutParams().height = (int) total;
-        crownIndex2.getLayoutParams().height = (int) total;
-        crownIndex3.getLayoutParams().height = (int) total;
-        crownIndex4.getLayoutParams().height = (int) total;
+        shieldIndex1.getLayoutParams().height = (int) total;
+        shieldIndex2.getLayoutParams().height = (int) total;
+        shieldIndex3.getLayoutParams().height = (int) total;
+        shieldIndex4.getLayoutParams().height = (int) total;
 
         p1exitbox.getLayoutParams().height = (int) (total * 0.985);
         p2exitbox.getLayoutParams().height = (int) (total * 0.985);
@@ -2635,6 +2720,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void createPieces(String color, int position,String playername,boolean isBot) {
         offlinePlayerNames.put(color, playername == null ? color : playername);
+        refreshStatsHud();
         if(nop==2) {
             if(players.size()==0)
             { players.add(new Player(position, color, playername, isBot, 0)); }
@@ -2748,10 +2834,10 @@ public class MainActivity extends AppCompatActivity {
         mainDiceImageView = findViewById(R.id.maindiceimageview);
         hintArrow = findViewById(R.id.hintarrowleft);
 
-        crownIndex1 = findViewById(R.id.winnercrownindex1);
-        crownIndex2 = findViewById(R.id.winnercrownindex2);
-        crownIndex3 = findViewById(R.id.winnercrownindex3);
-        crownIndex4 = findViewById(R.id.winnercrownindex4);
+        shieldIndex1 = findViewById(R.id.lm_shieldindex1);
+        shieldIndex2 = findViewById(R.id.lm_shieldindex2);
+        shieldIndex3 = findViewById(R.id.lm_shieldindex3);
+        shieldIndex4 = findViewById(R.id.lm_shieldindex4);
 
         // ingame menu items
         ingamemenubtn = findViewById(R.id.ingamemenubtn);
@@ -2814,10 +2900,10 @@ public class MainActivity extends AppCompatActivity {
         winnerlistp3layout = findViewById(R.id.winnerpositionlayout3);
         winnerlistp4layout = findViewById(R.id.winnerpositionlayout4);
 
-        wlistcrown1 = findViewById(R.id.winnerliscrown1);
-        wlistcrown2 = findViewById(R.id.winnerliscrown2);
-        wlistcrown3 = findViewById(R.id.winnerliscrown3);
-        wlistcrown4 = findViewById(R.id.winnerliscrown4);
+        wlistshield1 = findViewById(R.id.winnerlisshield1);
+        wlistshield2 = findViewById(R.id.winnerlisshield2);
+        wlistshield3 = findViewById(R.id.winnerlisshield3);
+        wlistshield4 = findViewById(R.id.winnerlisshield4);
         wlistpiece1 = findViewById(R.id.winnerlistp1);
         wlistpiece2 = findViewById(R.id.winnerlistp2);
         wlistpiece3 = findViewById(R.id.winnerlistp3);
