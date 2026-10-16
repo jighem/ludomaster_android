@@ -9,6 +9,9 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.widget.*;
 import java.util.ArrayList;
+import java.util.HashSet;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /** Native replacement for original token, player-count and game-mode popups. */
 public final class RoyalSetupActivity extends Activity {
@@ -17,6 +20,10 @@ public final class RoyalSetupActivity extends Activity {
     private final boolean[] rules={false,false,false};
     private final ArrayList<EditText> names=new ArrayList<>();
     private LinearLayout players;
+    private final ArrayList<Integer> playerIds=new ArrayList<>();
+    private int selectedLeagueId=0;
+    private JSONArray roster=new JSONArray();
+    private Button leagueButton;
     private TextView countLabel;
     private int dp(int x){return Math.round(x*getResources().getDisplayMetrics().density);}
     @Override public void onCreate(Bundle state){
@@ -44,6 +51,9 @@ public final class RoyalSetupActivity extends Activity {
             nums.addView(btn,new LinearLayout.LayoutParams(0,dp(58),1));
             btn.setOnClickListener(v->{count=selected;updatePlayers();});
         }
+        leagueButton=button("SELECT LEAGUE PLAYERS (LOGIN REQUIRED)");
+        root.addView(leagueButton,new LinearLayout.LayoutParams(-1,dp(55)));
+        leagueButton.setOnClickListener(v->chooseLeague());
         players=new LinearLayout(this);players.setOrientation(1);
         root.addView(players,new LinearLayout.LayoutParams(-1,-2));
         TextView note=text("OPTIONAL RULES",19,0xffffd46a);
@@ -77,7 +87,7 @@ public final class RoyalSetupActivity extends Activity {
     }
     private void updatePlayers(){
         countLabel.setText("PLAYERS: "+count);
-        players.removeAllViews();names.clear();
+        players.removeAllViews();names.clear();playerIds.clear();
         for(int i=0;i<count;i++){
             EditText field=new EditText(this);
             field.setSingleLine(true);field.setTextColor(Color.WHITE);
@@ -86,14 +96,73 @@ public final class RoyalSetupActivity extends Activity {
             field.setText(computer?(i==0?"You":"Computer "+i):"Player "+(i+1));
             players.addView(field,new LinearLayout.LayoutParams(-1,dp(52)));
             names.add(field);
+            playerIds.add(0);
+            if(SecureLogin.token(this)!=null && (!computer || i==0)) {
+                final int seat=i;
+                Button choose=button("CHOOSE REGISTERED PLAYER "+(i+1));
+                players.addView(choose,new LinearLayout.LayoutParams(-1,dp(45)));
+                choose.setOnClickListener(v->choosePlayer(seat));
+            }
         }
+    }
+    private void chooseLeague(){
+        LeagueRoster.fetch(this,"leagues?status=active",new LeagueRoster.Callback(){
+            @Override public void loaded(JSONArray data){
+                if(data.length()==0){Toast.makeText(RoyalSetupActivity.this,"No accessible leagues",Toast.LENGTH_LONG).show();return;}
+                String[] titles=new String[data.length()];
+                for(int i=0;i<data.length();i++)titles[i]=data.optJSONObject(i).optString("name","League "+(i+1));
+                new AlertDialog.Builder(RoyalSetupActivity.this).setTitle("Choose league")
+                  .setItems(titles,(dialog,index)->{
+                     JSONObject league=data.optJSONObject(index);
+                     selectedLeagueId=league.optInt("id",0);
+                     leagueButton.setText("LEAGUE: "+league.optString("name"));
+                     roster=new JSONArray();
+                     for(int j=0;j<playerIds.size();j++)playerIds.set(j,0);
+                     LeagueRoster.fetch(RoyalSetupActivity.this,"players?league_id="+selectedLeagueId+"&status=active",
+                         new LeagueRoster.Callback(){
+                            @Override public void loaded(JSONArray result){roster=result;Toast.makeText(RoyalSetupActivity.this,"Registered players loaded",Toast.LENGTH_SHORT).show();}
+                            @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
+                         });
+                  }).show();
+            }
+            @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
+        });
+    }
+    private void choosePlayer(int seat){
+        if(selectedLeagueId<=0){chooseLeague();return;}
+        ArrayList<JSONObject> eligible=new ArrayList<>();
+        for(int i=0;i<roster.length();i++){
+            JSONObject candidate=roster.optJSONObject(i);
+            if(candidate==null)continue;
+            int id=candidate.optInt("id");
+            if(id<=0)continue;
+            boolean alreadyUsed=false;
+            for(int j=0;j<playerIds.size();j++)if(j!=seat && playerIds.get(j)==id)alreadyUsed=true;
+            if(!alreadyUsed)eligible.add(candidate);
+        }
+        if(eligible.isEmpty()){Toast.makeText(this,"No available registered players in this league",Toast.LENGTH_LONG).show();return;}
+        String[] labels=new String[eligible.size()];
+        for(int i=0;i<eligible.size();i++)labels[i]=eligible.get(i).optString("full_name","Player");
+        new AlertDialog.Builder(this).setTitle("Select player for seat "+(seat+1))
+            .setItems(labels,(dialog,index)->{
+                JSONObject selected=eligible.get(index);
+                playerIds.set(seat,selected.optInt("id"));
+                names.get(seat).setText(selected.optString("full_name"));
+            }).setNegativeButton("Cancel",null).show();
     }
     private String name(int i){return names.get(i).getText().toString().trim();}
     private void startMatch(){
         for(int i=0;i<count;i++)if(name(i).isEmpty()){
             Toast.makeText(this,"Enter each player name",Toast.LENGTH_SHORT).show();return;
         }
+        HashSet<Integer> mapped=new HashSet<>();
+        for(int i=0;i<count;i++)if(playerIds.get(i)>0&&!mapped.add(playerIds.get(i))) {
+            Toast.makeText(this,"Same league player cannot occupy two seats",Toast.LENGTH_LONG).show();return;
+        }
         Intent intent=new Intent(this,MainActivity.class);
+        intent.putExtra("league_id",selectedLeagueId);
+        int[] ids=new int[count];for(int i=0;i<count;i++)ids[i]=playerIds.get(i);
+        intent.putExtra("league_player_ids",ids);
         intent.putExtra("nop",count);
         intent.putExtra("type",computer?4:1);
         intent.putExtra("normalPiece",true);
