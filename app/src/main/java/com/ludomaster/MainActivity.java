@@ -19,6 +19,7 @@ public final class MainActivity extends Activity {
     private TextView status;
     private TextView dice;
     private Button rollButton;
+    private final Button[] pawnButtons = new Button[4];
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -43,6 +44,18 @@ public final class MainActivity extends Activity {
 
         board=new BoardView(this);
         root.addView(board,new LinearLayout.LayoutParams(-1,0,1));
+
+        LinearLayout pawnRow = new LinearLayout(this);
+        pawnRow.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(pawnRow);
+        for (int p=0;p<4;p++) {
+            final int selected=p;
+            Button button=new Button(this);
+            button.setText("Pawn "+(p+1));
+            pawnButtons[p]=button;
+            pawnRow.addView(button,new LinearLayout.LayoutParams(0,dp(48),1));
+            button.setOnClickListener(v->{if(game!=null && game.move(selected))render();});
+        }
 
         dice=new TextView(this);
         dice.setGravity(Gravity.CENTER);
@@ -86,6 +99,7 @@ public final class MainActivity extends Activity {
         dice.setText(game.awaitingPawn?"Dice: "+game.die+" · Tap a highlighted pawn":game.winner!=-1?"Match finished":"Tap Roll dice");
         rollButton.setEnabled(!game.awaitingPawn && game.winner==-1);
         rollButton.setTextColor(Color.BLACK);
+        for(int p=0;p<4;p++)pawnButtons[p].setEnabled(game.canMove(p));
         board.invalidate();
     }
 
