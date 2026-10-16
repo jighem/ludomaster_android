@@ -23,6 +23,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".RoyalSetupActivity" android:exported="false" />
         <activity android:name=".WebLoginActivity" android:exported="false" />
         <activity android:name=".HomeActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity
