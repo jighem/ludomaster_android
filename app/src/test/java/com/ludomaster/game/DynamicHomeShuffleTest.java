@@ -25,13 +25,29 @@ public class DynamicHomeShuffleTest {
         assertTrue(changed>=2);
         for(int c=0;c<4;c++) assertEquals(-1,game.progress[c][0]);
     }
-    @Test public void pawnAlreadyInHomeLaneStaysInSamePhysicalSquare() {
+    @Test public void finishingLanePawnMovesWithItsColourWithoutLosingProgress() {
         ClassicGame game=new ClassicGame(4,new MatchOptions(false,false,true));
-        game.progress[0][0]=54;
-        int[] previous=game.position(0,0);
+        // Select any colour whose home changes on the next shuffle.
+        int[][] before = new int[4][];
+        for(int color=0;color<4;color++) {
+            game.progress[color][0]=54;
+            before[color]=game.position(color,0);
+        }
         game.requestHomeShuffle();
-        assertArrayEquals(previous,game.position(0,0));
-        assertEquals(54,game.progress[0][0]);
+        int changed=0;
+        for(int color=0;color<4;color++) {
+            assertEquals(54,game.progress[color][0]);
+            assertArrayEquals(ClassicGame.LANES[game.homeQuadrant[color]][2],game.position(color,0));
+            if(!java.util.Arrays.equals(before[color],game.position(color,0)))changed++;
+        }
+        assertTrue(changed>=2);
+    }
+    @Test public void completedTokenRemainsCompletedAfterHomeSwap() {
+        ClassicGame game=new ClassicGame(4,new MatchOptions(false,false,true));
+        game.progress[0][0]=57;
+        game.requestHomeShuffle();
+        assertEquals(57,game.progress[0][0]);
+        assertArrayEquals(ClassicGame.LANES[game.homeQuadrant[0]][5],game.position(0,0));
     }
     @Test public void waitingMoveDefersShuffleUntilMoveResolves() {
         ClassicGame game=new ClassicGame(2,new MatchOptions(false,false,true));
