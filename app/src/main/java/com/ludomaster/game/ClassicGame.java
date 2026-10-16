@@ -30,8 +30,6 @@ public final class ClassicGame {
     private final java.util.Random shuffleRandom = new SecureRandom();
     /** Quadrant (0..3) currently assigned to each colour. */
     public final int[] homeQuadrant = {0,1,2,3};
-    /** Lock in a lane's physical quadrant when a pawn entered it. */
-    public final int[][] laneQuadrant = new int[4][4];
     public int shuffleCount = 0;
     private boolean shufflePending = false;
     public final MatchOptions options;
@@ -56,7 +54,7 @@ public final class ClassicGame {
         active[0] = true; active[2] = true;
         if (count >= 3) active[1] = true;
         if (count == 4) active[3] = true;
-        for (int c = 0; c < 4; c++) for (int p = 0; p < 4; p++) { progress[c][p] = -1; laneQuadrant[c][p] = c; }
+        for (int c = 0; c < 4; c++) for (int p = 0; p < 4; p++) progress[c][p] = -1;
     }
     public int[] position(int color, int pawn) {
         int p = progress[color][pawn];
@@ -65,7 +63,7 @@ public final class ClassicGame {
             int home = homeQuadrant[color];
             return new int[] { yards[home][0] + (pawn/2)*3, yards[home][1] + (pawn%2)*3 };
         }
-        if (p >= 52) return LANES[laneQuadrant[color][pawn]][p-52].clone();
+        if (p >= 52) return LANES[homeQuadrant[color]][p-52].clone();
         return TRACK[(START[homeQuadrant[color]]+p)%52].clone();
     }
     public boolean canMove(int pawn) {
@@ -98,7 +96,6 @@ public final class ClassicGame {
         if (!canMove(pawn)) return false;
         int old = progress[turn][pawn];
         progress[turn][pawn] = old == -1 ? 0 : old + die;
-        if (old < 52 && progress[turn][pawn] >= 52) laneQuadrant[turn][pawn] = homeQuadrant[turn];
         int now = progress[turn][pawn];
         pendingVictims.clear();
         if (now >= 0 && now < 52) {
@@ -200,8 +197,9 @@ public final class ClassicGame {
                 int absolute=(START[previous[c]]+old)%52;
                 progress[c][p]=(absolute-START[homeQuadrant[c]]+52)%52;
             }
-            // Tokens in a finishing lane are pinned physically to that lane,
-            // including their remaining path; completed tokens also stay completed.
+            // Tokens already in a finishing lane keep their lane depth and move
+            // visually with the assigned colour's NEW finishing lane.
+            // Completed tokens remain completed.
         }
         shuffleCount++;
         message="Home shuffle #"+shuffleCount+"! Starting squares and entrances changed.";
