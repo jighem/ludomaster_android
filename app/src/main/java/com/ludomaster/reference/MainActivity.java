@@ -51,6 +51,10 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
@@ -75,6 +79,8 @@ public class MainActivity extends AppCompatActivity {
     private long offlineMatchStartedAt;
     private String offlineMatchId;
     private boolean offlineResultSaved;
+    private LinearLayout statsHud;
+    private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -1084,6 +1090,81 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private int hudDp(float amount) {
+        return Math.round(amount * getResources().getDisplayMetrics().density);
+    }
+
+    /** Always-visible, compact stats strip above the original board, without altering its tiles. */
+    private void initStatsHud() {
+        if (statsHud != null) return;
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        statsHud = new LinearLayout(this);
+        statsHud.setOrientation(LinearLayout.HORIZONTAL);
+        statsHud.setPadding(hudDp(4), hudDp(4), hudDp(4), hudDp(4));
+        statsHud.setClipChildren(false);
+        ConstraintLayout.LayoutParams hudParams = new ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(79));
+        hudParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.topMargin = hudDp(69);
+        root.addView(statsHud, hudParams);
+
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            TextView cell = new TextView(this);
+            cell.setTextSize(11);
+            cell.setTextColor(Color.WHITE);
+            cell.setGravity(Gravity.CENTER);
+            cell.setMaxLines(4);
+            cell.setPadding(hudDp(2),hudDp(3),hudDp(2),hudDp(3));
+            GradientDrawable background = new GradientDrawable();
+            background.setColor(Color.rgb(20,31,55));
+            background.setCornerRadius(hudDp(9));
+            int accent;
+            switch (color) {
+                case "red": accent=0xffe84248; break;
+                case "green": accent=0xff28b66e; break;
+                case "yellow": accent=0xffffca44; break;
+                default: accent=0xff428aff;
+            }
+            background.setStroke(hudDp(2),accent);
+            cell.setBackground(background);
+            LinearLayout.LayoutParams cellParams=new LinearLayout.LayoutParams(0,-1,1f);
+            cellParams.setMargins(hudDp(2),0,hudDp(2),0);
+            statsHud.addView(cell,cellParams);
+            statsCells.put(color,cell);
+        }
+        statsHud.bringToFront();
+        refreshStatsHud();
+    }
+
+    private void refreshStatsHud() {
+        if (statsHud == null) return;
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            TextView cell=statsCells.get(color);
+            if (cell == null) continue;
+            String name=offlinePlayerNames.get(color);
+            if (name==null) {
+                cell.setVisibility(View.GONE);
+                continue;
+            }
+            cell.setVisibility(View.VISIBLE);
+            if(name.length()>10) name=name.substring(0,9)+"…";
+            int kills=getCount(killCounts,color);
+            int deaths=getCount(deathCounts,color);
+            StringBuilder display=new StringBuilder();
+            display.append(name).append("\\n");
+            display.append("K:").append(kills).append("  D:").append(deaths).append("\\n");
+            display.append("Shield:").append(immunityEnabled?getCount(immunityShields,color):"OFF");
+            if (combatScoringEnabled) display.append("\\nPts:").append(5*(kills-deaths));
+            cell.setText(display.toString());
+            cell.setContentDescription(color+" player "+name+
+                ", kills "+kills+", deaths "+deaths+
+                ", shields "+(immunityEnabled?getCount(immunityShields,color):0));
+            cell.setAlpha(color.equals(currentPlayerColor)?1f:0.84f);
+        }
+    }
+
     private int getCount(java.util.Map<String,Integer> values, String color) {
         Integer count = values.get(color);
         return count == null ? 0 : count;
@@ -1099,6 +1180,7 @@ public class MainActivity extends AppCompatActivity {
         incrementCount(killCounts, attacker.colour);
         incrementCount(deathCounts, defender.colour);
         if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
+        refreshStatsHud();
         if (combatScoringEnabled || immunityEnabled) {
             String summary = attacker.colour + " captured " + defender.colour;
             if (combatScoringEnabled) summary += " (+5 / -5)";
@@ -1128,6 +1210,7 @@ public class MainActivity extends AppCompatActivity {
                             .setMessage("Spend one immunity shield to protect this pawn? Hand the device to the defender.")
                             .setPositiveButton("Use Shield", (dialog, which) -> {
                                 immunityShields.put(colour, getCount(immunityShields,colour) - 1);
+                                refreshStatsHud();
                                 Toast.makeText(this, "Capture blocked by immunity", Toast.LENGTH_SHORT).show();
                                 continuation.accept(false);
                             })
@@ -1146,6 +1229,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void finishPieceMove(Piece piece, boolean captured) {
+        refreshStatsHud();
         globalHandler.postDelayed(() -> {
             if (!piece.isThisPlayerWon) checkAdjustments(piece.currBlock);
         },10);
@@ -1741,6 +1825,7 @@ public class MainActivity extends AppCompatActivity {
         Objects.requireNonNull(getSupportActionBar()).hide();
 
         initViews();
+        initStatsHud();
 
         globalHandler = new Handler();
         offlineMatchStartedAt = System.currentTimeMillis();
@@ -2635,6 +2720,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void createPieces(String color, int position,String playername,boolean isBot) {
         offlinePlayerNames.put(color, playername == null ? color : playername);
+        refreshStatsHud();
         if(nop==2) {
             if(players.size()==0)
             { players.add(new Player(position, color, playername, isBot, 0)); }
