@@ -26,7 +26,7 @@ public class SplashActivity extends AppCompatActivity {
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                findViewById(R.id.background).setBackground(ResourcesCompat.getDrawable(getResources(),R.drawable.intro2,null));
+                // Keep consistent Ludo Masters splash branding.
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
