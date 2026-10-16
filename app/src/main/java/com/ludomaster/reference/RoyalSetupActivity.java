@@ -76,6 +76,9 @@ public final class RoyalSetupActivity extends Activity {
         back.setOnClickListener(v->finish());
         updatePlayers();
         setContentView(scroll);
+        // A signed-in player must pick the league before selecting its roster.
+        // Offline guests can play without an account or league.
+        if (SecureLogin.token(this) != null) scroll.post(this::chooseLeague);
     }
     private TextView text(String label,int size,int color) {
         TextView t=new TextView(this);t.setText(label);t.setTextSize(size);t.setTextColor(color);
@@ -118,6 +121,8 @@ public final class RoyalSetupActivity extends Activity {
                      leagueButton.setText("LEAGUE: "+league.optString("name"));
                      roster=new JSONArray();
                      for(int j=0;j<playerIds.size();j++)playerIds.set(j,0);
+                     // Discard identities from a previously selected league.
+                     updatePlayers();
                      LeagueRoster.fetch(RoyalSetupActivity.this,"players?league_id="+selectedLeagueId+"&status=active",
                          new LeagueRoster.Callback(){
                             @Override public void loaded(JSONArray result){roster=result;Toast.makeText(RoyalSetupActivity.this,"Registered players loaded",Toast.LENGTH_SHORT).show();}
@@ -152,6 +157,13 @@ public final class RoyalSetupActivity extends Activity {
     }
     private String name(int i){return names.get(i).getText().toString().trim();}
     private void startMatch(){
+        if(SecureLogin.token(this)!=null && selectedLeagueId<=0){
+            new AlertDialog.Builder(this).setTitle("Choose league first")
+                .setMessage("Select the Ludohojaye league for this match before starting.")
+                .setPositiveButton("Select League",(dialog,which)->chooseLeague())
+                .setNegativeButton("Cancel",null).show();
+            return;
+        }
         for(int i=0;i<count;i++)if(name(i).isEmpty()){
             Toast.makeText(this,"Enter each player name",Toast.LENGTH_SHORT).show();return;
         }
