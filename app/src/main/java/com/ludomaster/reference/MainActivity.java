@@ -1153,10 +1153,10 @@ public class MainActivity extends AppCompatActivity {
             int kills=getCount(killCounts,color);
             int deaths=getCount(deathCounts,color);
             StringBuilder display=new StringBuilder();
-            display.append(name).append("\\n");
-            display.append("K:").append(kills).append("  D:").append(deaths).append("\\n");
+            display.append(name).append("\n");
+            display.append("K:").append(kills).append("  D:").append(deaths).append("\n");
             display.append("Shield:").append(immunityEnabled?getCount(immunityShields,color):"OFF");
-            if (combatScoringEnabled) display.append("\\nPts:").append(5*(kills-deaths));
+            if (combatScoringEnabled) display.append("\nPts:").append(5*(kills-deaths));
             cell.setText(display.toString());
             cell.setContentDescription(color+" player "+name+
                 ", kills "+kills+", deaths "+deaths+
