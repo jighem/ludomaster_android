@@ -110,7 +110,8 @@ public final class WebLoginActivity extends Activity {
                 JSONObject user=reply.getJSONObject("user");
                 if(reply.optString("token").isEmpty())throw new IllegalStateException("Server returned no session token.");
                 String name=user.optString("name",id);
-                // Never put the bearer token or password into unencrypted preferences.
+                SecureLogin.save(this, reply.getString("token"), name);
+                // Keep only display name and login status in non-sensitive preferences.
                 getSharedPreferences("LudoModUser",MODE_PRIVATE).edit()
                     .putString("username",name).putBoolean("logged",true).apply();
                 runOnUiThread(() -> {
