@@ -2679,6 +2679,7 @@ public class MainActivity extends AppCompatActivity {
         currentPlayerColor = currentPlayer.getColor();
         currentPlayerSelectedIndex = currentPlayer.getIndex();
         currentPlayerName = currentPlayer.name;
+        refreshStatsHud();
         //Toast.makeText(this, currentPlayerColor+"", Toast.LENGTH_SHORT).show();
         currentPlayer.setActive();
         if(currentPlayer.isBot) {
