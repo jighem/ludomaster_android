@@ -1,33 +1,93 @@
 package com.ludomaster;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import com.ludomaster.board.BoardView;
+import com.ludomaster.game.ClassicGame;
 
-/** Placeholder startup screen while the clean-room board renderer is developed. */
+/** Offline pass-and-play prototype. No network access or external dependencies. */
 public final class MainActivity extends Activity {
+    private ClassicGame game;
+    private BoardView board;
+    private TextView status;
+    private TextView dice;
+    private Button rollButton;
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER);
-        root.setPadding(32, 32, 32, 32);
-        root.setBackgroundColor(Color.rgb(15, 23, 42));
-        TextView title = new TextView(this);
+        root.setBackgroundColor(0xfff3f6fa);
+        root.setPadding(dp(12),dp(12),dp(12),dp(12));
+
+        TextView title=new TextView(this);
         title.setText("LudoMaster");
-        title.setTextSize(30);
-        title.setTextColor(Color.WHITE);
+        title.setTextColor(0xff172b4d);
+        title.setTextSize(25);
         title.setGravity(Gravity.CENTER);
-        TextView subtitle = new TextView(this);
-        subtitle.setText("Android foundation created. Offline board and gameplay under development.");
-        subtitle.setTextSize(16);
-        subtitle.setTextColor(Color.LTGRAY);
-        subtitle.setGravity(Gravity.CENTER);
         root.addView(title);
-        root.addView(subtitle);
+
+        status=new TextView(this);
+        status.setTextColor(0xff243447);
+        status.setTextSize(16);
+        status.setGravity(Gravity.CENTER);
+        status.setPadding(0,dp(8),0,dp(8));
+        root.addView(status);
+
+        board=new BoardView(this);
+        root.addView(board,new LinearLayout.LayoutParams(-1,0,1));
+
+        dice=new TextView(this);
+        dice.setGravity(Gravity.CENTER);
+        dice.setTextSize(18);
+        dice.setTextColor(Color.DKGRAY);
+        root.addView(dice);
+
+        rollButton=new Button(this);
+        rollButton.setText("Roll dice");
+        root.addView(rollButton);
+        rollButton.setOnClickListener(v -> {
+            if(game==null || game.winner!=-1)return;
+            game.roll();render();
+        });
+
+        Button restart=new Button(this);
+        restart.setText("New offline match");
+        root.addView(restart);
+        restart.setOnClickListener(v -> choosePlayers());
+
         setContentView(root);
+        choosePlayers();
     }
+
+    private void choosePlayers() {
+        new AlertDialog.Builder(this)
+            .setTitle("Start offline match")
+            .setItems(new String[]{"2 players · Red vs Yellow","3 players · Red / Green / Yellow","4 players · All colours"},(dialog,choice)->{
+                game=new ClassicGame(choice+2);
+                board.bind(game,pawn->{if(game.move(pawn))render();});
+                render();
+            })
+            .setCancelable(game!=null)
+            .show();
+    }
+
+    private void render() {
+        if(game==null)return;
+        String turn=game.winner!=-1?"Winner: "+ClassicGame.NAMES[game.winner]:"Turn: "+ClassicGame.NAMES[game.turn];
+        status.setText(turn+"\n"+game.message);
+        dice.setText(game.awaitingPawn?"Dice: "+game.die+" · Tap a highlighted pawn":game.winner!=-1?"Match finished":"Tap Roll dice");
+        rollButton.setEnabled(!game.awaitingPawn && game.winner==-1);
+        rollButton.setTextColor(Color.BLACK);
+        board.invalidate();
+    }
+
+    private int dp(float x) {return (int)(x*getResources().getDisplayMetrics().density+0.5f);}
 }
