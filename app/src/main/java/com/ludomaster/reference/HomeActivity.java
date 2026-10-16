@@ -181,19 +181,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         clickSoundEffect.seekTo(0);
 
         ImageView imageView = findViewById(R.id.imageView15);
-        Glide.with(this)
-                .asGif()
-                .load(R.raw.ludotopmainicon)
-                .into(new DrawableImageViewTarget(imageView) {
-                    @Override
-                    public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
-                        if (resource instanceof GifDrawable) {
-                            GifDrawable gifDrawable = (GifDrawable) resource;
-                            gifDrawable.setLoopCount(GifDrawable.LOOP_FOREVER);
-                            gifDrawable.start();
-                        }
-                    }
-                }.getView());
+        imageView.setImageResource(R.drawable.ludo_masters_splash);
+        imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         rotateAnimator = ObjectAnimator.ofFloat(findViewById(R.id.imageView21),"rotation",0,360);
         rotateAnimator.setDuration(900);
         rotateAnimator.setRepeatCount(ObjectAnimator.INFINITE);
