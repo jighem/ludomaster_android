@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
     private final java.util.Map<String, String> offlinePlayerNames = new java.util.LinkedHashMap<>();
+    private final java.util.Map<String,Integer> selectedLeaguePlayerIds = new java.util.HashMap<>();
+    private int selectedLeagueId=0;
     private final java.util.Map<String, Integer> offlineFinishRanks = new java.util.HashMap<>();
     private long offlineMatchStartedAt;
     private String offlineMatchId;
@@ -1284,6 +1286,7 @@ public class MainActivity extends AppCompatActivity {
             rules.put("immunity", immunityEnabled);
             rules.put("dynamicHomeShuffle", homeShuffleEnabled);
             result.put("rules", rules);
+            result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
             JSONArray slots = new JSONArray();
             int defaultLastRank = offlinePlayerNames.size();
             for (java.util.Map.Entry<String,String> player : offlinePlayerNames.entrySet()) {
@@ -1291,7 +1294,8 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject slot = new JSONObject();
                 slot.put("color", color);
                 slot.put("offlineName", player.getValue());
-                slot.put("leaguePlayerId", JSONObject.NULL);
+                Integer mapped = selectedLeaguePlayerIds.get(player.getValue());
+                slot.put("leaguePlayerId", mapped==null ? JSONObject.NULL : mapped);
                 slot.put("finishRank", offlineFinishRanks.containsKey(color) ?
                     offlineFinishRanks.get(color) : defaultLastRank);
                 slot.put("kills", getCount(killCounts,color));
@@ -1855,6 +1859,14 @@ public class MainActivity extends AppCompatActivity {
         globalHandler = new Handler();
         offlineMatchStartedAt = System.currentTimeMillis();
         offlineMatchId = UUID.randomUUID().toString();
+        selectedLeagueId = getIntent().getIntExtra("league_id",0);
+        int[] mappedIds = getIntent().getIntArrayExtra("league_player_ids");
+        String[] mappedNames = getIntent().getStringArrayExtra("league_player_names");
+        if(mappedIds!=null && mappedNames!=null) {
+            for(int i=0;i<Math.min(mappedIds.length,mappedNames.length);i++)
+                if(mappedIds[i]>0 && mappedNames[i]!=null)
+                    selectedLeaguePlayerIds.put(mappedNames[i],mappedIds[i]);
+        }
 
         ObjectAnimator animator = ObjectAnimator.ofFloat(hintArrow, "translationX", -20, 20);
         animator.setRepeatCount(ValueAnimator.INFINITE);
