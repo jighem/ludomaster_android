@@ -9,6 +9,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.res.ResourcesCompat;
 
+import android.app.AlertDialog;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
@@ -57,6 +58,13 @@ import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
+    private boolean combatScoringEnabled;
+    private boolean immunityEnabled;
+    private boolean homeShuffleEnabled;
+    private final java.util.Map<String, Integer> killCounts = new java.util.HashMap<>();
+    private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
+    private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
+
     DisplayMetrics displayMetrics;
     double dpHeight;
     double dpWidth;
@@ -646,31 +654,13 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                     } else {
-                        isDeadChanceAvailable = checkDeath(this,currBlock);
+                        // Delay turn settlement while the defender chooses whether
+                        // to spend a shield. Captures are never settled in advance.
+                        MainActivity.this.resolveCapture(this, currBlock,
+                            captured -> MainActivity.this.finishPieceMove(this, captured));
+                        return;
                     }
-
-                    globalHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            if(!isThisPlayerWon) { checkAdjustments(currBlock); }
-                        }
-                    },10);
-                    //checkAdjustments(currBlock);
-
-                    if(diceValue == 6 || currWinnerBlock>5 || isDeadChanceAvailable && !isThisPlayerWon) {
-                        isDiceMovableExtraChance = true;
-                        if(!isBotPiece) { hintArrow.setVisibility(View.VISIBLE); } else {
-                            globalHandler.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    d.roll();
-                                }
-                            },150);
-                        }
-                    } else {
-                        switchPlayers();
-                        d.isDiceClickable = true;
-                    }
+                    MainActivity.this.finishPieceMove(this, false);
                 }
             }, 200); //325
         }
@@ -744,6 +734,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void showGameOverScreen() {
         congratulationslayout.setVisibility(View.VISIBLE);
+        if (combatScoringEnabled || immunityEnabled) {
+            new AlertDialog.Builder(this).setTitle("Ludo Masters Match Summary")
+                .setMessage(combatSummary()).setPositiveButton("Continue", null).show();
+        }
+
 
         if(isSoundOn) {
             congratulationSound = MediaPlayer.create(this, R.raw.congratulations);
@@ -1075,33 +1070,94 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean checkDeath(Piece killer, int targetBox) {
-        int x = currentPlayerIndex;
-        if(x>players.size()-1) { x = players.size()-1; }
-        for(int i=0;i<players.size();i++)
-        {
-            String colour = players.get(x).getColor();
-            if(!colour.equals(killer.colour))
-            {
-                List<Piece> pieces = getPiecesByColor(colour);
-                for(Piece p : pieces)
-                {
-                    if(p.currBlock==targetBox)
-                    {
-                        if(gametype==2) {
-                            if((killer.colour.equals("yellow") && p.colour.equals("red")) || (killer.colour.equals("red") && p.colour.equals("yellow")) || (killer.colour.equals("blue") && p.colour.equals("green")) || (killer.colour.equals("green") && p.colour.equals("blue")))
-                            { continue; }
-                        }
-                        if(!safeSpots.contains(targetBox)) {
-                            p.die();
-                            return true;
-                        }
+    private int getCount(java.util.Map<String,Integer> values, String color) {
+        Integer count = values.get(color);
+        return count == null ? 0 : count;
+    }
+
+    private void incrementCount(java.util.Map<String,Integer> values, String color) {
+        values.put(color, getCount(values,color) + 1);
+    }
+
+    private void settleCapture(Piece attacker, Piece defender,
+                               java.util.function.Consumer<Boolean> continuation) {
+        defender.die();
+        incrementCount(killCounts, attacker.colour);
+        incrementCount(deathCounts, defender.colour);
+        if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
+        if (combatScoringEnabled || immunityEnabled) {
+            String summary = attacker.colour + " captured " + defender.colour;
+            if (combatScoringEnabled) summary += " (+5 / -5)";
+            if (immunityEnabled) summary += " - shield earned";
+            Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
+        }
+        continuation.accept(true);
+    }
+
+    private void resolveCapture(Piece attacker, int targetBox,
+                                java.util.function.Consumer<Boolean> continuation) {
+        if (safeSpots.contains(targetBox)) { continuation.accept(false); return; }
+        int index = Math.min(currentPlayerIndex, players.size() - 1);
+        for (int i = 0; i < players.size(); i++) {
+            String colour = players.get(index).getColor();
+            if (!colour.equals(attacker.colour)) {
+                for (Piece defender : getPiecesByColor(colour)) {
+                    if (!defender.isAlive || defender.currBlock != targetBox) continue;
+                    if (gametype == 2 &&
+                        ((attacker.colour.equals("yellow") && colour.equals("red")) ||
+                         (attacker.colour.equals("red") && colour.equals("yellow")) ||
+                         (attacker.colour.equals("blue") && colour.equals("green")) ||
+                         (attacker.colour.equals("green") && colour.equals("blue")))) continue;
+                    if (immunityEnabled && getCount(immunityShields, colour) > 0) {
+                        new AlertDialog.Builder(this)
+                            .setTitle(colour.toUpperCase(java.util.Locale.ROOT) + " - Immunity")
+                            .setMessage("Spend one immunity shield to protect this pawn? Hand the device to the defender.")
+                            .setPositiveButton("Use Shield", (dialog, which) -> {
+                                immunityShields.put(colour, getCount(immunityShields,colour) - 1);
+                                Toast.makeText(this, "Capture blocked by immunity", Toast.LENGTH_SHORT).show();
+                                continuation.accept(false);
+                            })
+                            .setNegativeButton("Accept Capture", (dialog, which) ->
+                                settleCapture(attacker, defender, continuation))
+                            .setCancelable(false).show();
+                        return;
                     }
+                    settleCapture(attacker, defender, continuation);
+                    return;
                 }
             }
-            if(x>=players.size()-1) { x = 0; } else { x++; }
+            index = (index + 1) % players.size();
         }
-        return false;
+        continuation.accept(false);
+    }
+
+    private void finishPieceMove(Piece piece, boolean captured) {
+        globalHandler.postDelayed(() -> {
+            if (!piece.isThisPlayerWon) checkAdjustments(piece.currBlock);
+        },10);
+        if (piece.diceValue == 6 || piece.currWinnerBlock > 5 || (captured && !piece.isThisPlayerWon)) {
+            isDiceMovableExtraChance = true;
+            if (!piece.isBotPiece) hintArrow.setVisibility(View.VISIBLE);
+            else globalHandler.postDelayed(() -> d.roll(), 150);
+        } else {
+            switchPlayers();
+            d.isDiceClickable = true;
+        }
+    }
+
+    private String combatSummary() {
+        StringBuilder result = new StringBuilder();
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            if (result.length() > 0) result.append(" | ");
+            result.append(color).append(": ");
+            result.append(getCount(killCounts,color)).append(" kills, ");
+            result.append(getCount(deathCounts,color)).append(" deaths");
+            if (combatScoringEnabled)
+                result.append(", ").append(5 * (getCount(killCounts,color) - getCount(deathCounts,color))).append(" pts");
+            if (immunityEnabled)
+                result.append(", ").append(getCount(immunityShields,color)).append(" shields");
+        }
+        return result.toString();
     }
 
     class Dice
@@ -1635,6 +1691,10 @@ public class MainActivity extends AppCompatActivity {
         boolean isPLayer1Bot, isPLayer2Bot, isPLayer3Bot, isPLayer4Bot;
 
         Bundle extras = getIntent().getExtras();
+        combatScoringEnabled = extras != null && extras.getBoolean("rule_combat", false);
+        immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
+        homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
+
         nop = extras.getInt("nop");
         String color = extras.getString("color");
         player1name = extras.getString("player1name");
