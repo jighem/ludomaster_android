@@ -2,7 +2,7 @@
 
 **Brand:** Ludo Masters. The LM shield is the in-app emblem; the supplied full Ludo Masters artwork is the splash and promotional identity.
 
-Independent Android Java project for offline Ludo and optional custom rules. **Foundation only: not yet a playable game or APK.** No code or assets from the Ludo King app or its reference reference implementation have been copied.
+Independent Android Java project for offline Ludo and optional custom rules. **The offline Classic board prototype is present; production-device validation remains pending.** No code or assets from the Ludo King app or its reference reference implementation have been copied.
 
 ## Repository separation
 - **jighem/ludomaster_android** — Android offline gameplay, local match history, player mapping and future sync client.
@@ -17,7 +17,7 @@ Independent Android Java project for offline Ludo and optional custom rules. **F
 - Eventually submit self-reported offline match results to ludohojaye.com via an authenticated, idempotent API; league-admin approval recommended before official rankings.
 
 ## Project state
-Initial Java activity and standalone rule prototypes; no playable board, full rules engine, sync endpoint, tests, Gradle wrapper or APK yet. The app intentionally has no INTERNET permission before a secure API is built.
+The initial offline Classic board and tests are present. Special modes, sync endpoint, Gradle wrapper and production QA remain outstanding. The app intentionally has no INTERNET permission before a secure API is built.
 
 ## Developer prerequisites
 Open in Android Studio supporting Android Gradle Plugin 8.7.3, Java 17, and Android SDK 35. A reproducible Gradle wrapper and CI are planned.
@@ -25,4 +25,7 @@ Open in Android Studio supporting Android Gradle Plugin 8.7.3, Java 17, and Andr
 See [architecture and roadmap](docs/ARCHITECTURE.md).
 
 ## Licensing
-The reference Vinaykpro/Ludo_King_Reference implementation was inspected for feasibility but no license was found in its tree. Do not copy code, audio, board art, UI graphics or network dependencies without authorization.
+A third-party Android reference was inspected for feasibility, but its license could not be established. Do not copy code, audio, board art, UI graphics or network dependencies without authorization.
+
+## Branding assets
+The launcher label and main activity use **Ludo Masters** and an LM shield. The vector shield currently included is a stand-in; the supplied high-resolution original logo and splash art must be uploaded as binary PNG assets (see [branding instructions](docs/BRANDING.md)) before release.
