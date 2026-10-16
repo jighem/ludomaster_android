@@ -9,6 +9,18 @@
     android:background="@drawable/ludo_masters_game_background"
     tools:context=".MainActivity">
 
+    <ImageView
+        android:id="@+id/lm_brand_badge"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="6dp"
+        android:contentDescription="@string/lm_shield_description"
+        android:scaleType="fitCenter"
+        android:src="@drawable/lm_shield"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <RelativeLayout
         android:id="@+id/relativeLayout"
         android:layout_width="wrap_content"
