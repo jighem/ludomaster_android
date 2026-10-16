@@ -3226,8 +3226,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if(quitgamelayout.getVisibility()==View.VISIBLE)
-        { ingamenobtn.callOnClick(); } else
-        { menuexitbtn.callOnClick(); }
+        RoyalDialog.confirm(this, "Leave this match?", "Your current unsaved match progress may be lost.",
+            "EXIT MATCH", () -> finish());
     }
 }
