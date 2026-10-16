@@ -354,6 +354,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         playonline.setOnClickListener(noInternetOnClick);
         playwithfriends.setOnTouchListener(clickBounceEffect);
         playwithfriends.setOnClickListener(noInternetOnClick);
+        // V1 is offline only. Keep the original pass-and-play UI, but do not offer
+        // disabled external multiplayer entry points until our own live mode exists.
+        playonline.setVisibility(View.GONE);
+        playwithfriends.setVisibility(View.GONE);
         computer.setOnTouchListener(clickBounceEffect);
         computer.setOnClickListener(new View.OnClickListener() {
             @Override
