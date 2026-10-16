@@ -31,4 +31,4 @@ POST /api/mobile/offline-matches with clientMatchId UUID, leagueId, ruleVersion,
 6. Authenticated Android sync, device QA, reproducible builds, signed APK.
 
 ## Copyright
-Only use original or properly licensed assets/code. The reference clone has no explicit license file in the inspected tree.
+Only use original or properly licensed assets/code. The reference reference implementation has no explicit license file in the inspected tree.
