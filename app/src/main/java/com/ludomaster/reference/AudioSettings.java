@@ -8,7 +8,7 @@ import android.widget.TextView;
 public final class AudioSettings {
     private AudioSettings(){}
     public static void show(Activity activity) {
-        SharedPreferences prefs=activity.getSharedPreferences("LudoModSettings",Activity.MODE_PRIVATE);
+        SharedPreferences prefs=activity.getSharedPreferences("LudoModUser",Activity.MODE_PRIVATE);
         // Same keys are read by the existing audio implementation.
         LinearLayout box=new LinearLayout(activity);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(42,20,42,20);
         CheckBox sound=new CheckBox(activity);sound.setText("Game sounds (dice, movement, captures)");
