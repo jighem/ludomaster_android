@@ -2325,6 +2325,15 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         loginParams.bottomMargin = 22;
         landing.addView(login, loginParams);
         login.setOnClickListener(v -> startActivity(new Intent(this,WebLoginActivity.class)));
+        android.widget.Button audio = new android.widget.Button(this);
+        audio.setText("SOUND / MUSIC");
+        audio.setTextColor(0xffffffff);
+        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff25519e));
+        android.widget.FrameLayout.LayoutParams audioParams = new android.widget.FrameLayout.LayoutParams(-2,50,android.view.Gravity.TOP | android.view.Gravity.END);
+        audioParams.topMargin = 28;audioParams.rightMargin=12;
+        landing.addView(audio,audioParams);
+        audio.setOnClickListener(v -> AudioSettings.show(this));
+
         root.addView(landing,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
         landing.setElevation(1000f);
         landing.bringToFront();
