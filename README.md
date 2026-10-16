@@ -1,2 +1,26 @@
-# ludomaster_android
-ludomaster_android
+# LudoMaster — Android
+
+Independent Android Java project for offline Ludo and optional custom rules. **Foundation only: not yet a playable game or APK.** No code or assets from the Ludo King app or its reference clone have been copied.
+
+## Repository separation
+- **jighem/ludomaster_android** — Android offline gameplay, local match history, player mapping and future sync client.
+- **jighem/Ludomasters** — Existing web game, accounts, league management, leaderboards and future authenticated result-import API.
+
+## Agreed V1 rules
+- Offline pass-and-play for 2–4 players.
+- Optional combat points: capture +5 and being captured −5.
+- Optional immunity: gain one shield per capture and spend it to prevent capture; exact shield cap and choice behavior pending.
+- Optional Dynamic Home Shuffle every 5 minutes: swap each color's home yard, starting square and finishing lane; keep physical token positions fixed; forward-only travel (an extra lap if new entrance was passed); finished pawns remain finished; resolve after current move.
+- Match-end local-name-to-league-roster mapping with duplicate prevention.
+- Eventually submit self-reported offline match results to ludohojaye.com via an authenticated, idempotent API; league-admin approval recommended before official rankings.
+
+## Project state
+Initial Java activity and standalone rule prototypes; no playable board, full rules engine, sync endpoint, tests, Gradle wrapper or APK yet. The app intentionally has no INTERNET permission before a secure API is built.
+
+## Developer prerequisites
+Open in Android Studio supporting Android Gradle Plugin 8.7.3, Java 17, and Android SDK 35. A reproducible Gradle wrapper and CI are planned.
+
+See [architecture and roadmap](docs/ARCHITECTURE.md).
+
+## Licensing
+The reference Vinaykpro/Ludo_King_Clone was inspected for feasibility but no license was found in its tree. Do not copy code, audio, board art, UI graphics or network dependencies without authorization.
