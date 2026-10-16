@@ -8,6 +8,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import com.ludomaster.board.BoardView;
 import com.ludomaster.game.ClassicGame;
@@ -28,8 +29,15 @@ public final class MainActivity extends Activity {
         root.setBackgroundColor(0xfff3f6fa);
         root.setPadding(dp(12),dp(12),dp(12),dp(12));
 
+        ImageView emblem = new ImageView(this);
+        emblem.setImageResource(R.drawable.lm_shield);
+        emblem.setContentDescription("Ludo Masters LM shield");
+        LinearLayout.LayoutParams emblemLayout = new LinearLayout.LayoutParams(dp(72), dp(72));
+        emblemLayout.gravity = Gravity.CENTER_HORIZONTAL;
+        root.addView(emblem, emblemLayout);
+
         TextView title=new TextView(this);
-        title.setText("LudoMaster");
+        title.setText("LUDO MASTERS");
         title.setTextColor(0xff172b4d);
         title.setTextSize(25);
         title.setGravity(Gravity.CENTER);
