@@ -2327,12 +2327,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         royalLoginButton=login;
         login.setOnClickListener(v -> startActivity(new Intent(this,WebLoginActivity.class)));
         android.widget.Button audio = new android.widget.Button(this);
-        audio.setText("SOUND / MUSIC");
+        audio.setText("🔊 SOUND / MUSIC");
         audio.setTextColor(0xffffffff);
         audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff25519e));
         android.widget.FrameLayout.LayoutParams audioParams = new android.widget.FrameLayout.LayoutParams(-2,50,android.view.Gravity.TOP | android.view.Gravity.END);
-        audioParams.topMargin = 28;audioParams.rightMargin=12;
+        audioParams.topMargin = 64;audioParams.rightMargin=16;
         landing.addView(audio,audioParams);
+        royalAudioButton=audio;
         audio.setOnClickListener(v -> AudioSettings.show(this));
 
         root.addView(landing,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
@@ -2347,6 +2348,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     }
     private boolean loginChoiceShown=false;
     private android.widget.Button royalLoginButton;
+    private android.widget.Button royalAudioButton;
     private android.widget.FrameLayout royalLanding;
     private void updateRoyalLoginLabel() {
         if(royalLanding==null)return;
