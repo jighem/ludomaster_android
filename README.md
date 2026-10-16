@@ -1,6 +1,8 @@
 # LudoMaster — Android
 
-Independent Android Java project for offline Ludo and optional custom rules. **Foundation only: not yet a playable game or APK.** No code or assets from the Ludo King app or its reference clone have been copied.
+**Brand:** Ludo Masters. The LM shield is the in-app emblem; the supplied full Ludo Masters artwork is the splash and promotional identity.
+
+Independent Android Java project for offline Ludo and optional custom rules. **Foundation only: not yet a playable game or APK.** No code or assets from the Ludo King app or its reference reference implementation have been copied.
 
 ## Repository separation
 - **jighem/ludomaster_android** — Android offline gameplay, local match history, player mapping and future sync client.
@@ -23,4 +25,4 @@ Open in Android Studio supporting Android Gradle Plugin 8.7.3, Java 17, and Andr
 See [architecture and roadmap](docs/ARCHITECTURE.md).
 
 ## Licensing
-The reference Vinaykpro/Ludo_King_Clone was inspected for feasibility but no license was found in its tree. Do not copy code, audio, board art, UI graphics or network dependencies without authorization.
+The reference Vinaykpro/Ludo_King_Reference implementation was inspected for feasibility but no license was found in its tree. Do not copy code, audio, board art, UI graphics or network dependencies without authorization.
