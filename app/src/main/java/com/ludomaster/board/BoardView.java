@@ -24,13 +24,13 @@ public final class BoardView extends View {
         c.drawColor(Color.rgb(245,247,250));
         for(int row=0;row<15;row++) for(int col=0;col<15;col++) {
             int color=Color.WHITE;
-            if(row<6 && col<6) color=0xffef9a9a;
-            if(row<6 && col>8) color=0xffa5d6a7;
-            if(row>8 && col>8) color=0xfffff59d;
-            if(row>8 && col<6) color=0xff90caf9;
+            if(row<6 && col<6) color=yardColor(game.colorAtQuadrant(0));
+            if(row<6 && col>8) color=yardColor(game.colorAtQuadrant(1));
+            if(row>8 && col>8) color=yardColor(game.colorAtQuadrant(2));
+            if(row>8 && col<6) color=yardColor(game.colorAtQuadrant(3));
             if(row>=6 && row<=8 && col>=6 && col<=8) color=0xffeceff1;
             for(int k=0;k<4;k++) for(int[] lane:ClassicGame.LANES[k])
-                if(lane[0]==row && lane[1]==col) color=ClassicGame.COLORS[k];
+                if(lane[0]==row && lane[1]==col) color=ClassicGame.COLORS[game.colorAtQuadrant(k)];
             for(int k=0;k<4;k++) {
                 int[] st=ClassicGame.TRACK[ClassicGame.START[k]];
                 if(st[0]==row && st[1]==col) color=ClassicGame.COLORS[k];
@@ -61,6 +61,9 @@ public final class BoardView extends View {
                 brush.setTextSize(tile*0.31f);brush.setTextAlign(Paint.Align.CENTER);
                 c.drawText(String.valueOf(pawn+1),x,y+tile*0.11f,brush);
             }
+    }
+    private static int yardColor(int color) {
+        return new int[]{0xffef9a9a,0xffa5d6a7,0xfffff59d,0xff90caf9}[color];
     }
     @Override public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction()!=MotionEvent.ACTION_UP || game==null || !game.awaitingPawn) return true;

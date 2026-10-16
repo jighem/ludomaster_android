@@ -3,6 +3,9 @@ package com.ludomaster;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
@@ -22,7 +25,24 @@ public final class MainActivity extends Activity {
     private TextView dice;
     private Button rollButton;
     private final Button[] pawnButtons = new Button[4];
-    private boolean combatEnabled, immunityEnabled, shieldPromptVisible;
+    private boolean combatEnabled, immunityEnabled, shieldPromptVisible, shuffleEnabled;
+    private final Handler timerHandler = new Handler(Looper.getMainLooper());
+    private long nextShuffleAt;
+    private final Runnable timerTick = new Runnable() {
+        @Override public void run() {
+            if (game != null && game.options.dynamicHomeShuffle && game.winner == -1) {
+                long now = SystemClock.elapsedRealtime();
+                if (now >= nextShuffleAt) {
+                    game.requestHomeShuffle();
+                    nextShuffleAt += ((now - nextShuffleAt) / 300000L + 1L) * 300000L;
+                }
+                render();
+            }
+            timerHandler.postDelayed(this, 1000L);
+        }
+    };
+    @Override protected void onResume() { super.onResume(); timerHandler.removeCallbacks(timerTick); timerHandler.post(timerTick); }
+    @Override protected void onPause() { timerHandler.removeCallbacks(timerTick); super.onPause(); }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -101,14 +121,16 @@ public final class MainActivity extends Activity {
     }
 
     private void chooseRules(int playerCount) {
-        boolean[] enabled = {combatEnabled, immunityEnabled};
+        boolean[] enabled = {combatEnabled, immunityEnabled, shuffleEnabled};
         new AlertDialog.Builder(this)
             .setTitle("Optional match rules")
             .setMultiChoiceItems(new String[]{"Combat scoring (+5 capture / -5 death)",
-                "Earn immunity shields from captures"}, enabled, (d, index, checked) -> enabled[index] = checked)
+                "Earn immunity shields from captures",
+                "Dynamic Home Shuffle (every 5 minutes)"}, enabled, (d, index, checked) -> enabled[index] = checked)
             .setPositiveButton("Start match", (d, which) -> {
-                combatEnabled = enabled[0]; immunityEnabled = enabled[1];
-                game = new ClassicGame(playerCount, new MatchOptions(combatEnabled, immunityEnabled, false));
+                combatEnabled = enabled[0]; immunityEnabled = enabled[1]; shuffleEnabled = enabled[2];
+                nextShuffleAt = SystemClock.elapsedRealtime() + 300000L;
+                game = new ClassicGame(playerCount, new MatchOptions(combatEnabled, immunityEnabled, shuffleEnabled));
                 board.bind(game, pawn -> {if (game.move(pawn)) render();});
                 shieldPromptVisible = false;
                 render();
@@ -127,7 +149,12 @@ public final class MainActivity extends Activity {
             if (game.options.combatScoring) score.append(" ").append(game.combatPoints(c)).append(" pts");
             if (game.options.immunity) score.append(" Shield:").append(game.shields(c));
         }
-        status.setText(turn+"\n"+game.message+"\n"+score);
+        String timerInfo = "";
+        if(game.options.dynamicHomeShuffle && game.winner == -1) {
+            long remaining = Math.max(0,(nextShuffleAt-SystemClock.elapsedRealtime()+999L)/1000L);
+            timerInfo = "\nHome shuffle: "+(remaining/60)+":"+String.format(java.util.Locale.US,"%02d",remaining%60)+" · swaps: "+game.shuffleCount;
+        }
+        status.setText(turn+"\n"+game.message+"\n"+score+timerInfo);
         dice.setText(game.awaitingPawn?"Dice: "+game.die+" · Tap a highlighted pawn":game.winner!=-1?"Match finished":"Tap Roll dice");
         rollButton.setEnabled(!game.awaitingPawn && game.winner==-1);
         rollButton.setTextColor(Color.BLACK);

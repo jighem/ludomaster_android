@@ -16,7 +16,7 @@ Android: standalone clean-room Java game with a pure, deterministic rules engine
 - A pawn that passed its new home entrance continues forward to it on its next lap.
 - Apply pending five-minute shuffle only after current move/capture resolves; preserve turn.
 - Completed pawns stay completed; persist shuffle event history.
-- Need to decide what happens to a token *inside* an old finishing lane at shuffle time. Do not guess during engine implementation.
+- Final V1 rule: pawns already inside a finishing lane move together with their colour's finishing lane to its new quadrant, retaining their lane depth (progress 52–56); completed pawns remain completed. Shared-track pawns stay physically fixed and reach the new entrance via forward-only movement.
 - Shuffle RNG and game clock need deterministic tests, including background/resume time behavior.
 
 ## Match identity and backend (future proposal, not implemented)

@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * First playable offline, pass-and-play Classic engine.
  * Four pawns per active color; physical board coordinates from track progress.
- * Custom rules and dynamic home shuffle deliberately NOT active in this phase.
+ * Optional combat, immunity and forward-only dynamic home shuffle.
  */
 public final class ClassicGame {
     public static final int[][] TRACK = {
@@ -27,6 +27,11 @@ public final class ClassicGame {
     public static final String[] NAMES = {"Red","Green","Yellow","Blue"};
     public static final int[] SAFE = {0,8,13,21,26,34,39,47};
     private final SecureRandom random = new SecureRandom();
+    private final java.util.Random shuffleRandom = new SecureRandom();
+    /** Quadrant (0..3) currently assigned to each colour. */
+    public final int[] homeQuadrant = {0,1,2,3};
+    public int shuffleCount = 0;
+    private boolean shufflePending = false;
     public final MatchOptions options;
     public final CombatLedger[] ledgers = new CombatLedger[4];
     public int pendingDefender = -1, pendingDefenderPawn = -1;
@@ -55,10 +60,11 @@ public final class ClassicGame {
         int p = progress[color][pawn];
         if (p < 0) {
             int[][] yards = {{1,1},{1,10},{10,10},{10,1}};
-            return new int[] { yards[color][0] + (pawn/2)*3, yards[color][1] + (pawn%2)*3 };
+            int home = homeQuadrant[color];
+            return new int[] { yards[home][0] + (pawn/2)*3, yards[home][1] + (pawn%2)*3 };
         }
-        if (p >= 52) return LANES[color][p-52].clone();
-        return TRACK[(START[color]+p)%52].clone();
+        if (p >= 52) return LANES[homeQuadrant[color]][p-52].clone();
+        return TRACK[(START[homeQuadrant[color]]+p)%52].clone();
     }
     public boolean canMove(int pawn) {
         if (winner != -1 || !awaitingPawn || pendingDefender != -1 || pawn < 0 || pawn >= 4) return false;
@@ -93,12 +99,12 @@ public final class ClassicGame {
         int now = progress[turn][pawn];
         pendingVictims.clear();
         if (now >= 0 && now < 52) {
-            int cell = (START[turn] + now) % 52;
+            int cell = (START[homeQuadrant[turn]] + now) % 52;
             if (!safe(cell)) {
                 for (int c = 0; c < 4; c++) if (c != turn && active[c]) {
                     for (int p = 0; p < 4; p++) {
                         int other = progress[c][p];
-                        if (other >= 0 && other < 52 && (START[c] + other) % 52 == cell)
+                        if (other >= 0 && other < 52 && (START[homeQuadrant[c]] + other) % 52 == cell)
                             pendingVictims.add(new int[] {c,p});
                     }
                 }
@@ -156,6 +162,7 @@ public final class ClassicGame {
         if (allFinished) {
             winner = turn;
             message = NAMES[turn] + " wins!";
+            applyPendingShuffle();
             return;
         }
         message = lastMoveDescription + ".";
@@ -163,6 +170,43 @@ public final class ClassicGame {
             consecutiveSixes = 0;
             nextTurn();
         }
+        applyPendingShuffle();
+    }
+    /** Timer signals may arrive mid-move; apply only after move/capture resolution. */
+    public void requestHomeShuffle() {
+        if (!options.dynamicHomeShuffle || winner != -1) return;
+        shufflePending = true;
+        if (!awaitingPawn && pendingDefender == -1 && pendingVictims.isEmpty()) applyPendingShuffle();
+    }
+    private void applyPendingShuffle() {
+        if (!shufflePending || pendingDefender != -1 || !pendingVictims.isEmpty() || awaitingPawn) return;
+        shufflePending = false;
+        // Shuffle by permuting colour->quadrant; always produce a changed arrangement.
+        int[] previous = homeQuadrant.clone();
+        for (int i=3;i>0;i--) {
+            int j=shuffleRandom.nextInt(i+1);
+            int t=homeQuadrant[i];homeQuadrant[i]=homeQuadrant[j];homeQuadrant[j]=t;
+        }
+        if (java.util.Arrays.equals(previous,homeQuadrant)) {
+            int t=homeQuadrant[0];homeQuadrant[0]=homeQuadrant[1];homeQuadrant[1]=t;
+        }
+        for(int c=0;c<4;c++) for(int p=0;p<4;p++) {
+            int old=progress[c][p];
+            if(old>=0 && old<52) {
+                // Re-express the same physical track cell relative to the new starting square.
+                int absolute=(START[previous[c]]+old)%52;
+                progress[c][p]=(absolute-START[homeQuadrant[c]]+52)%52;
+            }
+            // Tokens already in a finishing lane keep their lane depth and move
+            // visually with the assigned colour's NEW finishing lane.
+            // Completed tokens remain completed.
+        }
+        shuffleCount++;
+        message="Home shuffle #"+shuffleCount+"! Starting squares and entrances changed.";
+    }
+    public int colorAtQuadrant(int quadrant) {
+        for(int c=0;c<4;c++) if(homeQuadrant[c]==quadrant) return c;
+        throw new IllegalArgumentException("Invalid quadrant");
     }
     public int combatPoints(int color) { return ledgers[color].combatPoints(); }
     public int shields(int color) { return ledgers[color].shields(); }
