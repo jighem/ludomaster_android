@@ -1,12 +1,11 @@
 name: Import authorized Android reference source
 on:
-  push:
-    branches: [migration/reference-native-app]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
   migrate:
-    if: "!contains(github.event.head_commit.message, '[native-import-complete]')"
+    if: false # Import is completed. Do not overwrite subsequent gameplay edits.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
