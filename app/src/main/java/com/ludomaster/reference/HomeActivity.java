@@ -2324,6 +2324,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         android.widget.FrameLayout.LayoutParams loginParams = new android.widget.FrameLayout.LayoutParams(-2,52,android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
         loginParams.bottomMargin = 22;
         landing.addView(login, loginParams);
+        royalLoginButton=login;
         login.setOnClickListener(v -> startActivity(new Intent(this,WebLoginActivity.class)));
         android.widget.Button audio = new android.widget.Button(this);
         audio.setText("SOUND / MUSIC");
@@ -2339,14 +2340,30 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         landing.bringToFront();
         this.royalLanding=landing;
         updateRoyalLoginLabel();
+        if(!loginChoiceShown && SecureLogin.token(this)==null) {
+            loginChoiceShown=true;
+            landing.post(this::showLoginChoice);
+        }
     }
+    private boolean loginChoiceShown=false;
+    private android.widget.Button royalLoginButton;
     private android.widget.FrameLayout royalLanding;
     private void updateRoyalLoginLabel() {
         if(royalLanding==null)return;
-        android.widget.Button login=(android.widget.Button)royalLanding.getChildAt(royalLanding.getChildCount()-1);
+        android.widget.Button login=royalLoginButton;
+        if(login==null)return;
         String name = getSharedPreferences("LudoModUser", MODE_PRIVATE).getString("username","");
-        boolean signedIn=getSharedPreferences("LudoModUser", MODE_PRIVATE).getBoolean("logged",false);
+        boolean signedIn=SecureLogin.token(this)!=null;
         login.setText(signedIn && !name.isEmpty() ? "PLAYER: "+name : "LOGIN TO LUDOHOJAYE");
+    }
+    private void showLoginChoice() {
+        if(isFinishing() || SecureLogin.token(this)!=null) return;
+        new AlertDialog.Builder(this)
+            .setTitle("Welcome to Ludo Masters")
+            .setMessage("Sign in with your ludohojaye.com account to select leagues and registered players. Or continue offline as a guest.")
+            .setPositiveButton("LOGIN TO LUDOHOJAYE",(dialog,which) -> startActivity(new Intent(this,WebLoginActivity.class)))
+            .setNegativeButton("PLAY AS GUEST",(dialog,which) -> {})
+            .show();
     }
     private void addRoyalHotspot(android.widget.FrameLayout root,float left,float top,float width,float height,Runnable action){
         android.view.View hotspot=new android.view.View(this);
