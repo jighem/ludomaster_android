@@ -4,9 +4,9 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/lm_shield"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/lm_shield"
         android:screenOrientation="portrait"
         android:supportsRtl="true"
         android:theme="@style/Theme.LudoMasters">
