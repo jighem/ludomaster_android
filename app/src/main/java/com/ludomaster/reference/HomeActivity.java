@@ -198,7 +198,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
         if(!isPlayerLoggedIn) {
             int tempnum = (int) Math.floor(Math.random()*7777)+2145;
-            firstLoginLayout.setVisibility(View.VISIBLE);
+            firstLoginLayout.setVisibility(View.GONE);
             String generatedguestname = "Guest"+tempnum;
             stcsusernametextview.setText(generatedguestname);
             playerNameBtnComTextView.setText(generatedguestname);
@@ -468,7 +468,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onClick(View view) {
                 statisticslayout.setVisibility(View.GONE);
-                findViewById(R.id.guestprofilelayout).setVisibility(View.VISIBLE);
+                findViewById(R.id.guestprofilelayout).setVisibility(View.GONE);
             }
         });
         stcsprofpic.setOnClickListener(new View.OnClickListener() {
@@ -552,9 +552,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         stgssharebtn.setOnClickListener(noInternetOnClick);stgslikebtn.setOnClickListener(noInternetOnClick);stgsgeturpverifiedbtn.setOnClickListener(noInternetOnClick);stgsplaybtn.setOnClickListener(noInternetOnClick);stgslanguagebtn.setOnClickListener(noInternetOnClick);stgsselectbtn.setOnClickListener(noInternetOnClick);stgsviewbtn1.setOnClickListener(noInternetOnClick);stgsfaqbtn.setOnClickListener(noInternetOnClick);stgscomposebtn.setOnClickListener(noInternetOnClick);stgsrulesbtn.setOnClickListener(noInternetOnClick);stgsviewbtn2.setOnClickListener(noInternetOnClick);stgsmoregamesbtn.setOnClickListener(noInternetOnClick);stgslboardbtn.setOnClickListener(noInternetOnClick);stgsviewbtn3.setOnClickListener(noInternetOnClick);stgseditbtn.setOnClickListener(noInternetOnClick);stgsinfobtn.setOnClickListener(noInternetOnClick);stgsdelaccountbtn.setOnClickListener(noInternetOnClick);stgsfbbtn.setOnClickListener(noInternetOnClick);stgsinstabtn.setOnClickListener(noInternetOnClick);stgstwitterbtn.setOnClickListener(noInternetOnClick);stgsytbtn.setOnClickListener(noInternetOnClick);stgsmoregameslongbtn.setOnClickListener(noInternetOnClick);
 
 
+        // Offline play never requires an avatar, profile setup or third-party login.
+        firstLoginLayout.setVisibility(View.GONE);
+        guestprofilecreateoreditlayout.setVisibility(View.GONE);
+
         // setting listeners to first login layout views
         lgnwfbbtn.setOnTouchListener(clickEffect);snwgglbtn.setOnTouchListener(clickEffect);snwpgbtn.setOnTouchListener(clickEffect);playasguestbtn.setOnTouchListener(clickEffect);
-        lgnwfbbtn.performClick();
+        // Removed unsupported third-party authentication and forced login popup.
         lgnwfbbtn.setOnClickListener(noInternetOnClick);snwgglbtn.setOnClickListener(noInternetOnClick);snwpgbtn.setOnClickListener(noInternetOnClick);
         playasguestbtn.setOnClickListener(new View.OnClickListener() {
             @Override
