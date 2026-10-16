@@ -2263,11 +2263,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onBackPressed() {
-        if(exitAppLayout.getVisibility()==View.VISIBLE) {
-            exitNoBtn.callOnClick();
-        } else {
-            exitgamebtn.callOnClick();
-        }
+        RoyalDialog.confirm(this, "Exit Ludo Masters?", "Your offline games remain available next time.",
+            "EXIT APP", () -> finishAffinity());
     }
 
     @Override
