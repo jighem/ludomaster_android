@@ -16,7 +16,37 @@ import javax.net.ssl.HttpsURLConnection;
 
 public final class MatchUploader {
     private MatchUploader(){}
-    public static void prompt(Activity activity,String uuid) {
+    public static String localStatus(Activity activity,String uuid) {
+        try {
+            File file=new File(new File(activity.getFilesDir(),"offline-matches"),uuid+".json");
+            JSONObject match=new JSONObject(new String(readLimited(new FileInputStream(file),100000),StandardCharsets.UTF_8));
+            if("uploaded".equals(match.optString("syncStatus")))
+                return "Uploaded | Match #"+match.optString("serverMatchId")+" | "+match.optString("serverStatus");
+            return "Saved locally — NOT uploaded | Session "+uuid;
+        } catch(Exception e){return "Match receipt unavailable";}
+    }
+    public static void showSavedMatches(Activity activity) {
+        File directory=new File(activity.getFilesDir(),"offline-matches");
+        File[] files=directory.listFiles((dir,name)->name.endsWith(".json"));
+        if(files==null || files.length==0){
+            new AlertDialog.Builder(activity).setTitle("Saved matches").setMessage("No completed games saved on this device.")
+                .setPositiveButton("OK",null).show();return;
+        }
+        java.util.Arrays.sort(files,(a,b)->Long.compare(b.lastModified(),a.lastModified()));
+        int count=Math.min(files.length,30);
+        String[] labels=new String[count];
+        for(int i=0;i<count;i++) {
+            String uuid=files[i].getName().replace(".json","");
+            labels[i]=localStatus(activity,uuid);
+        }
+        new AlertDialog.Builder(activity).setTitle("Saved match uploads")
+            .setItems(labels,(d,idx)->{
+                String uuid=files[idx].getName().replace(".json","");
+                prompt(activity,uuid);
+            }).setPositiveButton("CLOSE",null).show();
+    }
+    public static void prompt(Activity activity,String uuid) { prompt(activity,uuid,null); }
+    public static void prompt(Activity activity,String uuid,Runnable refresh) {
         File file=new File(new File(activity.getFilesDir(),"offline-matches"),uuid+".json");
         if(!file.isFile()) {
             Toast.makeText(activity,"Match history missing; cannot upload",Toast.LENGTH_LONG).show();return;
@@ -30,6 +60,11 @@ public final class MatchUploader {
         try{
             byte[] content=readLimited(new FileInputStream(file),100000);
             JSONObject match=new JSONObject(new String(content,StandardCharsets.UTF_8));
+            if ("uploaded".equals(match.optString("syncStatus"))) {
+                new AlertDialog.Builder(activity).setTitle("Already submitted")
+                    .setMessage("Match ID: "+match.optString("serverMatchId")+"; status: "+match.optString("serverStatus"))
+                    .setPositiveButton("OK",null).show();return;
+            }
             int league=match.optInt("leagueId",0);
             JSONArray players=match.getJSONArray("players");
             if(league<1) {
@@ -45,7 +80,7 @@ public final class MatchUploader {
                 }
             new AlertDialog.Builder(activity).setTitle("Submit match to Ludohojaye?")
               .setMessage("Upload this finished match to the selected league? Scores will remain pending until a league administrator approves them.")
-              .setPositiveButton("SUBMIT",(d,w)->submit(activity,match))
+              .setPositiveButton("SUBMIT",(d,w)->submit(activity,match,uuid,refresh))
               .setNegativeButton("LATER",null).show();
         }catch(Exception e){
             Toast.makeText(activity,"Unable to read saved match",Toast.LENGTH_LONG).show();
@@ -61,7 +96,7 @@ public final class MatchUploader {
             return out.toByteArray();
         }
     }
-    private static void submit(Activity activity,JSONObject match) {
+    private static void submit(Activity activity,JSONObject match,String uuid,Runnable refresh) {
         new Thread(()->{
             HttpsURLConnection connection=null;String message;
             try{
@@ -75,11 +110,26 @@ public final class MatchUploader {
                 byte[] payload=match.toString().getBytes(StandardCharsets.UTF_8);
                 try(OutputStream output=connection.getOutputStream()){output.write(payload);}
                 int http=connection.getResponseCode();
-                if(http!=201&&http!=200)throw new IllegalStateException("Portal refused match (HTTP "+http+"). Match remains saved.");
+                if(http!=201&&http!=200) {
+                    InputStream error=connection.getErrorStream();
+                    String detail=error==null?"":new String(readLimited(error,100000),StandardCharsets.UTF_8);
+                    throw new IllegalStateException("Portal refused match (HTTP "+http+"): "+detail);
+                }
                 JSONObject response=new JSONObject(new String(readLimited(connection.getInputStream(),100000),StandardCharsets.UTF_8));
                 String status=response.optString("status","unknown");
                 String id=response.optString("matchId","not returned");
                 String leagueName=match.optString("leagueName","League #"+match.optInt("leagueId"));
+                match.put("syncStatus","uploaded");
+                match.put("serverMatchId",id);
+                match.put("serverStatus",status);
+                File file=new File(new File(activity.getFilesDir(),"offline-matches"),uuid+".json");
+                File temp=new File(file.getParentFile(),uuid+".tmp");
+                try(java.io.FileOutputStream output=new java.io.FileOutputStream(temp)){
+                    output.write(match.toString(2).getBytes(StandardCharsets.UTF_8));output.getFD().sync();
+                }
+                if(!temp.renameTo(file)){
+                    if(!file.delete() || !temp.renameTo(file)) throw new java.io.IOException("Upload succeeded but local receipt could not be saved. Match ID: "+id);
+                }
                 if("approved".equals(status))
                     message="Scores published to "+leagueName+". Match ID: "+id+". Sign in at ludohojaye.com to view standings.";
                 else if("pending_approval".equals(status))
@@ -88,8 +138,11 @@ public final class MatchUploader {
             }catch(Exception e){message=e.getMessage()==null?"Upload failed. Match remains saved locally.":e.getMessage();}
             finally{if(connection!=null)connection.disconnect();}
             final String result=message;
-            activity.runOnUiThread(()->new AlertDialog.Builder(activity).setTitle("Ludohojaye score submission")
-              .setMessage(result).setPositiveButton("OK",null).show());
+            activity.runOnUiThread(()->{
+                if(refresh!=null)refresh.run();
+                new AlertDialog.Builder(activity).setTitle("Ludohojaye score submission")
+                  .setMessage(result).setPositiveButton("OK",null).show();
+            });
         }).start();
     }
 }
