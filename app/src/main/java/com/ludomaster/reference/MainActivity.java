@@ -742,11 +742,8 @@ public class MainActivity extends AppCompatActivity {
     private void showGameOverScreen() {
         saveOfflineMatchResult();
         congratulationslayout.setVisibility(View.GONE);
-        RoyalResultsScreen.show(this,combatSummary(),selectedLeagueName,offlineResultSaved,()->MatchUploader.prompt(this,offlineMatchId));
-        if (combatScoringEnabled || immunityEnabled) {
-            new AlertDialog.Builder(this).setTitle("Ludo Masters Match Summary")
-                .setMessage(combatSummary()).setPositiveButton("Continue", null).show();
-        }
+        RoyalResultsScreen.show(this,combatSummary(),selectedLeagueName,offlineResultSaved,offlineMatchId);
+        // Result and upload controls stay on the non-dismissible RoyalResultsScreen.
 
 
         if(isSoundOn) {
