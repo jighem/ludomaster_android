@@ -22,6 +22,7 @@ public final class RoyalSetupActivity extends Activity {
     private LinearLayout players;
     private final ArrayList<Integer> playerIds=new ArrayList<>();
     private int selectedLeagueId=0;
+    private String selectedLeagueName="";
     private JSONArray roster=new JSONArray();
     private Button leagueButton;
     private TextView countLabel;
@@ -54,6 +55,9 @@ public final class RoyalSetupActivity extends Activity {
         leagueButton=button("SELECT LEAGUE PLAYERS (LOGIN REQUIRED)");
         root.addView(leagueButton,new LinearLayout.LayoutParams(-1,dp(55)));
         leagueButton.setOnClickListener(v->chooseLeague());
+        Button addPlayer=button("+ ADD PLAYER TO LEAGUE");
+        root.addView(addPlayer,new LinearLayout.LayoutParams(-1,dp(49)));
+        addPlayer.setOnClickListener(v->LeaguePlayerCreator.show(this,selectedLeagueId,()->refreshRoster()));
         players=new LinearLayout(this);players.setOrientation(1);
         root.addView(players,new LinearLayout.LayoutParams(-1,-2));
         TextView note=text("OPTIONAL RULES",19,0xffffd46a);
@@ -73,6 +77,7 @@ public final class RoyalSetupActivity extends Activity {
         play.setOnClickListener(v->startMatch());
         Button back=button("BACK");
         root.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
+        root.addView(text("Powered by ludohojaye.com",13,0xffffd46a));
         back.setOnClickListener(v->finish());
         updatePlayers();
         setContentView(scroll);
@@ -118,6 +123,7 @@ public final class RoyalSetupActivity extends Activity {
                   .setItems(titles,(dialog,index)->{
                      JSONObject league=data.optJSONObject(index);
                      selectedLeagueId=league.optInt("id",0);
+                     selectedLeagueName=league.optString("name","");
                      leagueButton.setText("LEAGUE: "+league.optString("name"));
                      roster=new JSONArray();
                      for(int j=0;j<playerIds.size();j++)playerIds.set(j,0);
@@ -132,6 +138,19 @@ public final class RoyalSetupActivity extends Activity {
             }
             @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
         });
+    }
+    private void refreshRoster() {
+        if(selectedLeagueId<=0)return;
+        LeagueRoster.fetch(this,"players?league_id="+selectedLeagueId+"&status=active",
+            new LeagueRoster.Callback(){
+                @Override public void loaded(JSONArray results){
+                    roster=results;
+                    Toast.makeText(RoyalSetupActivity.this,"League players refreshed",Toast.LENGTH_SHORT).show();
+                }
+                @Override public void failed(String message){
+                    Toast.makeText(RoyalSetupActivity.this,message,Toast.LENGTH_LONG).show();
+                }
+            });
     }
     private void choosePlayer(int seat){
         if(selectedLeagueId<=0){chooseLeague();return;}
@@ -173,6 +192,7 @@ public final class RoyalSetupActivity extends Activity {
         }
         Intent intent=new Intent(this,MainActivity.class);
         intent.putExtra("league_id",selectedLeagueId);
+        intent.putExtra("league_name",selectedLeagueName);
         int[] ids=new int[count];for(int i=0;i<count;i++)ids[i]=playerIds.get(i);
         intent.putExtra("league_player_ids",ids);
         String[] mappedNames=new String[count];for(int i=0;i<count;i++)mappedNames[i]=name(i);

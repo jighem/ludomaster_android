@@ -69,6 +69,17 @@ public final class WebLoginActivity extends Activity {
         offline.setText("Back to offline play");
         offline.setOnClickListener(v -> finish());
         root.addView(offline);
+        Button register=new Button(this);
+        register.setText("DON'T HAVE AN ACCOUNT? REGISTER AT LUDOHOJAYE.COM");
+        register.setAllCaps(false);
+        register.setOnClickListener(v->startActivity(new android.content.Intent(
+            android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://ludohojaye.com/"))));
+        root.addView(register);
+        TextView powered=new TextView(this);
+        powered.setText("Powered by ludohojaye.com");
+        powered.setTextColor(0xffffd277);
+        powered.setGravity(Gravity.CENTER);
+        root.addView(powered);
         signIn.setOnClickListener(v -> submit());
         setContentView(root);
     }

@@ -77,7 +77,14 @@ public final class MatchUploader {
                 int http=connection.getResponseCode();
                 if(http!=201&&http!=200)throw new IllegalStateException("Portal refused match (HTTP "+http+"). Match remains saved.");
                 JSONObject response=new JSONObject(new String(readLimited(connection.getInputStream(),100000),StandardCharsets.UTF_8));
-                message="Match received by portal. Status: "+response.optString("status","pending_approval")+". League admin approval required.";
+                String status=response.optString("status","unknown");
+                String id=response.optString("matchId","not returned");
+                String leagueName=match.optString("leagueName","League #"+match.optInt("leagueId"));
+                if("approved".equals(status))
+                    message="Scores published to "+leagueName+". Match ID: "+id+". Sign in at ludohojaye.com to view standings.";
+                else if("pending_approval".equals(status))
+                    message="Scores submitted to "+leagueName+". Match ID: "+id+". Awaiting league admin approval. Sign in at ludohojaye.com to check.";
+                else message="Portal received match "+id+" with status "+status+". Check ludohojaye.com.";
             }catch(Exception e){message=e.getMessage()==null?"Upload failed. Match remains saved locally.":e.getMessage();}
             finally{if(connection!=null)connection.disconnect();}
             final String result=message;
