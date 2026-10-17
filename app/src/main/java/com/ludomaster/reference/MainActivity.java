@@ -737,6 +737,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showGameOverScreen() {
         saveOfflineMatchResult();
+        if(offlineResultSaved) MatchUploader.prompt(this,offlineMatchId);
         congratulationslayout.setVisibility(View.VISIBLE);
         if (combatScoringEnabled || immunityEnabled) {
             new AlertDialog.Builder(this).setTitle("Ludo Masters Match Summary")
