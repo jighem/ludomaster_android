@@ -1319,7 +1319,8 @@ public class MainActivity extends AppCompatActivity {
             result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
             result.put("leagueName",selectedLeagueName==null?"":selectedLeagueName);
             JSONArray slots = new JSONArray();
-            int defaultLastRank = offlinePlayerNames.size();
+            java.util.Set<Integer> assignedRanks = new java.util.HashSet<>();
+            int nextFallbackRank = 1;
             for (java.util.Map.Entry<String,String> player : offlinePlayerNames.entrySet()) {
                 String color = player.getKey();
                 JSONObject slot = new JSONObject();
@@ -1332,8 +1333,13 @@ public class MainActivity extends AppCompatActivity {
                 slot.put("isBot",standardBot);
                 Integer mapped = selectedLeaguePlayerIds.get(player.getValue());
                 slot.put("leaguePlayerId", mapped==null ? JSONObject.NULL : mapped);
-                slot.put("finishRank", offlineFinishRanks.containsKey(color) ?
-                    offlineFinishRanks.get(color) : defaultLastRank);
+                Integer rank = offlineFinishRanks.get(color);
+                if (rank == null || rank < 1 || rank > offlinePlayerNames.size() || assignedRanks.contains(rank)) {
+                    while (assignedRanks.contains(nextFallbackRank)) nextFallbackRank++;
+                    rank = nextFallbackRank++;
+                }
+                assignedRanks.add(rank);
+                slot.put("finishRank", rank);
                 slot.put("kills", getCount(killCounts,color));
                 slot.put("deaths", getCount(deathCounts,color));
                 slot.put("remainingShields", getCount(immunityShields,color));
