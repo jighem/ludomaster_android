@@ -35,7 +35,7 @@ public final class MatchUploader {
         java.util.Arrays.sort(files,(a,b)->Long.compare(b.lastModified(),a.lastModified()));
         int count=Math.min(files.length,30);
         String[] labels=new String[count];
-        for(int i=0;i<count;i++) {
+        for(int i=0;i<count;i++){
             String uuid=files[i].getName().replace(".json","");
             labels[i]=localStatus(activity,uuid);
         }
@@ -43,7 +43,61 @@ public final class MatchUploader {
             .setItems(labels,(d,idx)->{
                 String uuid=files[idx].getName().replace(".json","");
                 prompt(activity,uuid);
-            }).setPositiveButton("CLOSE",null).show();
+            })
+            .setNeutralButton("REFRESH STATUS",(d,w)->refreshSavedStatuses(activity,files,count))
+            .setPositiveButton("CLOSE",null).show();
+    }
+    private static void refreshSavedStatuses(Activity activity,File[] files,int count){
+        final String token=SecureLogin.token(activity);
+        if(token==null){
+            Toast.makeText(activity,"Log in to refresh approval status",Toast.LENGTH_LONG).show();return;
+        }
+        new Thread(()->{
+            int updated=0,failures=0;
+            for(int i=0;i<count;i++){
+                try{
+                    File file=files[i];
+                    JSONObject match=new JSONObject(new String(readLimited(new FileInputStream(file),100000),StandardCharsets.UTF_8));
+                    if(!"uploaded".equals(match.optString("syncStatus")))continue;
+                    final String uuid=match.optString("clientMatchId","");
+                    if(!uuid.matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}"))continue;
+                    HttpsURLConnection conn=null;
+                    try{
+                        conn=(HttpsURLConnection)new URL("https://ludohojaye.com/api/matches/mobile-offline/status/"+uuid).openConnection();
+                        conn.setRequestMethod("GET");
+                        conn.setConnectTimeout(10000);
+                        conn.setReadTimeout(10000);
+                        conn.setRequestProperty("Authorization","Bearer "+token);
+                        if(conn.getResponseCode()!=200)throw new java.io.IOException("HTTP "+conn.getResponseCode());
+                        JSONObject response=new JSONObject(new String(readLimited(conn.getInputStream(),100000),StandardCharsets.UTF_8));
+                        String newStatus=response.getString("status");
+                        if(!java.util.Arrays.asList("pending_approval","approved","rejected").contains(newStatus))
+                            throw new java.io.IOException("Unexpected server status");
+                        String id=response.getString("matchId");
+                        if(!id.equals(match.optString("serverMatchId")))
+                            throw new java.io.IOException("Receipt match ID mismatch");
+                        if(!newStatus.equals(match.optString("serverStatus"))){
+                            match.put("serverStatus",newStatus);
+                            File temp=new File(file.getParentFile(),file.getName()+".tmp");
+                            try(java.io.FileOutputStream output=new java.io.FileOutputStream(temp)){
+                                output.write(match.toString(2).getBytes(StandardCharsets.UTF_8));
+                                output.getFD().sync();
+                            }
+                            if(!temp.renameTo(file)){
+                                if(!file.delete() || !temp.renameTo(file))
+                                    throw new java.io.IOException("Unable to persist refreshed receipt");
+                            }
+                            updated++;
+                        }
+                    }finally{if(conn!=null)conn.disconnect();}
+                }catch(Exception ignored){failures++;}
+            }
+            final int changed=updated,failed=failures;
+            activity.runOnUiThread(()->{
+                Toast.makeText(activity,"Status refreshed: "+changed+" changed"+(failed>0?", "+failed+" unavailable":""),Toast.LENGTH_LONG).show();
+                showSavedMatches(activity);
+            });
+        }).start();
     }
     public static void prompt(Activity activity,String uuid) { prompt(activity,uuid,null); }
     public static void prompt(Activity activity,String uuid,Runnable refresh) {
