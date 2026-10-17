@@ -16,6 +16,35 @@ import javax.net.ssl.HttpsURLConnection;
 
 public final class MatchUploader {
     private MatchUploader(){}
+    public static String localStatus(Activity activity,String uuid) {
+        try {
+            File file=new File(new File(activity.getFilesDir(),"offline-matches"),uuid+".json");
+            JSONObject match=new JSONObject(new String(readLimited(new FileInputStream(file),100000),StandardCharsets.UTF_8));
+            if("uploaded".equals(match.optString("syncStatus")))
+                return "Uploaded | Match #"+match.optString("serverMatchId")+" | "+match.optString("serverStatus");
+            return "Saved locally — NOT uploaded | Session "+uuid;
+        } catch(Exception e){return "Match receipt unavailable";}
+    }
+    public static void showSavedMatches(Activity activity) {
+        File directory=new File(activity.getFilesDir(),"offline-matches");
+        File[] files=directory.listFiles((dir,name)->name.endsWith(".json"));
+        if(files==null || files.length==0){
+            new AlertDialog.Builder(activity).setTitle("Saved matches").setMessage("No completed games saved on this device.")
+                .setPositiveButton("OK",null).show();return;
+        }
+        java.util.Arrays.sort(files,(a,b)->Long.compare(b.lastModified(),a.lastModified()));
+        int count=Math.min(files.length,30);
+        String[] labels=new String[count];
+        for(int i=0;i<count;i++) {
+            String uuid=files[i].getName().replace(".json","");
+            labels[i]=localStatus(activity,uuid);
+        }
+        new AlertDialog.Builder(activity).setTitle("Saved match uploads")
+            .setItems(labels,(d,idx)->{
+                String uuid=files[idx].getName().replace(".json","");
+                prompt(activity,uuid);
+            }).setPositiveButton("CLOSE",null).show();
+    }
     public static void prompt(Activity activity,String uuid) { prompt(activity,uuid,null); }
     public static void prompt(Activity activity,String uuid,Runnable refresh) {
         File file=new File(new File(activity.getFilesDir(),"offline-matches"),uuid+".json");
