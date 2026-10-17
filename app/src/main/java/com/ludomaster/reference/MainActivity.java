@@ -71,6 +71,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean combatScoringEnabled;
     private boolean immunityEnabled;
     private boolean homeShuffleEnabled;
+    private int shuffleIntervalSeconds = 300;
     private final java.util.Map<String, Integer> killCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
@@ -1322,6 +1323,7 @@ public class MainActivity extends AppCompatActivity {
             rules.put("combatScoring", combatScoringEnabled);
             rules.put("immunity", immunityEnabled);
             rules.put("dynamicHomeShuffle", homeShuffleEnabled);
+            rules.put("shuffleIntervalSeconds", shuffleIntervalSeconds);
             result.put("rules", rules);
             result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
             result.put("leagueName",selectedLeagueName==null?"":selectedLeagueName);
@@ -1935,6 +1937,9 @@ public class MainActivity extends AppCompatActivity {
         combatScoringEnabled = extras != null && extras.getBoolean("rule_combat", false);
         immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
         homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
+        shuffleIntervalSeconds = extras == null ? 300 : Math.max(60, Math.min(600, extras.getInt("shuffle_interval_seconds",300)));
+        // The dynamic rotation engine is not implemented. Never activate the rule in this release.
+        homeShuffleEnabled = false;
 
         nop = extras.getInt("nop");
         String color = extras.getString("color");
