@@ -38,9 +38,9 @@ public final class MatchUploader {
                  .setPositiveButton("OK",null).show();return;
             }
             for(int i=0;i<players.length();i++)
-                if(players.getJSONObject(i).optInt("leaguePlayerId",0)<=0){
+                if(players.getJSONObject(i).optInt("leaguePlayerId",0)<=0 && !players.getJSONObject(i).optBoolean("isBot",false)){
                     new AlertDialog.Builder(activity).setTitle("Match saved locally")
-                      .setMessage("All seats must be mapped to registered league players before submission. This match remains saved locally.")
+                      .setMessage("Every human player must be selected from the league roster before submission. Computer 1-3 are supported automatically. Match remains saved locally.")
                       .setPositiveButton("OK",null).show();return;
                 }
             new AlertDialog.Builder(activity).setTitle("Submit match to Ludohojaye?")
