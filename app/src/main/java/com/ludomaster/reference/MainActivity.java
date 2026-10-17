@@ -77,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<String, String> offlinePlayerNames = new java.util.LinkedHashMap<>();
     private final java.util.Map<String,Integer> selectedLeaguePlayerIds = new java.util.HashMap<>();
     private int selectedLeagueId=0;
+    private String selectedLeagueName="";
     private final java.util.Map<String, Integer> offlineFinishRanks = new java.util.HashMap<>();
     private long offlineMatchStartedAt;
     private String offlineMatchId;
@@ -740,8 +741,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void showGameOverScreen() {
         saveOfflineMatchResult();
-        if(offlineResultSaved) MatchUploader.prompt(this,offlineMatchId);
-        congratulationslayout.setVisibility(View.VISIBLE);
+        congratulationslayout.setVisibility(View.GONE);
+        RoyalResultsScreen.show(this,combatSummary(),selectedLeagueName,offlineResultSaved,()->MatchUploader.prompt(this,offlineMatchId));
         if (combatScoringEnabled || immunityEnabled) {
             new AlertDialog.Builder(this).setTitle("Ludo Masters Match Summary")
                 .setMessage(combatSummary()).setPositiveButton("Continue", null).show();
@@ -1319,6 +1320,7 @@ public class MainActivity extends AppCompatActivity {
             rules.put("dynamicHomeShuffle", homeShuffleEnabled);
             result.put("rules", rules);
             result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
+            result.put("leagueName",selectedLeagueName==null?"":selectedLeagueName);
             JSONArray slots = new JSONArray();
             int defaultLastRank = offlinePlayerNames.size();
             for (java.util.Map.Entry<String,String> player : offlinePlayerNames.entrySet()) {
@@ -1893,6 +1895,7 @@ public class MainActivity extends AppCompatActivity {
         offlineMatchStartedAt = System.currentTimeMillis();
         offlineMatchId = UUID.randomUUID().toString();
         selectedLeagueId = getIntent().getIntExtra("league_id",0);
+        selectedLeagueName = getIntent().getStringExtra("league_name");
         int[] mappedIds = getIntent().getIntArrayExtra("league_player_ids");
         String[] mappedNames = getIntent().getStringArrayExtra("league_player_names");
         if(mappedIds!=null && mappedNames!=null) {
