@@ -995,24 +995,28 @@ public class MainActivity extends AppCompatActivity {
      */
     private void chooseStackedPieceOrMove(Piece tapped) {
         if (!currentPlayerColor.equals(tapped.colour) || currentPlayerDice < 1) return;
-        java.util.List<Piece> stack = new java.util.ArrayList<>();
-        for (Piece candidate : getPiecesByColor(tapped.colour)) {
-            if (candidate.currBlock == tapped.currBlock && candidate.isAlive
-                    && candidate.isClickable && !candidate.hasCompletedItsPurpose) {
-                stack.add(candidate);
+        if (tapped.isAlive && tapped.isClickable) {
+            executeSelectedPiece(tapped); // Same-colour pieces are interchangeable here.
+        } else {
+            for(Piece candidate:getPiecesByColor(tapped.colour)) {
+                if(candidate.currBlock==tapped.currBlock && candidate.isAlive && candidate.isClickable) {
+                    executeSelectedPiece(candidate); return;
+                }
+            }
+            executeSelectedPiece(tapped);
+        }
+    }
+
+    /** Prioritise all movable current-player tokens over other colours after a dice roll. */
+    private void prioritiseCurrentPlayerPieces() {
+        if(currentPlayerColor==null) return;
+        for(Piece p:getPiecesByColor(currentPlayerColor)) {
+            if(p.isClickable && !p.hasCompletedItsPurpose && p.piece!=null) {
+                p.piece.bringToFront();
+                p.piece.setElevation(hudDp(15));
+                p.piece.setClickable(true);
             }
         }
-        if (stack.size() <= 1) {
-            executeSelectedPiece(tapped);
-            return;
-        }
-        CharSequence[] labels = new CharSequence[stack.size()];
-        java.util.List<Piece> all = getPiecesByColor(tapped.colour);
-        for (int i = 0; i < stack.size(); i++)
-            labels[i] = "Token " + (all.indexOf(stack.get(i)) + 1);
-        new AlertDialog.Builder(this).setTitle("Select token to move")
-            .setItems(labels, (dialog, index) -> executeSelectedPiece(stack.get(index)))
-            .setNegativeButton("Cancel", null).show();
     }
 
     private void executeSelectedPiece(Piece selected) {
@@ -1162,10 +1166,34 @@ public class MainActivity extends AppCompatActivity {
             statsCells.put(color,cell);
         }
         statsHud.bringToFront();
+        addLiveAudioButton(root);
         refreshStatsHud();
     }
 
+    private void addLiveAudioButton(ConstraintLayout root) {
+        android.widget.Button audio=new android.widget.Button(this);
+        audio.setText("SOUND");
+        audio.setTextSize(10);
+        audio.setTextColor(Color.WHITE);
+        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff18559c));
+        ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(108),hudDp(45));
+        params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topMargin=hudDp(16);
+        root.addView(audio,params);
+        audio.setOnClickListener(v->{
+            isSoundOn=!isSoundOn;
+            sharedPreferences.edit().putBoolean("sound",isSoundOn).apply();
+            audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
+            if(!isSoundOn && congratulationSound!=null && congratulationSound.isPlaying())
+                congratulationSound.pause();
+        });
+        audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
+        audio.bringToFront();
+    }
+
     private void refreshStatsHud() {
+        prioritiseCurrentPlayerPieces();
         if (statsHud == null) return;
         for (String color : new String[]{"red","green","yellow","blue"}) {
             TextView cell=statsCells.get(color);
