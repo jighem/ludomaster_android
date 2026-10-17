@@ -71,6 +71,19 @@ public class MainActivity extends AppCompatActivity {
     private boolean combatScoringEnabled;
     private boolean immunityEnabled;
     private boolean homeShuffleEnabled;
+    private int shuffleIntervalSeconds=300;
+    private long nextShuffleAtElapsedMs;
+    private boolean shuffleExpired=false;
+    private TextView shuffleCountdown;
+    private final android.os.Handler shuffleClockHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable shuffleClockTick=new Runnable(){@Override public void run(){
+        if(homeShuffleEnabled && shuffleCountdown!=null){
+            long remaining=nextShuffleAtElapsedMs-android.os.SystemClock.elapsedRealtime();
+            if(remaining<=0){shuffleExpired=true;shuffleCountdown.setText("SHUFFLE READY — FINISH TURN");}
+            else {long secs=(remaining+999)/1000;shuffleCountdown.setText(String.format(java.util.Locale.ROOT,"HOME SHUFFLE %02d:%02d",secs/60,secs%60));}
+            shuffleClockHandler.postDelayed(this,500);
+        }
+    }};
     private final java.util.Map<String, Integer> killCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
@@ -1196,6 +1209,21 @@ public class MainActivity extends AppCompatActivity {
         audio.bringToFront();
     }
 
+    private void installShuffleCountdown(){
+        ConstraintLayout root=findViewById(R.id.activitybg);
+        shuffleCountdown=new TextView(this);
+        shuffleCountdown.setTextColor(Color.WHITE);
+        shuffleCountdown.setTextSize(12);
+        shuffleCountdown.setGravity(Gravity.CENTER);
+        shuffleCountdown.setBackgroundColor(0xff1c365b);
+        ConstraintLayout.LayoutParams lp=new ConstraintLayout.LayoutParams(hudDp(190),hudDp(36));
+        lp.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+        lp.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+        lp.topMargin=hudDp(19);
+        root.addView(shuffleCountdown,lp);
+        shuffleCountdown.bringToFront();
+    }
+
     private void refreshStatsHud() {
         prioritiseCurrentPlayerPieces();
         if (statsHud == null) return;
@@ -1317,6 +1345,7 @@ public class MainActivity extends AppCompatActivity {
             rules.put("combatScoring", combatScoringEnabled);
             rules.put("immunity", immunityEnabled);
             rules.put("dynamicHomeShuffle", homeShuffleEnabled);
+            rules.put("shuffleIntervalSeconds",shuffleIntervalSeconds);
             result.put("rules", rules);
             result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
             JSONArray slots = new JSONArray();
@@ -1914,6 +1943,12 @@ public class MainActivity extends AppCompatActivity {
         combatScoringEnabled = extras != null && extras.getBoolean("rule_combat", false);
         immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
         homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
+        shuffleIntervalSeconds = extras==null?300:Math.max(60,Math.min(600,extras.getInt("shuffle_interval_seconds",300)));
+        if(homeShuffleEnabled){
+            nextShuffleAtElapsedMs=android.os.SystemClock.elapsedRealtime()+shuffleIntervalSeconds*1000L;
+            installShuffleCountdown();
+            shuffleClockHandler.post(shuffleClockTick);
+        }
 
         nop = extras.getInt("nop");
         String color = extras.getString("color");
@@ -2591,6 +2626,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        shuffleClockHandler.removeCallbacks(shuffleClockTick);
         super.onDestroy();
     }
 
