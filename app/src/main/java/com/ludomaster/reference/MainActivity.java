@@ -1328,6 +1328,11 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject slot = new JSONObject();
                 slot.put("color", color);
                 slot.put("offlineName", player.getValue());
+                boolean standardBot = gametype == 4 &&
+                    ("Computer 1".equals(player.getValue()) ||
+                     "Computer 2".equals(player.getValue()) ||
+                     "Computer 3".equals(player.getValue()));
+                slot.put("isBot",standardBot);
                 Integer mapped = selectedLeaguePlayerIds.get(player.getValue());
                 slot.put("leaguePlayerId", mapped==null ? JSONObject.NULL : mapped);
                 slot.put("finishRank", offlineFinishRanks.containsKey(color) ?
