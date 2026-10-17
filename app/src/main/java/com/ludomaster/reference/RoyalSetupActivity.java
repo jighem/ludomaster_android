@@ -76,6 +76,9 @@ public final class RoyalSetupActivity extends Activity {
         Button play=button("START MATCH");
         root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
+        Button saved=button("SAVED MATCHES / RETRY UPLOAD");
+        root.addView(saved,new LinearLayout.LayoutParams(-1,dp(52)));
+        saved.setOnClickListener(v->MatchUploader.showSavedMatches(this));
         Button back=button("BACK");
         root.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
         root.addView(text("Powered by ludohojaye.com",13,0xffffd46a));
