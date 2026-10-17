@@ -25,7 +25,7 @@ public final class RoyalResultsScreen {
         Button b=new Button(a);b.setText(label);b.setTextColor(Color.WHITE);
         b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff135cb1));return b;
     }
-    public static void show(Activity a,String summary,String league,boolean canUpload,Runnable upload){
+    public static void show(Activity a,String summary,String league,boolean canUpload,String uuid){
         Dialog dialog=new Dialog(a);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         ScrollView scroller=new ScrollView(a);
@@ -45,7 +45,15 @@ public final class RoyalResultsScreen {
         root.addView(receipt);
         Button submit=action(a,"SUBMIT SCORE TO LUDOHOJAYE");
         submit.setEnabled(canUpload);
-        submit.setOnClickListener(v->upload.run());
+        Runnable refresh=()->{
+            String status=MatchUploader.localStatus(a,uuid);
+            receipt.setText(status);
+            boolean uploaded=status.startsWith("Uploaded");
+            submit.setEnabled(canUpload && !uploaded);
+            submit.setText(uploaded?"ALREADY SUBMITTED":"SUBMIT SCORE TO LUDOHOJAYE");
+        };
+        submit.setOnClickListener(v->MatchUploader.prompt(a,uuid,refresh));
+        refresh.run();
         root.addView(submit);
         if(!canUpload)root.addView(text(a,"Match could not be saved locally. Submission is unavailable.",13,0xffffaaaa));
         Button done=action(a,"DONE");
