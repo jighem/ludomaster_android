@@ -20,6 +20,7 @@ public final class RoyalSetupActivity extends Activity {
     private final boolean[] rules={false,false,false};
     private final ArrayList<EditText> names=new ArrayList<>();
     private LinearLayout players;
+    private int shuffleSeconds=300;
     private final ArrayList<Integer> playerIds=new ArrayList<>();
     private int selectedLeagueId=0;
     private String selectedLeagueName="";
@@ -73,6 +74,20 @@ public final class RoyalSetupActivity extends Activity {
             if (i==2) { cb.setEnabled(false); cb.setChecked(false); }
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
+        // Configuration is retained for a later release; rotation is deliberately disabled.
+        root.addView(text("FUTURE HOME SHUFFLE INTERVAL (FEATURE DISABLED)",14,0xffffd46a));
+        Spinner shuffleInterval=new Spinner(this);
+        String[] intervals={"1 minute","2 minutes","3 minutes","5 minutes","10 minutes"};
+        int[] values={60,120,180,300,600};
+        ArrayAdapter<String> intervalAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,intervals);
+        shuffleInterval.setAdapter(intervalAdapter);
+        shuffleInterval.setSelection(3);
+        shuffleInterval.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent,android.view.View view,int position,long id){shuffleSeconds=values[position];}
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
+        });
+        root.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
+        root.addView(text("This setting is saved with the match for future compatibility. It does not shuffle the board in this version.",12,Color.WHITE));
         Button play=button("START MATCH");
         root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
@@ -233,6 +248,7 @@ public final class RoyalSetupActivity extends Activity {
         intent.putExtra("rule_combat",rules[0]);
         intent.putExtra("rule_immunity",rules[1]);
         intent.putExtra("rule_shuffle",rules[2]);
+        intent.putExtra("shuffle_interval_seconds",shuffleSeconds);
         startActivity(intent);
     }
 }
