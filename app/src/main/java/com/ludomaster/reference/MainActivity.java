@@ -1176,12 +1176,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void addLiveAudioButton(ConstraintLayout root) {
-        android.widget.Button audio=new android.widget.Button(this);
-        audio.setText("SOUND");
-        audio.setTextSize(10);
-        audio.setTextColor(Color.WHITE);
+        android.widget.ImageButton audio=new android.widget.ImageButton(this);
+        audio.setImageResource(isSoundOn?R.drawable.soundon:R.drawable.soundoff);
+        audio.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
+        audio.setContentDescription(isSoundOn?"Mute sound":"Enable sound");
         audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff18559c));
-        ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(108),hudDp(45));
+        audio.setPadding(hudDp(8),hudDp(8),hudDp(8),hudDp(8));
+        ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(50),hudDp(50));
         params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
         params.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
         params.topMargin=hudDp(16);
@@ -1189,15 +1190,15 @@ public class MainActivity extends AppCompatActivity {
         audio.setOnClickListener(v->{
             isSoundOn=!isSoundOn;
             sharedPreferences.edit().putBoolean("sound",isSoundOn).apply();
-            audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
+            audio.setImageResource(isSoundOn?R.drawable.soundon:R.drawable.soundoff);
+            audio.setContentDescription(isSoundOn?"Mute sound":"Enable sound");
             if(!isSoundOn && congratulationSound!=null && congratulationSound.isPlaying())
                 congratulationSound.pause();
         });
-        audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
         audio.bringToFront();
     }
 
-    private void refreshStatsHud() {
+        private void refreshStatsHud() {
         prioritiseCurrentPlayerPieces();
         if (statsHud == null) return;
         for (String color : new String[]{"red","green","yellow","blue"}) {
