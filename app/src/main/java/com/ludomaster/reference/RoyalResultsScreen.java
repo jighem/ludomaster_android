@@ -41,9 +41,11 @@ public final class RoyalResultsScreen {
         if(league!=null && !league.trim().isEmpty())
             root.addView(text(a,"Selected league: "+league,16,0xffffd579));
         root.addView(text(a,"Powered by ludohojaye.com",13,0xffffd579));
+        TextView receipt=text(a,"Saved locally — not submitted",14,0xffffd579);
+        root.addView(receipt);
         Button submit=action(a,"SUBMIT SCORE TO LUDOHOJAYE");
         submit.setEnabled(canUpload);
-        submit.setOnClickListener(v->{dialog.dismiss();upload.run();});
+        submit.setOnClickListener(v->upload.run());
         root.addView(submit);
         if(!canUpload)root.addView(text(a,"Match could not be saved locally. Submission is unavailable.",13,0xffffaaaa));
         Button done=action(a,"DONE");
@@ -55,6 +57,7 @@ public final class RoyalResultsScreen {
         if(window!=null){window.setBackgroundDrawableResource(android.R.color.transparent);
             window.setLayout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT);}
         dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
         dialog.show();
         if(dialog.getWindow()!=null)dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT);
     }
