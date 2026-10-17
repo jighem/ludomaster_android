@@ -1196,6 +1196,21 @@ public class MainActivity extends AppCompatActivity {
                 congratulationSound.pause();
         });
         audio.bringToFront();
+        android.widget.ImageButton exit=new android.widget.ImageButton(this);
+        exit.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+        exit.setContentDescription("Exit match");
+        exit.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff693444));
+        exit.setPadding(hudDp(10),hudDp(10),hudDp(10),hudDp(10));
+        ConstraintLayout.LayoutParams ep=new ConstraintLayout.LayoutParams(hudDp(49),hudDp(49));
+        ep.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+        ep.rightMargin=hudDp(56);
+        ep.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+        ep.topMargin=hudDp(16);
+        root.addView(exit,ep);
+        exit.setOnClickListener(v->RoyalDialog.confirm(this,"EXIT LUDO MASTERS?",
+            "Your unfinished match will be lost. Continue playing or return to the main menu?",
+            "EXIT MATCH",()->{stopEverything();finish();}));
+        exit.bringToFront();
     }
 
         private void refreshStatsHud() {
