@@ -63,13 +63,14 @@ public final class RoyalSetupActivity extends Activity {
         TextView note=text("OPTIONAL RULES",19,0xffffd46a);
         note.setPadding(0,dp(18),0,dp(8));root.addView(note);
         String[] labels={"Combat scoring (+5 kill / -5 death)",
-                "Earn and use immunity shields","Dynamic Home Shuffle (5 minutes)"};
+                "Earn and use immunity shields","Dynamic Home Shuffle (not yet available)"};
         for(int i=0;i<3;i++){
             final int idx=i;
             CheckBox cb=new CheckBox(this);
             cb.setText(labels[i]);cb.setTextColor(Color.WHITE);cb.setTextSize(15);
             cb.setButtonTintList(ColorStateList.valueOf(0xffffd46a));
             root.addView(cb);
+            if (i==2) { cb.setEnabled(false); cb.setChecked(false); }
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
         Button play=button("START MATCH");
@@ -157,7 +158,7 @@ public final class RoyalSetupActivity extends Activity {
         ArrayList<JSONObject> eligible=new ArrayList<>();
         for(int i=0;i<roster.length();i++){
             JSONObject candidate=roster.optJSONObject(i);
-            if(candidate==null)continue;
+            if(candidate==null || candidate.optInt("is_bot",0)==1 || candidate.optInt("league_id",-1)==0)continue;
             int id=candidate.optInt("id");
             if(id<=0)continue;
             boolean alreadyUsed=false;
