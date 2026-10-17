@@ -385,6 +385,9 @@ public class MainActivity extends AppCompatActivity {
         void activeState()
         {
             isClickable = true;
+            piece.bringToFront();
+            piece.setElevation(hudDp(18));
+            piece.setClickable(true);
             rotateAnimator.start();
             readyToPick.setVisibility(View.VISIBLE);
             if(piece.getScaleX()<1.0f) {
@@ -1553,6 +1556,7 @@ public class MainActivity extends AppCompatActivity {
                 isRolling = false;
 
                 currentPlayerDice = ch;
+                // Ensure active pieces are promoted when their roll is available.
 
                 List<Piece> pieces = getPiecesByColor(currentPlayerColor);
                 int x;
