@@ -20,6 +20,8 @@ public final class RoyalSetupActivity extends Activity {
     private final boolean[] rules={false,false,false};
     private final ArrayList<EditText> names=new ArrayList<>();
     private LinearLayout players;
+    private int shuffleSeconds=300;
+    private Spinner shuffleInterval;
     private final ArrayList<Integer> playerIds=new ArrayList<>();
     private int selectedLeagueId=0;
     private JSONArray roster=new JSONArray();
@@ -68,6 +70,21 @@ public final class RoyalSetupActivity extends Activity {
             root.addView(cb);
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
+        TextView shuffleLabel=text("HOME SHUFFLE INTERVAL",16,0xffffd46a);
+        root.addView(shuffleLabel);
+        shuffleInterval=new Spinner(this);
+        String[] intervals={"1 minute","2 minutes","3 minutes","5 minutes","10 minutes"};
+        int[] seconds={60,120,180,300,600};
+        ArrayAdapter<String> intervalAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,intervals);
+        shuffleInterval.setAdapter(intervalAdapter);
+        shuffleInterval.setSelection(3);
+        shuffleInterval.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){
+            @Override public void onItemSelected(android.widget.AdapterView<?> parent,android.view.View view,int position,long id){
+                shuffleSeconds=seconds[position];
+            }
+            @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
+        });
+        root.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
         Button play=button("START MATCH");
         root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
@@ -209,6 +226,7 @@ public final class RoyalSetupActivity extends Activity {
         intent.putExtra("rule_combat",rules[0]);
         intent.putExtra("rule_immunity",rules[1]);
         intent.putExtra("rule_shuffle",rules[2]);
+        intent.putExtra("shuffle_interval_seconds",shuffleSeconds);
         startActivity(intent);
     }
 }
