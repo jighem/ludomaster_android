@@ -22,6 +22,7 @@ public final class RoyalSetupActivity extends Activity {
     private LinearLayout players;
     private final ArrayList<Integer> playerIds=new ArrayList<>();
     private int selectedLeagueId=0;
+    private String selectedLeagueName="";
     private JSONArray roster=new JSONArray();
     private Button leagueButton;
     private TextView countLabel;
@@ -122,6 +123,7 @@ public final class RoyalSetupActivity extends Activity {
                   .setItems(titles,(dialog,index)->{
                      JSONObject league=data.optJSONObject(index);
                      selectedLeagueId=league.optInt("id",0);
+                     selectedLeagueName=league.optString("name","");
                      leagueButton.setText("LEAGUE: "+league.optString("name"));
                      roster=new JSONArray();
                      for(int j=0;j<playerIds.size();j++)playerIds.set(j,0);
@@ -190,6 +192,7 @@ public final class RoyalSetupActivity extends Activity {
         }
         Intent intent=new Intent(this,MainActivity.class);
         intent.putExtra("league_id",selectedLeagueId);
+        intent.putExtra("league_name",selectedLeagueName);
         int[] ids=new int[count];for(int i=0;i<count;i++)ids[i]=playerIds.get(i);
         intent.putExtra("league_player_ids",ids);
         String[] mappedNames=new String[count];for(int i=0;i<count;i++)mappedNames[i]=name(i);
