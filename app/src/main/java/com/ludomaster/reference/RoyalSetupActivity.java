@@ -129,7 +129,7 @@ public final class RoyalSetupActivity extends Activity {
                      for(int j=0;j<playerIds.size();j++)playerIds.set(j,0);
                      // Discard identities from a previously selected league.
                      updatePlayers();
-                     LeagueRoster.fetch(RoyalSetupActivity.this,"players?league_id="+selectedLeagueId+"&status=active",
+                     LeagueRoster.fetch(RoyalSetupActivity.this,"players?league_id="+selectedLeagueId+"&status=active&include_standard_computers=true",
                          new LeagueRoster.Callback(){
                             @Override public void loaded(JSONArray result){roster=result;Toast.makeText(RoyalSetupActivity.this,"Registered players loaded",Toast.LENGTH_SHORT).show();}
                             @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
