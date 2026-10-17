@@ -742,7 +742,14 @@ public class MainActivity extends AppCompatActivity {
     private void showGameOverScreen() {
         saveOfflineMatchResult();
         congratulationslayout.setVisibility(View.GONE);
-        RoyalResultsScreen.show(this,combatSummary(),selectedLeagueName,offlineResultSaved,offlineMatchId);
+        String winner = "Winner pending";
+        for (java.util.Map.Entry<String,Integer> rank : offlineFinishRanks.entrySet()) {
+            if (rank.getValue()==1) {
+                winner="WINNER: "+offlinePlayerNames.getOrDefault(rank.getKey(),rank.getKey());
+                break;
+            }
+        }
+        RoyalResultsScreen.show(this,winner+"\n"+combatSummary(),selectedLeagueName,offlineResultSaved,offlineMatchId);
         // Result and upload controls stay on the non-dismissible RoyalResultsScreen.
 
 
@@ -1320,6 +1327,9 @@ public class MainActivity extends AppCompatActivity {
             result.put("leagueName",selectedLeagueName==null?"":selectedLeagueName);
             JSONArray slots = new JSONArray();
             java.util.Set<Integer> assignedRanks = new java.util.HashSet<>();
+            java.util.Set<Integer> reservedRanks = new java.util.HashSet<>();
+            for (Integer existingRank : offlineFinishRanks.values())
+                if (existingRank != null && existingRank >= 1 && existingRank <= offlinePlayerNames.size()) reservedRanks.add(existingRank);
             int nextFallbackRank = 1;
             for (java.util.Map.Entry<String,String> player : offlinePlayerNames.entrySet()) {
                 String color = player.getKey();
@@ -1335,7 +1345,7 @@ public class MainActivity extends AppCompatActivity {
                 slot.put("leaguePlayerId", mapped==null ? JSONObject.NULL : mapped);
                 Integer rank = offlineFinishRanks.get(color);
                 if (rank == null || rank < 1 || rank > offlinePlayerNames.size() || assignedRanks.contains(rank)) {
-                    while (assignedRanks.contains(nextFallbackRank)) nextFallbackRank++;
+                    while (assignedRanks.contains(nextFallbackRank) || reservedRanks.contains(nextFallbackRank)) nextFallbackRank++;
                     rank = nextFallbackRank++;
                 }
                 assignedRanks.add(rank);
