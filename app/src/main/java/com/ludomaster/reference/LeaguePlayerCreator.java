@@ -21,15 +21,15 @@ public final class LeaguePlayerCreator {
         if(leagueId<=0){Toast.makeText(activity,"Select league first",Toast.LENGTH_LONG).show();return;}
         LinearLayout layout=new LinearLayout(activity);layout.setOrientation(1);layout.setPadding(40,12,40,12);
         EditText name=new EditText(activity);name.setHint("Player full name");layout.addView(name);
-        EditText email=new EditText(activity);email.setHint("Player email (required for invitation)");
+        EditText email=new EditText(activity);email.setHint("Player contact email (optional)");
         email.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
         layout.addView(email);
         new AlertDialog.Builder(activity).setTitle("Add player to this league").setView(layout)
             .setNegativeButton("Cancel",null)
             .setPositiveButton("ADD PLAYER",(dialog,which)->{
                 String n=name.getText().toString().trim(),e=email.getText().toString().trim();
-                if(n.isEmpty()||!android.util.Patterns.EMAIL_ADDRESS.matcher(e).matches()){
-                    Toast.makeText(activity,"Enter a name and valid email",Toast.LENGTH_LONG).show();return;
+                if(n.isEmpty()||(!e.isEmpty()&&!android.util.Patterns.EMAIL_ADDRESS.matcher(e).matches())){
+                    Toast.makeText(activity,"Enter a name and optionally a valid email",Toast.LENGTH_LONG).show();return;
                 }
                 create(activity,leagueId,n,e,done);
             }).show();
@@ -46,7 +46,7 @@ public final class LeaguePlayerCreator {
                 connection.setRequestProperty("Authorization","Bearer "+token);
                 connection.setRequestProperty("Content-Type","application/json");
                 byte[] body=new JSONObject().put("league_id",leagueId).put("full_name",name)
-                    .put("email",email).toString().getBytes(StandardCharsets.UTF_8);
+                    .put("email",email.isEmpty()?JSONObject.NULL:email).put("manual_entry",true).toString().getBytes(StandardCharsets.UTF_8);
                 try(OutputStream out=connection.getOutputStream()){out.write(body);}
                 int status=connection.getResponseCode();
                 InputStream source=status<400?connection.getInputStream():connection.getErrorStream();
@@ -64,7 +64,7 @@ public final class LeaguePlayerCreator {
             activity.runOnUiThread(()->{
                 if(message==null){
                     new AlertDialog.Builder(activity).setTitle("Player added")
-                        .setMessage("Player request accepted by Ludohojaye. An email invitation or authorization step may be required before the player can join.")
+                        .setMessage("Player added to the league. The player can participate now; portal login remains unclaimed until account verification.")
                         .setPositiveButton("REFRESH PLAYERS",(d,w)->done.created()).show();
                 }else new AlertDialog.Builder(activity).setTitle("Unable to add player")
                     .setMessage(message).setPositiveButton("OK",null).show();
