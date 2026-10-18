@@ -51,6 +51,10 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
@@ -67,14 +71,38 @@ public class MainActivity extends AppCompatActivity {
     private boolean combatScoringEnabled;
     private boolean immunityEnabled;
     private boolean homeShuffleEnabled;
+    private int shuffleIntervalSeconds = 300;
+    private com.ludomaster.reference.shuffle.HomeShuffleEngine homeShuffleEngine;
+    private long nextShuffleDueAtMs;
+    private TextView shuffleCountdownView;
+    private boolean shuffleMatchEnding;
+    private volatile int shuffleRepaintVersion;
+    private int shuffleTurnGeneration;
+    private final Runnable shuffleTimerTick = new Runnable() {
+        @Override public void run() {
+            if (!homeShuffleEnabled || homeShuffleEngine == null || shuffleMatchEnding) return;
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (now >= nextShuffleDueAtMs) {
+                homeShuffleEngine.requestShuffle();
+                nextShuffleDueAtMs = now + (shuffleIntervalSeconds * 1000L);
+            }
+            updateShuffleCountdown(now);
+            globalHandler.postDelayed(this, 1000);
+        }
+    };
     private final java.util.Map<String, Integer> killCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
     private final java.util.Map<String, String> offlinePlayerNames = new java.util.LinkedHashMap<>();
+    private final java.util.Map<String,Integer> selectedLeaguePlayerIds = new java.util.HashMap<>();
+    private int selectedLeagueId=0;
+    private String selectedLeagueName="";
     private final java.util.Map<String, Integer> offlineFinishRanks = new java.util.HashMap<>();
     private long offlineMatchStartedAt;
     private String offlineMatchId;
     private boolean offlineResultSaved;
+    private LinearLayout statsHud;
+    private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -150,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
 
     private AnimatorSet[] animatorSets;
 
-    ImageView crownIndex1,crownIndex2,crownIndex3,crownIndex4;
+    ImageView shieldIndex1,shieldIndex2,shieldIndex3,shieldIndex4;
 
     int currentWinnerPosition = 1;
 
@@ -187,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView congratsmenubtn,congratssoundbtn,congratssharebtn,congratsreplaybtn;
 
     ConstraintLayout winnerlistp1layout,winnerlistp2layout,winnerlistp3layout,winnerlistp4layout;
-    ImageView wlistcrown1,wlistcrown2,wlistcrown3,wlistcrown4,wlistpiece1,wlistpiece2,wlistpiece3,wlistpiece4,wlistwinorlose1,wlistwinorlose2,wlistwinorlose3,wlistwinorlose4;
+    ImageView wlistshield1,wlistshield2,wlistshield3,wlistshield4,wlistpiece1,wlistpiece2,wlistpiece3,wlistpiece4,wlistwinorlose1,wlistwinorlose2,wlistwinorlose3,wlistwinorlose4;
     TextView wlistname1,wlistname2,wlistname3,wlistname4;
 
     boolean isbluegreenreadytowin=false,isredyellowreadytowin=false;
@@ -217,6 +245,7 @@ public class MainActivity extends AppCompatActivity {
         float defY;
 
         int diceValue;
+        int stepsUntilShuffleEntrance = 50;
 
         // managed at runtime
         boolean isAlive = false;
@@ -254,24 +283,7 @@ public class MainActivity extends AppCompatActivity {
             this.piece.setVisibility(View.VISIBLE);
             this.endPosition = startPosition!=0?startPosition-2:50;
             if(!isBotPiece) {
-                this.piece.setOnClickListener(view -> {
-                    if (isAlive && isClickable && currentPlayerColor.equals(colour)) {
-                        diceValue = currentPlayerDice;
-                        currentPlayerDice = -1;
-                        for (Piece p : getPiecesByColor(colour)) {
-                            p.inactiveState();
-                        }
-                        checkAdjustments(currBlock);
-                        move(diceValue);
-                        //Toast.makeText(MainActivity.this, x+"", Toast.LENGTH_SHORT).show();
-                    } else if (!isAlive && currentPlayerColor.equals(colour) && currentPlayerDice == 6) {
-                        currentPlayerDice = -1;
-                        for (Piece p : getPiecesByColor(colour)) {
-                            p.inactiveState();
-                        }
-                        makeAlive();
-                    }
-                });
+                this.piece.setOnClickListener(view -> chooseStackedPieceOrMove(this));
             }
             if(!normalPiece) {
                 pieceIcon.setScaleX(0.8f);pieceIcon.setScaleY(0.8f);
@@ -325,6 +337,8 @@ public class MainActivity extends AppCompatActivity {
         {
             isAlive = true;
             currBlock = startPosition;
+            stepsUntilShuffleEntrance = com.ludomaster.reference.shuffle.HomeShuffleEngine.forwardDistance(
+                startPosition, endPosition);
             piece.animate().translationX(x[startPosition]+pushXForPieces).translationY(y[startPosition]-pushYForPieces).setDuration(400).start(); // 16 75
             globalHandler.postDelayed(() -> {
                 isDiceMovableExtraChance = true;
@@ -356,6 +370,15 @@ public class MainActivity extends AppCompatActivity {
             checkAdjustments(currBlock);
             currWinnerBlock=0;
             numberOfSteps = 0;
+            if (homeShuffleEnabled && homeShuffleEngine != null) {
+                // Captured pawns must return to their colour's current home;
+                // do not reverse-walk through an obsolete start square.
+                currBlock = -1;
+                stepsUntilShuffleEntrance = 50;
+                piece.animate().cancel();
+                piece.animate().translationX(defX).translationY(defY).setDuration(350).start();
+                return;
+            }
             if(isSoundOn) {
                 deathSound = MediaPlayer.create(MainActivity.this, R.raw.death);
                 deathSound.start();
@@ -394,6 +417,9 @@ public class MainActivity extends AppCompatActivity {
         void activeState()
         {
             isClickable = true;
+            piece.bringToFront();
+            piece.setElevation(hudDp(18));
+            piece.setClickable(true);
             rotateAnimator.start();
             readyToPick.setVisibility(View.VISIBLE);
             if(piece.getScaleX()<1.0f) {
@@ -436,20 +462,37 @@ public class MainActivity extends AppCompatActivity {
                 currBlock = startPosition;
             }
 
-            if(currBlock>=51)
-                currBlock = 0;
-            else
-                currBlock++;
-
-            if(currBlock==0) { checkAdjustments(51); } else { checkAdjustments(currBlock-1); }
-
-            if(isReadyToEnterWinnerZone)
-            {
-                currBlock = winnerBlocks[currWinnerBlock];
-                currWinnerBlock++;
+            if (homeShuffleEnabled && homeShuffleEngine != null) {
+                int previous = currBlock;
+                if (isReadyToEnterWinnerZone) {
+                    if (winnerBlocks == null || currWinnerBlock < 0 || currWinnerBlock >= 6)
+                        throw new IllegalStateException("Invalid finishing lane step");
+                    // Lane positions are always indexed using this pawn's CURRENT
+                    // home assignment, never its pre-shuffle starting colour.
+                    winnerBlocks = getWinnerBlocks(endPosition);
+                    currBlock = winnerBlocks[currWinnerBlock++];
+                } else {
+                    currBlock = (currBlock + 1) % 52;
+                    if (stepsUntilShuffleEntrance > 0) --stepsUntilShuffleEntrance;
+                    if (stepsUntilShuffleEntrance == 0) {
+                        isReadyToEnterWinnerZone = true;
+                        winnerBlocks = getWinnerBlocks(endPosition);
+                    }
+                }
+                if (previous >= 0 && previous < 52) checkAdjustments(previous);
+            } else {
+                if(currBlock>=51) currBlock = 0;
+                else currBlock++;
+                if(currBlock==0) { checkAdjustments(51); } else { checkAdjustments(currBlock-1); }
+                if(isReadyToEnterWinnerZone) {
+                    currBlock = winnerBlocks[currWinnerBlock];
+                    currWinnerBlock++;
+                }
+                if(currBlock==endPosition) {
+                    winnerBlocks = getWinnerBlocks(endPosition);
+                    isReadyToEnterWinnerZone = true;
+                }
             }
-
-            if(currBlock==endPosition) { winnerBlocks = getWinnerBlocks(endPosition); isReadyToEnterWinnerZone = true; }
 
             piece.animate().translationX(x[currBlock] + pushXForPieces).translationY(y[currBlock] - pushYForPieces).setDuration(220).start();
             /*if(!isReadyToEnterWinnerZone)
@@ -594,19 +637,19 @@ public class MainActivity extends AppCompatActivity {
 
                                     hideThisPlayerDiceBg(loserplayerselectedindex);
                                     if(nop==2) {
-                                        wlistcrown2.setVisibility(View.INVISIBLE);
+                                        wlistshield2.setVisibility(View.INVISIBLE);
                                         wlistname2.setText(name);
                                         wlistpiece2.setImageDrawable(getPieceDrawableByColor(colour));
                                         winnerlistp3layout.setVisibility(GONE);
                                         winnerlistp4layout.setVisibility(GONE);
                                     } else if(nop==3) {
                                         //makeThisPlayerLoserBasedOnSelectedIndexNOP3(colour,loserplayerselectedindex);
-                                        wlistcrown3.setVisibility(View.INVISIBLE);
+                                        wlistshield3.setVisibility(View.INVISIBLE);
                                         wlistname3.setText(getLoserNameBasedOnSelectedIndex(loserplayerselectedindex));
                                         wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                                         winnerlistp4layout.setVisibility(GONE);
                                     } else {
-                                        wlistcrown4.setVisibility(View.INVISIBLE);
+                                        wlistshield4.setVisibility(View.INVISIBLE);
                                         wlistname4.setText(getLoserNameBasedOnSelectedIndex(loserplayerselectedindex));
                                         wlistpiece4.setImageDrawable(getPieceDrawableByColor(colour));
                                     }
@@ -680,6 +723,16 @@ public class MainActivity extends AppCompatActivity {
 
 
         public boolean check(int diceValue) {
+            if (homeShuffleEnabled && homeShuffleEngine != null) {
+                int remaining = isReadyToEnterWinnerZone ?
+                    (6 - currWinnerBlock) : (stepsUntilShuffleEntrance + 6);
+                // A six-step roll crossing the entry square continues into
+                // the six-square finishing lane, provided exact finish is not overshot.
+                boolean allowed = !hasCompletedItsPurpose && !isThisPlayerWon &&
+                    (isAlive ? (diceValue <= remaining) : diceValue == 6);
+                if (allowed) activeState(); else inactiveState();
+                return allowed;
+            }
             if(diceValue == 6)
             {
                 if(!isAlive || (numberOfSteps+diceValue)<57)
@@ -746,11 +799,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void showGameOverScreen() {
         saveOfflineMatchResult();
-        congratulationslayout.setVisibility(View.VISIBLE);
-        if (combatScoringEnabled || immunityEnabled) {
-            new AlertDialog.Builder(this).setTitle("Ludo Masters Match Summary")
-                .setMessage(combatSummary()).setPositiveButton("Continue", null).show();
+        congratulationslayout.setVisibility(View.GONE);
+        String winner = "Winner pending";
+        for (java.util.Map.Entry<String,Integer> rank : offlineFinishRanks.entrySet()) {
+            if (rank.getValue()==1) {
+                winner="WINNER: "+offlinePlayerNames.getOrDefault(rank.getKey(),rank.getKey());
+                break;
+            }
         }
+        RoyalResultsScreen.show(this,winner+"\n"+combatSummary(),selectedLeagueName,offlineResultSaved,offlineMatchId);
+        // Result and upload controls stay on the non-dismissible RoyalResultsScreen.
 
 
         if(isSoundOn) {
@@ -779,7 +837,7 @@ public class MainActivity extends AppCompatActivity {
         switch ((loserplayerselectedindex+1)) {
             case 1:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player3name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -788,7 +846,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case 2:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player1name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -797,7 +855,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case 3:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player2name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -806,7 +864,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case 4:
                 if(nop==3) {
-                    wlistcrown3.setVisibility(View.INVISIBLE);
+                    wlistshield3.setVisibility(View.INVISIBLE);
                     wlistpiece3.setImageDrawable(getPieceDrawableByColor(colour));
                     wlistname3.setText(player4name);
                     wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.loser1, null));
@@ -820,7 +878,7 @@ public class MainActivity extends AppCompatActivity {
         offlineFinishRanks.put(colour, currentWinnerPosition);
         switch ((currentPlayerSelectedIndex+1)) {
             case 1:
-                crownIndex1.setVisibility(View.VISIBLE);
+                shieldIndex1.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber1).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber1)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 if(nop!=2) {
@@ -833,7 +891,7 @@ public class MainActivity extends AppCompatActivity {
                 hideThisPlayerDiceBg(1);
                 break;
             case 2:
-                crownIndex2.setVisibility(View.VISIBLE);
+                shieldIndex2.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber2).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber2)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 if(nop!=2) {
@@ -845,7 +903,7 @@ public class MainActivity extends AppCompatActivity {
                 hideThisPlayerDiceBg(2);
                 break;
             case 3:
-                crownIndex3.setVisibility(View.VISIBLE);
+                shieldIndex3.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber3).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber3)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 if(nop!=2) {
@@ -857,7 +915,7 @@ public class MainActivity extends AppCompatActivity {
                 hideThisPlayerDiceBg(3);
                 break;
             case 4:
-                crownIndex4.setVisibility(View.VISIBLE);
+                shieldIndex4.setVisibility(View.VISIBLE);
                 findViewById(R.id.winnerindexnumber4).setVisibility(View.VISIBLE);
                 ((ImageView)findViewById(R.id.winnerindexnumber4)).setImageDrawable(getWinnerNumberDrawableByNumber(currentWinnerPosition));
                 addCurrentPlayerToCongratsList(colour,playername,currentWinnerPosition);
@@ -870,29 +928,29 @@ public class MainActivity extends AppCompatActivity {
     private void addCurrentPlayerToCongratsList(String color,String name,int currentWinnerPosition) {
         switch (currentWinnerPosition) {
             case 1:
-                wlistcrown1.setVisibility(View.VISIBLE);
-                wlistcrown2.setVisibility(View.INVISIBLE);
+                wlistshield1.setVisibility(View.VISIBLE);
+                wlistshield2.setVisibility(View.INVISIBLE);
                 wlistpiece1.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname1.setText(name);
                 wlistwinorlose1.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.winner1,null));
                 break;
             case 2:
-                wlistcrown2.setVisibility(View.VISIBLE);
-                wlistcrown3.setVisibility(View.INVISIBLE);
+                wlistshield2.setVisibility(View.VISIBLE);
+                wlistshield3.setVisibility(View.INVISIBLE);
                 wlistpiece2.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname2.setText(name);
                 wlistwinorlose2.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.winner1,null));
                 break;
             case 3:
-                wlistcrown3.setVisibility(View.VISIBLE);
-                wlistcrown4.setVisibility(View.INVISIBLE);
+                wlistshield3.setVisibility(View.VISIBLE);
+                wlistshield4.setVisibility(View.INVISIBLE);
                 wlistpiece3.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname3.setText(name);
                 wlistwinorlose3.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.winner1,null));
                 break;
             case 4:
-                wlistcrown4.setVisibility(View.VISIBLE);
-                wlistcrown4.setVisibility(View.INVISIBLE);
+                wlistshield4.setVisibility(View.VISIBLE);
+                wlistshield4.setVisibility(View.INVISIBLE);
                 wlistpiece1.setImageDrawable(getPieceDrawableByColor(color));
                 wlistname1.setText(name);
                 wlistwinorlose4.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.loser1,null));
@@ -914,14 +972,14 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
-    Drawable getWinnerCrownDrawableByNumber(int x) {
+    Drawable getWinnershieldDrawableByNumber(int x) {
         switch (x) {
             case 1:
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.listwinner1crown,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lm_shield,null);
             case 2:
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.listwinner2crown,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lm_shield,null);
             case 3:
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.listwinner3crown,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lm_shield,null);
             case 4:
                 return null;
         }
@@ -995,6 +1053,52 @@ public class MainActivity extends AppCompatActivity {
                     else { piece.setTranslationY((yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i))-(pieceWidth * scale * 0.30f)); }
                 }
             }
+        }
+    }
+
+    /**
+     * A visible pawn may cover other pawns on the same square. Offer every
+     * selectable pawn explicitly instead of relying on z-order or tiny hitboxes.
+     */
+    private void chooseStackedPieceOrMove(Piece tapped) {
+        if (!currentPlayerColor.equals(tapped.colour) || currentPlayerDice < 1) return;
+        if (tapped.isAlive && tapped.isClickable) {
+            executeSelectedPiece(tapped); // Same-colour pieces are interchangeable here.
+        } else {
+            for(Piece candidate:getPiecesByColor(tapped.colour)) {
+                if(candidate.currBlock==tapped.currBlock && candidate.isAlive && candidate.isClickable) {
+                    executeSelectedPiece(candidate); return;
+                }
+            }
+            executeSelectedPiece(tapped);
+        }
+    }
+
+    /** Prioritise all movable current-player tokens over other colours after a dice roll. */
+    private void prioritiseCurrentPlayerPieces() {
+        if(currentPlayerColor==null) return;
+        for(Piece p:getPiecesByColor(currentPlayerColor)) {
+            if(p.isClickable && !p.hasCompletedItsPurpose && p.piece!=null) {
+                p.piece.bringToFront();
+                p.piece.setElevation(hudDp(15));
+                p.piece.setClickable(true);
+            }
+        }
+    }
+
+    private void executeSelectedPiece(Piece selected) {
+        if (!currentPlayerColor.equals(selected.colour) || currentPlayerDice < 1) return;
+        if (selected.isAlive && selected.isClickable && !selected.hasCompletedItsPurpose) {
+            int rolled = currentPlayerDice;
+            currentPlayerDice = -1;
+            for (Piece other : getPiecesByColor(selected.colour)) other.inactiveState();
+            checkAdjustments(selected.currBlock);
+            selected.diceValue = rolled;
+            selected.move(rolled);
+        } else if (!selected.isAlive && currentPlayerDice == 6) {
+            currentPlayerDice = -1;
+            for (Piece other : getPiecesByColor(selected.colour)) other.inactiveState();
+            selected.makeAlive();
         }
     }
 
@@ -1084,6 +1188,105 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private int hudDp(float amount) {
+        return Math.round(amount * getResources().getDisplayMetrics().density);
+    }
+
+    /** Always-visible, compact stats strip above the original board, without altering its tiles. */
+    private void initStatsHud() {
+        if (statsHud != null) return;
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        statsHud = new LinearLayout(this);
+        statsHud.setOrientation(LinearLayout.HORIZONTAL);
+        statsHud.setPadding(hudDp(4), hudDp(4), hudDp(4), hudDp(4));
+        statsHud.setClipChildren(false);
+        ConstraintLayout.LayoutParams hudParams = new ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(79));
+        hudParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+        hudParams.topMargin = hudDp(69);
+        root.addView(statsHud, hudParams);
+
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            TextView cell = new TextView(this);
+            cell.setTextSize(11);
+            cell.setTextColor(Color.WHITE);
+            cell.setGravity(Gravity.CENTER);
+            cell.setMaxLines(4);
+            cell.setPadding(hudDp(2),hudDp(3),hudDp(2),hudDp(3));
+            GradientDrawable background = new GradientDrawable();
+            background.setColor(Color.rgb(20,31,55));
+            background.setCornerRadius(hudDp(9));
+            int accent;
+            switch (color) {
+                case "red": accent=0xffe84248; break;
+                case "green": accent=0xff28b66e; break;
+                case "yellow": accent=0xffffca44; break;
+                default: accent=0xff428aff;
+            }
+            background.setStroke(hudDp(2),accent);
+            cell.setBackground(background);
+            LinearLayout.LayoutParams cellParams=new LinearLayout.LayoutParams(0,-1,1f);
+            cellParams.setMargins(hudDp(2),0,hudDp(2),0);
+            statsHud.addView(cell,cellParams);
+            statsCells.put(color,cell);
+        }
+        statsHud.bringToFront();
+        addLiveAudioButton(root);
+        refreshStatsHud();
+    }
+
+    private void addLiveAudioButton(ConstraintLayout root) {
+        android.widget.Button audio=new android.widget.Button(this);
+        audio.setText("SOUND");
+        audio.setTextSize(10);
+        audio.setTextColor(Color.WHITE);
+        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff18559c));
+        ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(108),hudDp(45));
+        params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topMargin=hudDp(16);
+        root.addView(audio,params);
+        audio.setOnClickListener(v->{
+            isSoundOn=!isSoundOn;
+            sharedPreferences.edit().putBoolean("sound",isSoundOn).apply();
+            audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
+            if(!isSoundOn && congratulationSound!=null && congratulationSound.isPlaying())
+                congratulationSound.pause();
+        });
+        audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
+        audio.bringToFront();
+    }
+
+    private void refreshStatsHud() {
+        prioritiseCurrentPlayerPieces();
+        if (statsHud == null) return;
+        for (String color : new String[]{"red","green","yellow","blue"}) {
+            TextView cell=statsCells.get(color);
+            if (cell == null) continue;
+            String name=offlinePlayerNames.get(color);
+            if (name==null) {
+                cell.setVisibility(View.GONE);
+                continue;
+            }
+            cell.setVisibility(View.VISIBLE);
+            if(name.length()>10) name=name.substring(0,9)+"…";
+            int kills=getCount(killCounts,color);
+            int deaths=getCount(deathCounts,color);
+            StringBuilder display=new StringBuilder();
+            display.append(name).append("\n");
+            display.append("K:").append(kills).append("  D:").append(deaths).append("\n");
+            display.append("Shield:").append(immunityEnabled?getCount(immunityShields,color):"OFF");
+            if (combatScoringEnabled) display.append("\nPts:").append(5*(kills-deaths));
+            cell.setText(display.toString());
+            cell.setContentDescription(color+" player "+name+
+                ", kills "+kills+", deaths "+deaths+
+                ", shields "+(immunityEnabled?getCount(immunityShields,color):0));
+            cell.setAlpha(color.equals(currentPlayerColor)?1f:0.84f);
+        }
+    }
+
     private int getCount(java.util.Map<String,Integer> values, String color) {
         Integer count = values.get(color);
         return count == null ? 0 : count;
@@ -1099,6 +1302,7 @@ public class MainActivity extends AppCompatActivity {
         incrementCount(killCounts, attacker.colour);
         incrementCount(deathCounts, defender.colour);
         if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
+        refreshStatsHud();
         if (combatScoringEnabled || immunityEnabled) {
             String summary = attacker.colour + " captured " + defender.colour;
             if (combatScoringEnabled) summary += " (+5 / -5)";
@@ -1128,6 +1332,7 @@ public class MainActivity extends AppCompatActivity {
                             .setMessage("Spend one immunity shield to protect this pawn? Hand the device to the defender.")
                             .setPositiveButton("Use Shield", (dialog, which) -> {
                                 immunityShields.put(colour, getCount(immunityShields,colour) - 1);
+                                refreshStatsHud();
                                 Toast.makeText(this, "Capture blocked by immunity", Toast.LENGTH_SHORT).show();
                                 continuation.accept(false);
                             })
@@ -1146,6 +1351,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void finishPieceMove(Piece piece, boolean captured) {
+        refreshStatsHud();
+        if (!captured) applyPendingHomeShuffle();
         globalHandler.postDelayed(() -> {
             if (!piece.isThisPlayerWon) checkAdjustments(piece.currBlock);
         },10);
@@ -1174,17 +1381,35 @@ public class MainActivity extends AppCompatActivity {
             rules.put("combatScoring", combatScoringEnabled);
             rules.put("immunity", immunityEnabled);
             rules.put("dynamicHomeShuffle", homeShuffleEnabled);
+            rules.put("shuffleIntervalSeconds", shuffleIntervalSeconds);
             result.put("rules", rules);
+            result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
+            result.put("leagueName",selectedLeagueName==null?"":selectedLeagueName);
             JSONArray slots = new JSONArray();
-            int defaultLastRank = offlinePlayerNames.size();
+            java.util.Set<Integer> assignedRanks = new java.util.HashSet<>();
+            java.util.Set<Integer> reservedRanks = new java.util.HashSet<>();
+            for (Integer existingRank : offlineFinishRanks.values())
+                if (existingRank != null && existingRank >= 1 && existingRank <= offlinePlayerNames.size()) reservedRanks.add(existingRank);
+            int nextFallbackRank = 1;
             for (java.util.Map.Entry<String,String> player : offlinePlayerNames.entrySet()) {
                 String color = player.getKey();
                 JSONObject slot = new JSONObject();
                 slot.put("color", color);
                 slot.put("offlineName", player.getValue());
-                slot.put("leaguePlayerId", JSONObject.NULL);
-                slot.put("finishRank", offlineFinishRanks.containsKey(color) ?
-                    offlineFinishRanks.get(color) : defaultLastRank);
+                boolean standardBot = gametype == 4 &&
+                    ("Computer 1".equals(player.getValue()) ||
+                     "Computer 2".equals(player.getValue()) ||
+                     "Computer 3".equals(player.getValue()));
+                slot.put("isBot",standardBot);
+                Integer mapped = selectedLeaguePlayerIds.get(player.getValue());
+                slot.put("leaguePlayerId", mapped==null ? JSONObject.NULL : mapped);
+                Integer rank = offlineFinishRanks.get(color);
+                if (rank == null || rank < 1 || rank > offlinePlayerNames.size() || assignedRanks.contains(rank)) {
+                    while (assignedRanks.contains(nextFallbackRank) || reservedRanks.contains(nextFallbackRank)) nextFallbackRank++;
+                    rank = nextFallbackRank++;
+                }
+                assignedRanks.add(rank);
+                slot.put("finishRank", rank);
                 slot.put("kills", getCount(killCounts,color));
                 slot.put("deaths", getCount(deathCounts,color));
                 slot.put("remainingShields", getCount(immunityShields,color));
@@ -1411,6 +1636,7 @@ public class MainActivity extends AppCompatActivity {
                 isRolling = false;
 
                 currentPlayerDice = ch;
+                // Ensure active pieces are promoted when their roll is available.
 
                 List<Piece> pieces = getPiecesByColor(currentPlayerColor);
                 int x;
@@ -1741,10 +1967,20 @@ public class MainActivity extends AppCompatActivity {
         Objects.requireNonNull(getSupportActionBar()).hide();
 
         initViews();
+        initStatsHud();
 
         globalHandler = new Handler();
         offlineMatchStartedAt = System.currentTimeMillis();
         offlineMatchId = UUID.randomUUID().toString();
+        selectedLeagueId = getIntent().getIntExtra("league_id",0);
+        selectedLeagueName = getIntent().getStringExtra("league_name");
+        int[] mappedIds = getIntent().getIntArrayExtra("league_player_ids");
+        String[] mappedNames = getIntent().getStringArrayExtra("league_player_names");
+        if(mappedIds!=null && mappedNames!=null) {
+            for(int i=0;i<Math.min(mappedIds.length,mappedNames.length);i++)
+                if(mappedIds[i]>0 && mappedNames[i]!=null)
+                    selectedLeaguePlayerIds.put(mappedNames[i],mappedIds[i]);
+        }
 
         ObjectAnimator animator = ObjectAnimator.ofFloat(hintArrow, "translationX", -20, 20);
         animator.setRepeatCount(ValueAnimator.INFINITE);
@@ -1759,6 +1995,7 @@ public class MainActivity extends AppCompatActivity {
         combatScoringEnabled = extras != null && extras.getBoolean("rule_combat", false);
         immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
         homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
+        shuffleIntervalSeconds = extras == null ? 300 : Math.max(60, Math.min(600, extras.getInt("shuffle_interval_seconds",300)));
 
         nop = extras.getInt("nop");
         String color = extras.getString("color");
@@ -1822,10 +2059,10 @@ public class MainActivity extends AppCompatActivity {
 
         //
 
-        crownIndex1.getLayoutParams().height = (int) total;
-        crownIndex2.getLayoutParams().height = (int) total;
-        crownIndex3.getLayoutParams().height = (int) total;
-        crownIndex4.getLayoutParams().height = (int) total;
+        shieldIndex1.getLayoutParams().height = (int) total;
+        shieldIndex2.getLayoutParams().height = (int) total;
+        shieldIndex3.getLayoutParams().height = (int) total;
+        shieldIndex4.getLayoutParams().height = (int) total;
 
         p1exitbox.getLayoutParams().height = (int) (total * 0.985);
         p2exitbox.getLayoutParams().height = (int) (total * 0.985);
@@ -2065,21 +2302,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        menuexitbtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                ingamemenuitemslayout.setVisibility(GONE);
-                quitgamelayout.setScaleX(0.0f);
-                quitgamelayout.setScaleY(0.0f);
-                quitgamelayout.setVisibility(View.VISIBLE);
-                quitgamelayout.animate().scaleX(1.0f).scaleY(1.0f).setInterpolator(new OvershootInterpolator()).setDuration(200).setListener(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        super.onAnimationEnd(animation);
-                        quitgamelayout.animate().setListener(null);
-                    }
-                }).start();
-            }
+        menuexitbtn.setOnClickListener(view -> {
+            ingamemenuitemslayout.setVisibility(GONE);
+            RoyalDialog.confirm(MainActivity.this, "LEAVE MATCH?",
+                "Your unfinished game will be lost if you leave.",
+                "EXIT MATCH", () -> {
+                    stopEverything();
+                    Intent i = new Intent(MainActivity.this,HomeActivity.class);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(i);
+                    finish();
+                });
         });
 
         // exit layout views
@@ -2420,6 +2653,8 @@ public class MainActivity extends AppCompatActivity {
             mainDiceImageView.setVisibility(GONE);
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
+            initialiseHomeShuffle();
+            if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
         redHomeBlink.setLayoutParams(lp);
         lp.addRule(RelativeLayout.ALIGN_TOP,R.id.imageView); lp.addRule(RelativeLayout.ALIGN_LEFT,R.id.imageView);
@@ -2427,7 +2662,189 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+
+    private int shuffleColourIndex(String colour) {
+        switch (colour) {
+            case "red": return 0;
+            case "green": return 1;
+            case "blue": return 2;
+            case "yellow": return 3;
+            default: throw new IllegalArgumentException("colour");
+        }
+    }
+
+    private int shuffleSeatForSlot(int slot) {
+        return new int[]{2,4,3,1}[slot];
+    }
+
+    private java.util.List<Piece> shufflePiecesForColour(int index) {
+        switch (index) {
+            case 0: return rp;
+            case 1: return gp;
+            case 2: return bp;
+            case 3: return yp;
+            default: throw new IllegalArgumentException("colour index");
+        }
+    }
+
+    private void initialiseHomeShuffle() {
+        if (!homeShuffleEnabled) return;
+        homeShuffleEngine = new com.ludomaster.reference.shuffle.HomeShuffleEngine(System.nanoTime());
+        int[] existing = {-1,-1,-1,-1};
+        boolean[] taken = new boolean[4];
+        for (int colour=0; colour<4; colour++) {
+            java.util.List<Piece> pieces = shufflePiecesForColour(colour);
+            if (pieces == null || pieces.isEmpty()) continue;
+            int start = pieces.get(0).startPosition;
+            for (int slot=0; slot<4; slot++) {
+                if (com.ludomaster.reference.shuffle.HomeShuffleEngine.START[slot] == start) {
+                    if (taken[slot]) throw new IllegalStateException("Duplicate starting home");
+                    existing[colour]=slot; taken[slot]=true; break;
+                }
+            }
+            if (existing[colour] < 0) throw new IllegalStateException("Unknown physical start "+start);
+        }
+        for (int colour=0; colour<4; colour++) {
+            if (existing[colour] >= 0) continue;
+            for (int slot=0; slot<4; slot++) {
+                if (!taken[slot]) { existing[colour]=slot; taken[slot]=true; break; }
+            }
+        }
+        homeShuffleEngine.restoreAssignment(existing);
+        nextShuffleDueAtMs = android.os.SystemClock.elapsedRealtime()+shuffleIntervalSeconds*1000L;
+        // Start the scheduler when gameplay initializes; onResume alone runs too early.
+        globalHandler.removeCallbacks(shuffleTimerTick);
+        globalHandler.postDelayed(shuffleTimerTick, 1000);
+    }
+
+    /** Read-only countdown: pending shuffle applies after a completed move. */
+    private void addShuffleCountdown() {
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        shuffleCountdownView = new TextView(this);
+        shuffleCountdownView.setTextColor(Color.WHITE);
+        shuffleCountdownView.setTextSize(12);
+        shuffleCountdownView.setGravity(Gravity.CENTER);
+        shuffleCountdownView.setBackgroundColor(0xff8c398a);
+        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(hudDp(126),hudDp(45));
+        params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topMargin = hudDp(16);
+        root.addView(shuffleCountdownView, params);
+        updateShuffleCountdown(android.os.SystemClock.elapsedRealtime());
+        shuffleCountdownView.bringToFront();
+    }
+
+    private void updateShuffleCountdown(long now) {
+        if (shuffleCountdownView == null || homeShuffleEngine == null) return;
+        if (homeShuffleEngine.isPending()) {
+            shuffleCountdownView.setText("SHUFFLE PENDING");
+        } else {
+            long seconds = Math.max(0L, (nextShuffleDueAtMs - now + 999L) / 1000L);
+            shuffleCountdownView.setText(String.format(java.util.Locale.US,
+                "SHUFFLE %02d:%02d", seconds / 60L, seconds % 60L));
+        }
+    }
+
+    /** In Shuffle mode any seat may become occupied, including originally unused seats. */
+    private void refreshShuffleDicePanels() {
+        if (!homeShuffleEnabled || d == null) return;
+        d.tLeftLayout.setVisibility(View.VISIBLE);
+        d.tRightLayout.setVisibility(View.VISIBLE);
+        d.bLeftLayout.setVisibility(View.VISIBLE);
+        d.bRightLayout.setVisibility(View.VISIBLE);
+        d.tLeftImgColor.setVisibility(View.INVISIBLE);
+        d.tRightImgColor.setVisibility(View.INVISIBLE);
+        d.bLeftImgColor.setVisibility(View.INVISIBLE);
+        d.bRightImgColor.setVisibility(View.INVISIBLE);
+        for (Player player : players) {
+            ImageView icon;
+            // All dice icons are bound to the same seat map as pawn home yards.
+            switch (player.position) {
+                case 1: icon = d.bLeftImgColor; break;
+                case 2: icon = d.tLeftImgColor; break;
+                case 3: icon = d.tRightImgColor; break;
+                case 4: icon = d.bRightImgColor; break;
+                default: continue;
+            }
+            icon.setImageDrawable(getPieceDrawableByColor(player.color));
+            icon.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void applyPendingHomeShuffle() {
+        if (!homeShuffleEnabled || homeShuffleEngine == null || shuffleMatchEnding ||
+            !homeShuffleEngine.applyAtSafeBoundary(false)) return;
+        for (int colour=0; colour<4; colour++) {
+            int slot=homeShuffleEngine.homeSlot(colour);
+            int newStart=homeShuffleEngine.startSquare(colour);
+            int newEntrance=homeShuffleEngine.entranceSquare(colour);
+            int seat = shuffleSeatForSlot(slot);
+            float[][] yard = seat == 1 ? pos1 : seat == 2 ? pos2 : seat == 3 ? pos3 : pos4;
+            java.util.List<Piece> pieces=shufflePiecesForColour(colour);
+            for (int index=0; index<pieces.size(); index++) {
+                Piece p=pieces.get(index);
+                p.startPosition=newStart;
+                p.endPosition=newEntrance;
+                p.defX=yard[index][0]; p.defY=yard[index][1];
+                if (p.hasCompletedItsPurpose) {
+                    p.winnerBlocks = getWinnerBlocks(newEntrance);
+                    p.currBlock = p.winnerBlocks[5];
+                    p.piece.animate().translationX(x[p.currBlock]+pushXForPieces)
+                        .translationY(y[p.currBlock]-pushYForPieces).setDuration(350).start();
+                    continue;
+                }
+                if (!p.isAlive) {
+                    p.piece.animate().translationX(p.defX).translationY(p.defY).setDuration(350).start();
+                } else if (p.isReadyToEnterWinnerZone && p.currWinnerBlock > 0) {
+                    p.winnerBlocks=getWinnerBlocks(newEntrance);
+                    p.currBlock=p.winnerBlocks[p.currWinnerBlock-1];
+                    p.piece.animate().translationX(x[p.currBlock]+pushXForPieces)
+                        .translationY(y[p.currBlock]-pushYForPieces).setDuration(350).start();
+                } else if(p.currBlock >= 0 && p.currBlock < 52) {
+                    int steps=com.ludomaster.reference.shuffle.HomeShuffleEngine.forwardDistance(
+                        p.currBlock,newEntrance);
+                    p.stepsUntilShuffleEntrance = steps == 0 ? 52 : steps;
+                    p.isReadyToEnterWinnerZone=false;
+                    p.currWinnerBlock=0;
+                }
+            }
+        }
+        final int[] ownership = homeShuffleEngine.assignment();
+        final float rotation = ludoBoard.getRotation();
+        final int repaintVersion = ++shuffleRepaintVersion;
+        new Thread(() -> {
+            final android.graphics.Bitmap bitmap =
+                com.ludomaster.reference.shuffle.HomeBoardPainter.render(
+                    getResources(),R.drawable.ludofinalboard3,ownership,rotation);
+            runOnUiThread(() -> {
+                if (!shuffleMatchEnding && !isFinishing() && repaintVersion == shuffleRepaintVersion) {
+                    ludoBoard.setImageBitmap(bitmap);
+                } else bitmap.recycle();
+            });
+        }, "shuffle-board-repaint").start();
+        ++shuffleTurnGeneration;
+        for (Player player : players) {
+            player.position = shuffleSeatForSlot(homeShuffleEngine.homeSlot(shuffleColourIndex(player.color)));
+            player.playerNameTextView = getPlayerNameByPosition(player.position);
+        }
+        for (int seat = 1; seat <= 4; seat++) getPlayerNameByPosition(seat).setText("");
+        for (Player player : players) {
+            if (player.position >= 1 && player.position <= 4)
+                getPlayerNameByPosition(player.position).setText(player.name);
+        }
+        refreshShuffleDicePanels();
+        // Preserve the exact player who owned the dice when homes swapped.
+        if (currentPlayerColor != null && !currentPlayerColor.isEmpty()) {
+            currentPlayerPosition = shuffleSeatForSlot(
+                homeShuffleEngine.homeSlot(shuffleColourIndex(currentPlayerColor)));
+            moveDice(currentPlayerPosition);
+        }
+        updateShuffleCountdown(android.os.SystemClock.elapsedRealtime());
+        Toast.makeText(this,"Home Shuffle! Every colour changed home.",Toast.LENGTH_SHORT).show();
+    }
+
     private void stopEverything() {
+        shuffleMatchEnding = true;
         globalHandler.removeCallbacksAndMessages(null);
         d.diceHandler.removeCallbacksAndMessages(null);
         if(congratulationSound!=null) {
@@ -2439,7 +2856,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        shuffleMatchEnding = true;
+        if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
         super.onDestroy();
     }
 
@@ -2589,6 +3014,7 @@ public class MainActivity extends AppCompatActivity {
 
     void switchPlayers()
     {
+        ++shuffleTurnGeneration;
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
@@ -2599,11 +3025,11 @@ public class MainActivity extends AppCompatActivity {
         if(currentPlayer.isBot) {
             hintArrow.setVisibility(GONE);
             moveDice(currentPlayerPosition);
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    d.roll();
-                }
+            final String expectedColour = currentPlayerColor;
+            final int expectedTurn = ++shuffleTurnGeneration;
+            globalHandler.postDelayed(() -> {
+                if (!shuffleMatchEnding && expectedTurn == shuffleTurnGeneration &&
+                    expectedColour.equals(currentPlayerColor) && d != null) d.roll();
             },150);
         } else {
             moveDice(currentPlayerPosition);
@@ -2615,6 +3041,28 @@ public class MainActivity extends AppCompatActivity {
 
     void moveDice(int position)
     {
+        // A reused LayoutParams object keeps old constraints across home swaps.
+        // Clear every anchor before rebuilding the position for the active colour.
+        ConstraintLayout.LayoutParams diceParams =
+            (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
+        diceParams.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.endToStart = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.topToTop = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.bottomToBottom = ConstraintLayout.LayoutParams.UNSET;
+        ConstraintLayout.LayoutParams hintParams =
+            (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
+        hintParams.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.endToStart = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.topToTop = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.bottomToBottom = ConstraintLayout.LayoutParams.UNSET;
         switch(position)
         {
             case 1:
@@ -2635,6 +3083,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void createPieces(String color, int position,String playername,boolean isBot) {
         offlinePlayerNames.put(color, playername == null ? color : playername);
+        refreshStatsHud();
         if(nop==2) {
             if(players.size()==0)
             { players.add(new Player(position, color, playername, isBot, 0)); }
@@ -2748,10 +3197,10 @@ public class MainActivity extends AppCompatActivity {
         mainDiceImageView = findViewById(R.id.maindiceimageview);
         hintArrow = findViewById(R.id.hintarrowleft);
 
-        crownIndex1 = findViewById(R.id.winnercrownindex1);
-        crownIndex2 = findViewById(R.id.winnercrownindex2);
-        crownIndex3 = findViewById(R.id.winnercrownindex3);
-        crownIndex4 = findViewById(R.id.winnercrownindex4);
+        shieldIndex1 = findViewById(R.id.lm_shieldindex1);
+        shieldIndex2 = findViewById(R.id.lm_shieldindex2);
+        shieldIndex3 = findViewById(R.id.lm_shieldindex3);
+        shieldIndex4 = findViewById(R.id.lm_shieldindex4);
 
         // ingame menu items
         ingamemenubtn = findViewById(R.id.ingamemenubtn);
@@ -2814,10 +3263,10 @@ public class MainActivity extends AppCompatActivity {
         winnerlistp3layout = findViewById(R.id.winnerpositionlayout3);
         winnerlistp4layout = findViewById(R.id.winnerpositionlayout4);
 
-        wlistcrown1 = findViewById(R.id.winnerliscrown1);
-        wlistcrown2 = findViewById(R.id.winnerliscrown2);
-        wlistcrown3 = findViewById(R.id.winnerliscrown3);
-        wlistcrown4 = findViewById(R.id.winnerliscrown4);
+        wlistshield1 = findViewById(R.id.winnerlisshield1);
+        wlistshield2 = findViewById(R.id.winnerlisshield2);
+        wlistshield3 = findViewById(R.id.winnerlisshield3);
+        wlistshield4 = findViewById(R.id.winnerlisshield4);
         wlistpiece1 = findViewById(R.id.winnerlistp1);
         wlistpiece2 = findViewById(R.id.winnerlistp2);
         wlistpiece3 = findViewById(R.id.winnerlistp3);
@@ -3023,6 +3472,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (homeShuffleEnabled && homeShuffleEngine != null && globalHandler != null && !shuffleMatchEnding) {
+            globalHandler.removeCallbacks(shuffleTimerTick);
+            globalHandler.postDelayed(shuffleTimerTick,1000);
+        }
         View dview = getWindow().getDecorView();
         int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
         dview.setSystemUiVisibility(uiOptions);
@@ -3101,6 +3554,7 @@ public class MainActivity extends AppCompatActivity {
         switch (n)
         {
             case 0:
+            case 50:
                 return wBlocks52;
             case 11:
                 return wBlocks58;
@@ -3115,8 +3569,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if(quitgamelayout.getVisibility()==View.VISIBLE)
-        { ingamenobtn.callOnClick(); } else
-        { menuexitbtn.callOnClick(); }
+        RoyalDialog.confirm(this, "Leave this match?", "Your current unsaved match progress may be lost.",
+            "EXIT MATCH", () -> finish());
     }
 }

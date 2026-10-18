@@ -132,6 +132,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_home);
         Objects.requireNonNull(getSupportActionBar()).hide();
         initViews();
+        findViewById(R.id.root).post(this::installModernLanding);
         View v = findViewById(R.id.homebackgroundview);
         ConstraintLayout.LayoutParams bgparams = new ConstraintLayout.LayoutParams((int)pxWidth,(int)(pxHeight+getStatusBarHeight()+60));
         v.setLayoutParams(bgparams);
@@ -181,19 +182,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         clickSoundEffect.seekTo(0);
 
         ImageView imageView = findViewById(R.id.imageView15);
-        Glide.with(this)
-                .asGif()
-                .load(R.raw.ludotopmainicon)
-                .into(new DrawableImageViewTarget(imageView) {
-                    @Override
-                    public void onResourceReady(@NonNull Drawable resource, @Nullable Transition<? super Drawable> transition) {
-                        if (resource instanceof GifDrawable) {
-                            GifDrawable gifDrawable = (GifDrawable) resource;
-                            gifDrawable.setLoopCount(GifDrawable.LOOP_FOREVER);
-                            gifDrawable.start();
-                        }
-                    }
-                }.getView());
+        imageView.setImageResource(R.drawable.ludo_masters_splash);
+        imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         rotateAnimator = ObjectAnimator.ofFloat(findViewById(R.id.imageView21),"rotation",0,360);
         rotateAnimator.setDuration(900);
         rotateAnimator.setRepeatCount(ObjectAnimator.INFINITE);
@@ -209,7 +199,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
         if(!isPlayerLoggedIn) {
             int tempnum = (int) Math.floor(Math.random()*7777)+2145;
-            firstLoginLayout.setVisibility(View.VISIBLE);
+            firstLoginLayout.setVisibility(View.GONE);
             String generatedguestname = "Guest"+tempnum;
             stcsusernametextview.setText(generatedguestname);
             playerNameBtnComTextView.setText(generatedguestname);
@@ -479,7 +469,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void onClick(View view) {
                 statisticslayout.setVisibility(View.GONE);
-                findViewById(R.id.guestprofilelayout).setVisibility(View.VISIBLE);
+                findViewById(R.id.guestprofilelayout).setVisibility(View.GONE);
             }
         });
         stcsprofpic.setOnClickListener(new View.OnClickListener() {
@@ -563,9 +553,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         stgssharebtn.setOnClickListener(noInternetOnClick);stgslikebtn.setOnClickListener(noInternetOnClick);stgsgeturpverifiedbtn.setOnClickListener(noInternetOnClick);stgsplaybtn.setOnClickListener(noInternetOnClick);stgslanguagebtn.setOnClickListener(noInternetOnClick);stgsselectbtn.setOnClickListener(noInternetOnClick);stgsviewbtn1.setOnClickListener(noInternetOnClick);stgsfaqbtn.setOnClickListener(noInternetOnClick);stgscomposebtn.setOnClickListener(noInternetOnClick);stgsrulesbtn.setOnClickListener(noInternetOnClick);stgsviewbtn2.setOnClickListener(noInternetOnClick);stgsmoregamesbtn.setOnClickListener(noInternetOnClick);stgslboardbtn.setOnClickListener(noInternetOnClick);stgsviewbtn3.setOnClickListener(noInternetOnClick);stgseditbtn.setOnClickListener(noInternetOnClick);stgsinfobtn.setOnClickListener(noInternetOnClick);stgsdelaccountbtn.setOnClickListener(noInternetOnClick);stgsfbbtn.setOnClickListener(noInternetOnClick);stgsinstabtn.setOnClickListener(noInternetOnClick);stgstwitterbtn.setOnClickListener(noInternetOnClick);stgsytbtn.setOnClickListener(noInternetOnClick);stgsmoregameslongbtn.setOnClickListener(noInternetOnClick);
 
 
+        // Offline play never requires an avatar, profile setup or third-party login.
+        firstLoginLayout.setVisibility(View.GONE);
+        guestprofilecreateoreditlayout.setVisibility(View.GONE);
+
         // setting listeners to first login layout views
         lgnwfbbtn.setOnTouchListener(clickEffect);snwgglbtn.setOnTouchListener(clickEffect);snwpgbtn.setOnTouchListener(clickEffect);playasguestbtn.setOnTouchListener(clickEffect);
-        lgnwfbbtn.performClick();
+        // Removed unsupported third-party authentication and forced login popup.
         lgnwfbbtn.setOnClickListener(noInternetOnClick);snwgglbtn.setOnClickListener(noInternetOnClick);snwpgbtn.setOnClickListener(noInternetOnClick);
         playasguestbtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -2269,11 +2263,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onBackPressed() {
-        if(exitAppLayout.getVisibility()==View.VISIBLE) {
-            exitNoBtn.callOnClick();
-        } else {
-            exitgamebtn.callOnClick();
-        }
+        RoyalDialog.confirm(this, "Exit Ludo Masters?", "Your offline games remain available next time.",
+            "EXIT APP", () -> finishAffinity());
     }
 
     @Override
@@ -2282,6 +2273,111 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         if (isMusicOn) {
             m.pause();
         }
+    }
+
+    /** Clean Ludo Masters entry page; preserve only the underlying offline match setup. */
+    private void startRoyalMatchSetup(boolean computer) {
+        Intent intent = new Intent(this, RoyalSetupActivity.class);
+        intent.putExtra("computer",computer);
+        startActivity(intent);
+    }
+
+    private void installModernLanding() {
+        androidx.constraintlayout.widget.ConstraintLayout root = findViewById(R.id.root);
+        if (root == null) return;
+        android.widget.FrameLayout landing = new android.widget.FrameLayout(this);
+        landing.setBackgroundResource(R.drawable.ludo_masters_game_background);
+        android.widget.ImageView artwork = new android.widget.ImageView(this);
+        int menuArt = getResources().getIdentifier("lm_royal_menu","drawable",getPackageName());
+        if (menuArt != 0) artwork.setImageResource(menuArt);
+        else artwork.setImageResource(R.drawable.ludo_masters_splash);
+        artwork.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
+        landing.addView(artwork,new android.widget.FrameLayout.LayoutParams(-1,-1));
+        if(menuArt != 0) {
+            // Exact interactive hit boxes for user-provided 941 x 1672 menu art.
+            addRoyalHotspot(landing, .14f,.54f,.72f,.13f, () -> {
+                startRoyalMatchSetup(true);
+            });
+            addRoyalHotspot(landing, .14f,.69f,.72f,.13f, () -> {
+                startRoyalMatchSetup(false);
+            });
+        } else {
+            // Fully functional fallback until original assets have been imported.
+            android.widget.LinearLayout controls = new android.widget.LinearLayout(this);
+            controls.setOrientation(1);
+            controls.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+            controls.setPadding(24,24,24,110);
+            android.widget.Button computerBtn = new android.widget.Button(this);
+            computerBtn.setText("COMPUTER");
+            controls.addView(computerBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
+            computerBtn.setOnClickListener(v -> {startRoyalMatchSetup(true);});
+            android.widget.Button passBtn = new android.widget.Button(this);
+            passBtn.setText("PASS N PLAY");
+            controls.addView(passBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
+            passBtn.setOnClickListener(v -> {startRoyalMatchSetup(false);});
+            landing.addView(controls,new android.widget.FrameLayout.LayoutParams(-1,-1));
+        }
+        android.widget.Button login = new android.widget.Button(this);
+        login.setText("LOGIN / PROFILE");
+        login.setTextColor(0xff17234a);
+        login.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xffffd36e));
+        android.widget.FrameLayout.LayoutParams loginParams = new android.widget.FrameLayout.LayoutParams(-2,52,android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
+        loginParams.bottomMargin = 22;
+        landing.addView(login, loginParams);
+        royalLoginButton=login;
+        login.setOnClickListener(v -> startActivity(new Intent(this,WebLoginActivity.class)));
+        android.widget.Button audio = new android.widget.Button(this);
+        audio.setText("🔊 SOUND / MUSIC");
+        audio.setTextColor(0xffffffff);
+        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff25519e));
+        android.widget.FrameLayout.LayoutParams audioParams = new android.widget.FrameLayout.LayoutParams(-2,50,android.view.Gravity.TOP | android.view.Gravity.END);
+        audioParams.topMargin = 64;audioParams.rightMargin=16;
+        landing.addView(audio,audioParams);
+        royalAudioButton=audio;
+        audio.setOnClickListener(v -> AudioSettings.show(this));
+
+        root.addView(landing,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
+        landing.setElevation(1000f);
+        landing.bringToFront();
+        this.royalLanding=landing;
+        updateRoyalLoginLabel();
+        if(!loginChoiceShown && SecureLogin.token(this)==null) {
+            loginChoiceShown=true;
+            landing.post(this::showLoginChoice);
+        }
+    }
+    private boolean loginChoiceShown=false;
+    private android.widget.Button royalLoginButton;
+    private android.widget.Button royalAudioButton;
+    private android.widget.FrameLayout royalLanding;
+    private void updateRoyalLoginLabel() {
+        if(royalLanding==null)return;
+        android.widget.Button login=royalLoginButton;
+        if(login==null)return;
+        String name = getSharedPreferences("LudoModUser", MODE_PRIVATE).getString("username","");
+        boolean signedIn=SecureLogin.token(this)!=null;
+        login.setText(signedIn && !name.isEmpty() ? "PLAYER: "+name : "LOGIN TO LUDOHOJAYE");
+    }
+    private void showLoginChoice() {
+        if(isFinishing() || SecureLogin.token(this)!=null) return;
+        new AlertDialog.Builder(this)
+            .setTitle("Welcome to Ludo Masters")
+            .setMessage("Sign in with your ludohojaye.com account to select leagues and registered players. Or continue offline as a guest.")
+            .setPositiveButton("LOGIN TO LUDOHOJAYE",(dialog,which) -> startActivity(new Intent(this,WebLoginActivity.class)))
+            .setNegativeButton("PLAY AS GUEST",(dialog,which) -> {})
+            .show();
+    }
+    private void addRoyalHotspot(android.widget.FrameLayout root,float left,float top,float width,float height,Runnable action){
+        android.view.View hotspot=new android.view.View(this);
+        hotspot.setContentDescription("Open game mode");
+        root.addView(hotspot);
+        root.post(() -> {
+            int w=root.getWidth(),h=root.getHeight();
+            android.widget.FrameLayout.LayoutParams p=new android.widget.FrameLayout.LayoutParams((int)(w*width),(int)(h*height));
+            p.leftMargin=(int)(left*w);p.topMargin=(int)(top*h);
+            hotspot.setLayoutParams(p);
+        });
+        hotspot.setOnClickListener(v -> action.run());
     }
 
     private void launchOfflineMatch(Intent intent) {
@@ -2715,6 +2811,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onResume() {
         super.onResume();
+        updateRoyalLoginLabel();
         if(isMusicOn) {
             if(!m.isPlaying()) {
                 m.start();

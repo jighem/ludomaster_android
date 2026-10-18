@@ -23,20 +23,20 @@ public class SplashActivity extends AppCompatActivity {
         setContentView(R.layout.activity_splash);
         Objects.requireNonNull(getSupportActionBar()).hide();
 
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                findViewById(R.id.background).setBackground(ResourcesCompat.getDrawable(getResources(),R.drawable.intro2,null));
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        Intent i = new Intent(SplashActivity.this,HomeActivity.class);
-                        startActivity(i);
-                        finish();
-                    }
-                },(long)Math.floor(Math.random()*2000)+2500);
-            }
-        },(long)Math.floor(Math.random()*1500)+1500);
+        // When the supplied full-screen image is installed, it replaces every
+        // separate text/logo overlay. Keep a functioning packaged fallback.
+        int artwork = getResources().getIdentifier("lm_royal_splash", "drawable", getPackageName());
+        if (artwork != 0) {
+            android.widget.ImageView image = new android.widget.ImageView(this);
+            image.setImageResource(artwork);
+            image.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+            setContentView(image);
+        }
+        new Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            startActivity(new Intent(SplashActivity.this, HomeActivity.class));
+            finish();
+        }, 1800);
 
     }
 

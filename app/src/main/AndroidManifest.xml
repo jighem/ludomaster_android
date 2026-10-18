@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ludomaster.reference">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="false"
         android:icon="@drawable/lm_shield"
@@ -21,6 +23,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".RoyalSetupActivity" android:exported="false" />
+        <activity android:name=".WebLoginActivity" android:exported="false" />
         <activity android:name=".HomeActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity
             android:name=".MainActivity"

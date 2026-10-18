@@ -1,4 +1,5 @@
 <resources>
-    <string name="app_name">Ludo Masters Clone by Vinaykpro</string>
+    <string name="app_name">Ludo Masters</string>
     <string name="profilenote">*Your country name &amp; Flag will be shown to other players when you play online multiplayer</string>
+    <string name="lm_shield_description">Ludo Masters LM shield</string>
 </resources>
