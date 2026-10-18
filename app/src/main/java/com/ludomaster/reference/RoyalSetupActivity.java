@@ -64,18 +64,16 @@ public final class RoyalSetupActivity extends Activity {
         TextView note=text("OPTIONAL RULES",19,0xffffd46a);
         note.setPadding(0,dp(18),0,dp(8));root.addView(note);
         String[] labels={"Combat scoring (+5 kill / -5 death)",
-                "Earn and use immunity shields","Dynamic Home Shuffle (not yet available)"};
+                "Earn and use immunity shields","Dynamic Home Shuffle (swap homes during play)"};
         for(int i=0;i<3;i++){
             final int idx=i;
             CheckBox cb=new CheckBox(this);
             cb.setText(labels[i]);cb.setTextColor(Color.WHITE);cb.setTextSize(15);
             cb.setButtonTintList(ColorStateList.valueOf(0xffffd46a));
             root.addView(cb);
-            if (i==2) { cb.setEnabled(false); cb.setChecked(false); }
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
-        // Configuration is retained for a later release; rotation is deliberately disabled.
-        root.addView(text("FUTURE HOME SHUFFLE INTERVAL (FEATURE DISABLED)",14,0xffffd46a));
+        root.addView(text("HOME SHUFFLE INTERVAL",14,0xffffd46a));
         Spinner shuffleInterval=new Spinner(this);
         String[] intervals={"1 minute","2 minutes","3 minutes","5 minutes","10 minutes"};
         int[] values={60,120,180,300,600};
@@ -87,7 +85,7 @@ public final class RoyalSetupActivity extends Activity {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
         });
         root.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
-        root.addView(text("This setting is saved with the match for future compatibility. It does not shuffle the board in this version.",12,Color.WHITE));
+        root.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,Color.WHITE));
         Button play=button("START MATCH");
         root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
