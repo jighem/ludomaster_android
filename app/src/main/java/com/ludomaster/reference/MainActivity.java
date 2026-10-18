@@ -72,6 +72,24 @@ public class MainActivity extends AppCompatActivity {
     private boolean immunityEnabled;
     private boolean homeShuffleEnabled;
     private int shuffleIntervalSeconds = 300;
+    private com.ludomaster.reference.shuffle.HomeShuffleEngine homeShuffleEngine;
+    private long nextShuffleDueAtMs;
+    private TextView shuffleCountdownView;
+    private boolean shuffleMatchEnding;
+    private volatile int shuffleRepaintVersion;
+    private int shuffleTurnGeneration;
+    private final Runnable shuffleTimerTick = new Runnable() {
+        @Override public void run() {
+            if (!homeShuffleEnabled || homeShuffleEngine == null || shuffleMatchEnding) return;
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (now >= nextShuffleDueAtMs) {
+                homeShuffleEngine.requestShuffle();
+                nextShuffleDueAtMs = now + (shuffleIntervalSeconds * 1000L);
+            }
+            updateShuffleCountdown(now);
+            globalHandler.postDelayed(this, 1000);
+        }
+    };
     private final java.util.Map<String, Integer> killCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> deathCounts = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> immunityShields = new java.util.HashMap<>();
@@ -227,6 +245,7 @@ public class MainActivity extends AppCompatActivity {
         float defY;
 
         int diceValue;
+        int stepsUntilShuffleEntrance = 50;
 
         // managed at runtime
         boolean isAlive = false;
@@ -318,6 +337,8 @@ public class MainActivity extends AppCompatActivity {
         {
             isAlive = true;
             currBlock = startPosition;
+            stepsUntilShuffleEntrance = com.ludomaster.reference.shuffle.HomeShuffleEngine.forwardDistance(
+                startPosition, endPosition);
             piece.animate().translationX(x[startPosition]+pushXForPieces).translationY(y[startPosition]-pushYForPieces).setDuration(400).start(); // 16 75
             globalHandler.postDelayed(() -> {
                 isDiceMovableExtraChance = true;
@@ -349,6 +370,15 @@ public class MainActivity extends AppCompatActivity {
             checkAdjustments(currBlock);
             currWinnerBlock=0;
             numberOfSteps = 0;
+            if (homeShuffleEnabled && homeShuffleEngine != null) {
+                // Captured pawns must return to their colour's current home;
+                // do not reverse-walk through an obsolete start square.
+                currBlock = -1;
+                stepsUntilShuffleEntrance = 50;
+                piece.animate().cancel();
+                piece.animate().translationX(defX).translationY(defY).setDuration(350).start();
+                return;
+            }
             if(isSoundOn) {
                 deathSound = MediaPlayer.create(MainActivity.this, R.raw.death);
                 deathSound.start();
@@ -432,20 +462,37 @@ public class MainActivity extends AppCompatActivity {
                 currBlock = startPosition;
             }
 
-            if(currBlock>=51)
-                currBlock = 0;
-            else
-                currBlock++;
-
-            if(currBlock==0) { checkAdjustments(51); } else { checkAdjustments(currBlock-1); }
-
-            if(isReadyToEnterWinnerZone)
-            {
-                currBlock = winnerBlocks[currWinnerBlock];
-                currWinnerBlock++;
+            if (homeShuffleEnabled && homeShuffleEngine != null) {
+                int previous = currBlock;
+                if (isReadyToEnterWinnerZone) {
+                    if (winnerBlocks == null || currWinnerBlock < 0 || currWinnerBlock >= 6)
+                        throw new IllegalStateException("Invalid finishing lane step");
+                    // Lane positions are always indexed using this pawn's CURRENT
+                    // home assignment, never its pre-shuffle starting colour.
+                    winnerBlocks = getWinnerBlocks(endPosition);
+                    currBlock = winnerBlocks[currWinnerBlock++];
+                } else {
+                    currBlock = (currBlock + 1) % 52;
+                    if (stepsUntilShuffleEntrance > 0) --stepsUntilShuffleEntrance;
+                    if (stepsUntilShuffleEntrance == 0) {
+                        isReadyToEnterWinnerZone = true;
+                        winnerBlocks = getWinnerBlocks(endPosition);
+                    }
+                }
+                if (previous >= 0 && previous < 52) checkAdjustments(previous);
+            } else {
+                if(currBlock>=51) currBlock = 0;
+                else currBlock++;
+                if(currBlock==0) { checkAdjustments(51); } else { checkAdjustments(currBlock-1); }
+                if(isReadyToEnterWinnerZone) {
+                    currBlock = winnerBlocks[currWinnerBlock];
+                    currWinnerBlock++;
+                }
+                if(currBlock==endPosition) {
+                    winnerBlocks = getWinnerBlocks(endPosition);
+                    isReadyToEnterWinnerZone = true;
+                }
             }
-
-            if(currBlock==endPosition) { winnerBlocks = getWinnerBlocks(endPosition); isReadyToEnterWinnerZone = true; }
 
             piece.animate().translationX(x[currBlock] + pushXForPieces).translationY(y[currBlock] - pushYForPieces).setDuration(220).start();
             /*if(!isReadyToEnterWinnerZone)
@@ -676,6 +723,16 @@ public class MainActivity extends AppCompatActivity {
 
 
         public boolean check(int diceValue) {
+            if (homeShuffleEnabled && homeShuffleEngine != null) {
+                int remaining = isReadyToEnterWinnerZone ?
+                    (6 - currWinnerBlock) : (stepsUntilShuffleEntrance + 6);
+                // A six-step roll crossing the entry square continues into
+                // the six-square finishing lane, provided exact finish is not overshot.
+                boolean allowed = !hasCompletedItsPurpose && !isThisPlayerWon &&
+                    (isAlive ? (diceValue <= remaining) : diceValue == 6);
+                if (allowed) activeState(); else inactiveState();
+                return allowed;
+            }
             if(diceValue == 6)
             {
                 if(!isAlive || (numberOfSteps+diceValue)<57)
@@ -1295,6 +1352,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void finishPieceMove(Piece piece, boolean captured) {
         refreshStatsHud();
+        if (!captured) applyPendingHomeShuffle();
         globalHandler.postDelayed(() -> {
             if (!piece.isThisPlayerWon) checkAdjustments(piece.currBlock);
         },10);
@@ -1938,8 +1996,6 @@ public class MainActivity extends AppCompatActivity {
         immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
         homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
         shuffleIntervalSeconds = extras == null ? 300 : Math.max(60, Math.min(600, extras.getInt("shuffle_interval_seconds",300)));
-        // The dynamic rotation engine is not implemented. Never activate the rule in this release.
-        homeShuffleEnabled = false;
 
         nop = extras.getInt("nop");
         String color = extras.getString("color");
@@ -2597,6 +2653,8 @@ public class MainActivity extends AppCompatActivity {
             mainDiceImageView.setVisibility(GONE);
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
+            initialiseHomeShuffle();
+            if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
         redHomeBlink.setLayoutParams(lp);
         lp.addRule(RelativeLayout.ALIGN_TOP,R.id.imageView); lp.addRule(RelativeLayout.ALIGN_LEFT,R.id.imageView);
@@ -2604,7 +2662,189 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
+
+    private int shuffleColourIndex(String colour) {
+        switch (colour) {
+            case "red": return 0;
+            case "green": return 1;
+            case "blue": return 2;
+            case "yellow": return 3;
+            default: throw new IllegalArgumentException("colour");
+        }
+    }
+
+    private int shuffleSeatForSlot(int slot) {
+        return new int[]{2,4,3,1}[slot];
+    }
+
+    private java.util.List<Piece> shufflePiecesForColour(int index) {
+        switch (index) {
+            case 0: return rp;
+            case 1: return gp;
+            case 2: return bp;
+            case 3: return yp;
+            default: throw new IllegalArgumentException("colour index");
+        }
+    }
+
+    private void initialiseHomeShuffle() {
+        if (!homeShuffleEnabled) return;
+        homeShuffleEngine = new com.ludomaster.reference.shuffle.HomeShuffleEngine(System.nanoTime());
+        int[] existing = {-1,-1,-1,-1};
+        boolean[] taken = new boolean[4];
+        for (int colour=0; colour<4; colour++) {
+            java.util.List<Piece> pieces = shufflePiecesForColour(colour);
+            if (pieces == null || pieces.isEmpty()) continue;
+            int start = pieces.get(0).startPosition;
+            for (int slot=0; slot<4; slot++) {
+                if (com.ludomaster.reference.shuffle.HomeShuffleEngine.START[slot] == start) {
+                    if (taken[slot]) throw new IllegalStateException("Duplicate starting home");
+                    existing[colour]=slot; taken[slot]=true; break;
+                }
+            }
+            if (existing[colour] < 0) throw new IllegalStateException("Unknown physical start "+start);
+        }
+        for (int colour=0; colour<4; colour++) {
+            if (existing[colour] >= 0) continue;
+            for (int slot=0; slot<4; slot++) {
+                if (!taken[slot]) { existing[colour]=slot; taken[slot]=true; break; }
+            }
+        }
+        homeShuffleEngine.restoreAssignment(existing);
+        nextShuffleDueAtMs = android.os.SystemClock.elapsedRealtime()+shuffleIntervalSeconds*1000L;
+        // Start the scheduler when gameplay initializes; onResume alone runs too early.
+        globalHandler.removeCallbacks(shuffleTimerTick);
+        globalHandler.postDelayed(shuffleTimerTick, 1000);
+    }
+
+    /** Read-only countdown: pending shuffle applies after a completed move. */
+    private void addShuffleCountdown() {
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        shuffleCountdownView = new TextView(this);
+        shuffleCountdownView.setTextColor(Color.WHITE);
+        shuffleCountdownView.setTextSize(12);
+        shuffleCountdownView.setGravity(Gravity.CENTER);
+        shuffleCountdownView.setBackgroundColor(0xff8c398a);
+        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(hudDp(126),hudDp(45));
+        params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.topMargin = hudDp(16);
+        root.addView(shuffleCountdownView, params);
+        updateShuffleCountdown(android.os.SystemClock.elapsedRealtime());
+        shuffleCountdownView.bringToFront();
+    }
+
+    private void updateShuffleCountdown(long now) {
+        if (shuffleCountdownView == null || homeShuffleEngine == null) return;
+        if (homeShuffleEngine.isPending()) {
+            shuffleCountdownView.setText("SHUFFLE PENDING");
+        } else {
+            long seconds = Math.max(0L, (nextShuffleDueAtMs - now + 999L) / 1000L);
+            shuffleCountdownView.setText(String.format(java.util.Locale.US,
+                "SHUFFLE %02d:%02d", seconds / 60L, seconds % 60L));
+        }
+    }
+
+    /** In Shuffle mode any seat may become occupied, including originally unused seats. */
+    private void refreshShuffleDicePanels() {
+        if (!homeShuffleEnabled || d == null) return;
+        d.tLeftLayout.setVisibility(View.VISIBLE);
+        d.tRightLayout.setVisibility(View.VISIBLE);
+        d.bLeftLayout.setVisibility(View.VISIBLE);
+        d.bRightLayout.setVisibility(View.VISIBLE);
+        d.tLeftImgColor.setVisibility(View.INVISIBLE);
+        d.tRightImgColor.setVisibility(View.INVISIBLE);
+        d.bLeftImgColor.setVisibility(View.INVISIBLE);
+        d.bRightImgColor.setVisibility(View.INVISIBLE);
+        for (Player player : players) {
+            ImageView icon;
+            // All dice icons are bound to the same seat map as pawn home yards.
+            switch (player.position) {
+                case 1: icon = d.bLeftImgColor; break;
+                case 2: icon = d.tLeftImgColor; break;
+                case 3: icon = d.tRightImgColor; break;
+                case 4: icon = d.bRightImgColor; break;
+                default: continue;
+            }
+            icon.setImageDrawable(getPieceDrawableByColor(player.color));
+            icon.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void applyPendingHomeShuffle() {
+        if (!homeShuffleEnabled || homeShuffleEngine == null || shuffleMatchEnding ||
+            !homeShuffleEngine.applyAtSafeBoundary(false)) return;
+        for (int colour=0; colour<4; colour++) {
+            int slot=homeShuffleEngine.homeSlot(colour);
+            int newStart=homeShuffleEngine.startSquare(colour);
+            int newEntrance=homeShuffleEngine.entranceSquare(colour);
+            int seat = shuffleSeatForSlot(slot);
+            float[][] yard = seat == 1 ? pos1 : seat == 2 ? pos2 : seat == 3 ? pos3 : pos4;
+            java.util.List<Piece> pieces=shufflePiecesForColour(colour);
+            for (int index=0; index<pieces.size(); index++) {
+                Piece p=pieces.get(index);
+                p.startPosition=newStart;
+                p.endPosition=newEntrance;
+                p.defX=yard[index][0]; p.defY=yard[index][1];
+                if (p.hasCompletedItsPurpose) {
+                    p.winnerBlocks = getWinnerBlocks(newEntrance);
+                    p.currBlock = p.winnerBlocks[5];
+                    p.piece.animate().translationX(x[p.currBlock]+pushXForPieces)
+                        .translationY(y[p.currBlock]-pushYForPieces).setDuration(350).start();
+                    continue;
+                }
+                if (!p.isAlive) {
+                    p.piece.animate().translationX(p.defX).translationY(p.defY).setDuration(350).start();
+                } else if (p.isReadyToEnterWinnerZone && p.currWinnerBlock > 0) {
+                    p.winnerBlocks=getWinnerBlocks(newEntrance);
+                    p.currBlock=p.winnerBlocks[p.currWinnerBlock-1];
+                    p.piece.animate().translationX(x[p.currBlock]+pushXForPieces)
+                        .translationY(y[p.currBlock]-pushYForPieces).setDuration(350).start();
+                } else if(p.currBlock >= 0 && p.currBlock < 52) {
+                    int steps=com.ludomaster.reference.shuffle.HomeShuffleEngine.forwardDistance(
+                        p.currBlock,newEntrance);
+                    p.stepsUntilShuffleEntrance = steps == 0 ? 52 : steps;
+                    p.isReadyToEnterWinnerZone=false;
+                    p.currWinnerBlock=0;
+                }
+            }
+        }
+        final int[] ownership = homeShuffleEngine.assignment();
+        final float rotation = ludoBoard.getRotation();
+        final int repaintVersion = ++shuffleRepaintVersion;
+        new Thread(() -> {
+            final android.graphics.Bitmap bitmap =
+                com.ludomaster.reference.shuffle.HomeBoardPainter.render(
+                    getResources(),R.drawable.ludofinalboard3,ownership,rotation);
+            runOnUiThread(() -> {
+                if (!shuffleMatchEnding && !isFinishing() && repaintVersion == shuffleRepaintVersion) {
+                    ludoBoard.setImageBitmap(bitmap);
+                } else bitmap.recycle();
+            });
+        }, "shuffle-board-repaint").start();
+        ++shuffleTurnGeneration;
+        for (Player player : players) {
+            player.position = shuffleSeatForSlot(homeShuffleEngine.homeSlot(shuffleColourIndex(player.color)));
+            player.playerNameTextView = getPlayerNameByPosition(player.position);
+        }
+        for (int seat = 1; seat <= 4; seat++) getPlayerNameByPosition(seat).setText("");
+        for (Player player : players) {
+            if (player.position >= 1 && player.position <= 4)
+                getPlayerNameByPosition(player.position).setText(player.name);
+        }
+        refreshShuffleDicePanels();
+        // Preserve the exact player who owned the dice when homes swapped.
+        if (currentPlayerColor != null && !currentPlayerColor.isEmpty()) {
+            currentPlayerPosition = shuffleSeatForSlot(
+                homeShuffleEngine.homeSlot(shuffleColourIndex(currentPlayerColor)));
+            moveDice(currentPlayerPosition);
+        }
+        updateShuffleCountdown(android.os.SystemClock.elapsedRealtime());
+        Toast.makeText(this,"Home Shuffle! Every colour changed home.",Toast.LENGTH_SHORT).show();
+    }
+
     private void stopEverything() {
+        shuffleMatchEnding = true;
         globalHandler.removeCallbacksAndMessages(null);
         d.diceHandler.removeCallbacksAndMessages(null);
         if(congratulationSound!=null) {
@@ -2616,7 +2856,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        shuffleMatchEnding = true;
+        if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
         super.onDestroy();
     }
 
@@ -2766,6 +3014,7 @@ public class MainActivity extends AppCompatActivity {
 
     void switchPlayers()
     {
+        ++shuffleTurnGeneration;
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
@@ -2776,11 +3025,11 @@ public class MainActivity extends AppCompatActivity {
         if(currentPlayer.isBot) {
             hintArrow.setVisibility(GONE);
             moveDice(currentPlayerPosition);
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    d.roll();
-                }
+            final String expectedColour = currentPlayerColor;
+            final int expectedTurn = ++shuffleTurnGeneration;
+            globalHandler.postDelayed(() -> {
+                if (!shuffleMatchEnding && expectedTurn == shuffleTurnGeneration &&
+                    expectedColour.equals(currentPlayerColor) && d != null) d.roll();
             },150);
         } else {
             moveDice(currentPlayerPosition);
@@ -2792,6 +3041,28 @@ public class MainActivity extends AppCompatActivity {
 
     void moveDice(int position)
     {
+        // A reused LayoutParams object keeps old constraints across home swaps.
+        // Clear every anchor before rebuilding the position for the active colour.
+        ConstraintLayout.LayoutParams diceParams =
+            (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
+        diceParams.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.endToStart = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.topToTop = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        diceParams.bottomToBottom = ConstraintLayout.LayoutParams.UNSET;
+        ConstraintLayout.LayoutParams hintParams =
+            (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
+        hintParams.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.endToStart = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.topToTop = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        hintParams.bottomToBottom = ConstraintLayout.LayoutParams.UNSET;
         switch(position)
         {
             case 1:
@@ -3201,6 +3472,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (homeShuffleEnabled && homeShuffleEngine != null && globalHandler != null && !shuffleMatchEnding) {
+            globalHandler.removeCallbacks(shuffleTimerTick);
+            globalHandler.postDelayed(shuffleTimerTick,1000);
+        }
         View dview = getWindow().getDecorView();
         int uiOptions = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
         dview.setSystemUiVisibility(uiOptions);
@@ -3279,6 +3554,7 @@ public class MainActivity extends AppCompatActivity {
         switch (n)
         {
             case 0:
+            case 50:
                 return wBlocks52;
             case 11:
                 return wBlocks58;
