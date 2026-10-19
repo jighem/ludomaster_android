@@ -2669,6 +2669,16 @@ public class MainActivity extends AppCompatActivity {
             d = new Dice(mainDiceImageView, nop, color);
             initializeSeatDiceViews();
             initialiseHomeShuffle();
+            // Generate the same 15x15 home finish for standard and shuffle games.
+            // The game's original tile positions and input controls are unchanged.
+            android.graphics.Bitmap baseBoard=android.graphics.BitmapFactory.decodeResource(
+                getResources(),R.drawable.ludofinalboard3);
+            if(baseBoard!=null) {
+                android.graphics.Bitmap premiumBoard=
+                    com.ludomaster.reference.shuffle.LhjPremiumBoardRenderer.enhance(baseBoard);
+                baseBoard.recycle();
+                ludoBoard.setImageBitmap(premiumBoard);
+            }
             if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
         redHomeBlink.setLayoutParams(lp);
