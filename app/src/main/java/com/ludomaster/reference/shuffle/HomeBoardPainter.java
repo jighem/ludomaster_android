@@ -3,6 +3,8 @@ package com.ludomaster.reference.shuffle;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.content.res.Resources;
 
 /**
@@ -73,6 +75,34 @@ public final class HomeBoardPainter {
         }
         Bitmap output=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
         output.setPixels(pixels,0,w,0,0,w,h);
+        // Add a subtle raised-tile finish directly on the recoloured board.
+        // All strokes are inside existing 15x15 tile bounds: this never changes
+        // track coordinates, image dimensions, lane directions or touch targets.
+        applyGloss(output);
         return output;
     }
+    private static void applyGloss(Bitmap output) {
+        final int width=output.getWidth(),height=output.getHeight();
+        final Canvas canvas=new Canvas(output);
+        final Paint edge=new Paint(Paint.ANTI_ALIAS_FLAG);
+        edge.setStyle(Paint.Style.STROKE);
+        edge.setStrokeCap(Paint.Cap.SQUARE);
+        float cellW=width/15f,cellH=height/15f;
+        edge.setStrokeWidth(Math.max(1f,Math.min(cellW,cellH)*0.032f));
+        for(int y=0;y<15;y++){
+            float top=y*cellH, bottom=(y+1)*cellH;
+            for(int x=0;x<15;x++){
+                float left=x*cellW, right=(x+1)*cellW;
+                // Keep original board glyphs fully visible: thin beveled
+                // highlights rather than translucent panels over artwork.
+                edge.setColor(Color.argb(92,255,255,255));
+                canvas.drawLine(left+1,top+1,right-1,top+1,edge);
+                canvas.drawLine(left+1,top+1,left+1,bottom-1,edge);
+                edge.setColor(Color.argb(31,4,22,48));
+                canvas.drawLine(left+1,bottom-1,right-1,bottom-1,edge);
+                canvas.drawLine(right-1,top+1,right-1,bottom-1,edge);
+            }
+        }
+    }
+
 }
