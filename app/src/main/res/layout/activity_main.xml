@@ -1080,51 +1080,45 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/ingamemenuitemslayout"
-        android:layout_width="225dp"
+        android:layout_width="232dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/lhj_game_menu_panel"
         android:elevation="12dp"
-        android:padding="10dp"
+        android:padding="12dp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/ingamemenubtn"
         app:layout_constraintStart_toStartOf="parent">
 
         <TextView
             android:id="@+id/rmpitemmenu"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="52dp"
             android:background="@drawable/lhj_game_menu_action"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="Remove players"
             android:gravity="center"
-            android:text="Remove Players"
+            android:text="Manage Players"
             android:textColor="#172B54"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toTopOf="parent"/>
 
         <TextView
             android:id="@+id/exititemmenu"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="10dp"
-            android:background="@drawable/lhj_game_menu_danger"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="Exit match"
+            android:background="@drawable/lhj_game_menu_exit"
             android:gravity="center"
             android:text="Exit Match"
-            android:textColor="#B42332"
+            android:textColor="#A62330"
             android:textSize="16sp"
             android:textStyle="bold"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/rmpitemmenu" />
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toBottomOf="@+id/rmpitemmenu"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
