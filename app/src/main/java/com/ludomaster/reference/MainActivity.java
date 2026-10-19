@@ -103,6 +103,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean offlineResultSaved;
     private LinearLayout statsHud;
     private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
+    private final java.util.Map<String,ImageView> statsAvatarViews = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -1202,7 +1203,7 @@ public class MainActivity extends AppCompatActivity {
         statsHud.setPadding(hudDp(4), hudDp(4), hudDp(4), hudDp(4));
         statsHud.setClipChildren(false);
         ConstraintLayout.LayoutParams hudParams = new ConstraintLayout.LayoutParams(
-            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(79));
+            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(106));
         hudParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
         hudParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
         hudParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
@@ -1228,11 +1229,20 @@ public class MainActivity extends AppCompatActivity {
                 default: accent=0xff428aff;
             }
             background.setStroke(hudDp(2),accent);
-            cell.setBackground(background);
+            LinearLayout badge=new LinearLayout(this);
+            badge.setOrientation(LinearLayout.VERTICAL);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(background);
+            ImageView avatar=new ImageView(this);
+            avatar.setImageResource(R.drawable.lhj_avatar_human);
+            avatar.setContentDescription("Player avatar");
+            badge.addView(avatar,new LinearLayout.LayoutParams(hudDp(34),hudDp(34)));
+            badge.addView(cell,new LinearLayout.LayoutParams(-1,0,1f));
             LinearLayout.LayoutParams cellParams=new LinearLayout.LayoutParams(0,-1,1f);
             cellParams.setMargins(hudDp(2),0,hudDp(2),0);
-            statsHud.addView(cell,cellParams);
+            statsHud.addView(badge,cellParams);
             statsCells.put(color,cell);
+            statsAvatarViews.put(color,avatar);
         }
         statsHud.bringToFront();
         addLiveAudioButton(root);
@@ -1270,10 +1280,14 @@ public class MainActivity extends AppCompatActivity {
             if (cell == null) continue;
             String name=offlinePlayerNames.get(color);
             if (name==null) {
-                cell.setVisibility(View.GONE);
+                ((View)cell.getParent()).setVisibility(View.GONE);
                 continue;
             }
-            cell.setVisibility(View.VISIBLE);
+            ((View)cell.getParent()).setVisibility(View.VISIBLE);
+            ImageView avatar=statsAvatarViews.get(color);
+            if(avatar!=null)avatar.setImageResource(
+                name.toLowerCase(java.util.Locale.ROOT).startsWith("computer")
+                    ?R.drawable.lhj_avatar_robot:R.drawable.lhj_avatar_human);
             if(name.length()>10) name=name.substring(0,9)+"…";
             int kills=getCount(killCounts,color);
             int deaths=getCount(deathCounts,color);
