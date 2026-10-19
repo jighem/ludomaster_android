@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
 
     android:layout_height="match_parent"
-    android:background="@drawable/ludo_masters_game_background"
+    android:background="@drawable/lhj_menu_sky"
     tools:context=".MainActivity">
 
     <ImageView
@@ -41,6 +41,7 @@
             android:layout_gravity="center"
             android:gravity="center"
             android:rotation="180"
+            android:foreground="@drawable/lhj_board_frame_overlay"
             app:srcCompat="@drawable/ludofinalboard3" />
 
         <ImageView
