@@ -2786,8 +2786,13 @@ public class MainActivity extends AppCompatActivity {
             ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(42),hudDp(42));
             p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
             p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
-            if(i<2)p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
-            else p.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+            if(i<2) {
+                p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+                p.setMarginEnd(hudDp(11));
+            } else {
+                p.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+                p.setMarginStart(hudDp(9));
+            }
             pad.addView(die,p);
             seatDiceViews.put(i+1,die);
         }
@@ -3556,10 +3561,18 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = ConstraintLayout.LayoutParams.UNSET;
-        lps.setMarginStart(-((int)displayMetrics.density));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = R.id.tleftdicebg;
-        lps.bottomToBottom = R.id.tleftdicebg;
         lps.topToTop = R.id.tleftdicebg;
+        lps.bottomToBottom = R.id.tleftdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(hudDp(11));
+        lps.topMargin = 0;
         lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
@@ -3575,10 +3588,18 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = R.id.trightdicebg;
-        lps.setMarginStart(-((int)(2*displayMetrics.density)));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
-        lps.bottomToBottom = R.id.trightdicebg;
         lps.topToTop = R.id.trightdicebg;
+        lps.bottomToBottom = R.id.trightdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(hudDp(9));
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
         lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
@@ -3594,10 +3615,18 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = R.id.brightdicebg;
-        lps.setMarginStart(-((int)(2*displayMetrics.density)));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
-        lps.bottomToBottom = R.id.brightdicebg;
         lps.topToTop = R.id.brightdicebg;
+        lps.bottomToBottom = R.id.brightdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(hudDp(9));
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
         lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
@@ -3613,10 +3642,18 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = ConstraintLayout.LayoutParams.UNSET;
-        lps.setMarginStart(-((int)displayMetrics.density));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = R.id.bleftdicebg;
-        lps.bottomToBottom = R.id.bleftdicebg;
         lps.topToTop = R.id.bleftdicebg;
+        lps.bottomToBottom = R.id.bleftdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(hudDp(11));
+        lps.topMargin = 0;
         lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
