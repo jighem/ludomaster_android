@@ -6,11 +6,11 @@
     android:background="#EAF7FF"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="28dp">
+    android:padding="24dp">
     <ImageView
         android:id="@+id/brand_logo"
-        android:layout_width="178dp"
-        android:layout_height="178dp"
+        android:layout_width="208dp"
+        android:layout_height="208dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/lhj_emblem_description"
         android:src="@drawable/lhj_emblem" />
@@ -18,7 +18,7 @@
         android:id="@+id/brand_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="14dp"
         android:text="@string/app_name"
         android:textStyle="bold"
         android:textSize="34sp"
@@ -33,10 +33,26 @@
         android:textStyle="bold"
         android:textSize="18sp"
         android:textColor="#2586F5"
-        android:gravity="center"/>
-    <ProgressBar
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginTop="42dp"
-        android:indeterminateTint="#23BF75" />
+        android:gravity="center" />
+    <LinearLayout
+        android:id="@+id/brand_loader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="38dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:contentDescription="Loading">
+        <View android:id="@+id/loader_red" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/lhj_loader_dot"
+            android:backgroundTint="#F04452"/>
+        <View android:id="@+id/loader_yellow" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/lhj_loader_dot"
+            android:backgroundTint="#FFC342"/>
+        <View android:id="@+id/loader_blue" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/lhj_loader_dot"
+            android:backgroundTint="#2586F5"/>
+        <View android:id="@+id/loader_green" android:layout_width="12dp" android:layout_height="12dp"
+            android:layout_marginHorizontal="6dp" android:background="@drawable/lhj_loader_dot"
+            android:backgroundTint="#23BF75"/>
+    </LinearLayout>
 </LinearLayout>
