@@ -2324,7 +2324,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         shell.addView(header, new android.widget.LinearLayout.LayoutParams(-1, lhjDp(55)));
 
         android.widget.Button audio = new android.widget.Button(this);
-        audio.setText("â™«  Sound / Music");
+        audio.setText("Sound / Music");
         audio.setAllCaps(false);
         audio.setTextColor(0xFF172B54);
         audio.setTextSize(13);
@@ -2367,13 +2367,13 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         tagline.setGravity(android.view.Gravity.CENTER);
         body.addView(tagline, new android.widget.LinearLayout.LayoutParams(-1, -2));
 
-        android.widget.Button computerBtn = lhjMenuButton("ðŸ¤–  COMPUTER", 0xFF25A95E);
+        android.widget.Button computerBtn = lhjMenuButton("COMPUTER", 0xFF25A95E);
         android.widget.LinearLayout.LayoutParams cp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(74));
         cp.topMargin = lhjDp(46);
         body.addView(computerBtn, cp);
         computerBtn.setOnClickListener(v -> startRoyalMatchSetup(true));
 
-        android.widget.Button passBtn = lhjMenuButton("â™Ÿ  PASS & PLAY", 0xFF2586F5);
+        android.widget.Button passBtn = lhjMenuButton("PASS & PLAY", 0xFF2586F5);
         android.widget.LinearLayout.LayoutParams pp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(74));
         pp.topMargin = lhjDp(16);
         body.addView(passBtn, pp);
