@@ -104,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout statsHud;
     private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
     private final java.util.Map<String,ImageView> statsAvatarViews = new java.util.HashMap<>();
+    private final java.util.Map<Integer,ImageView> seatDiceViews = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -2666,6 +2667,7 @@ public class MainActivity extends AppCompatActivity {
             mainDiceImageView.setVisibility(GONE);
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
+            initializeSeatDiceViews();
             initialiseHomeShuffle();
             if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
@@ -2759,6 +2761,40 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** In Shuffle mode any seat may become occupied, including originally unused seats. */
+
+    /** Non-clickable player-specific dice, never replacing the active roll control. */
+    private void initializeSeatDiceViews() {
+        if(!seatDiceViews.isEmpty())return;
+        int[] pads={R.id.bleftdicebg,R.id.tleftdicebg,
+                    R.id.trightdicebg,R.id.brightdicebg};
+        for(int i=0;i<4;i++){
+            ConstraintLayout pad=findViewById(pads[i]);
+            ImageView die=new ImageView(this);
+            die.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            die.setClickable(false);
+            die.setFocusable(false);
+            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(51),hudDp(51));
+            p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+            p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
+            if(i<2)p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+            else p.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+            pad.addView(die,p);
+            seatDiceViews.put(i+1,die);
+        }
+        refreshSeatDiceViews();
+    }
+
+    private void refreshSeatDiceViews() {
+        for(ImageView die:seatDiceViews.values())die.setVisibility(View.GONE);
+        for(Player player:players){
+            ImageView die=seatDiceViews.get(player.position);
+            if(die==null)continue;
+            die.setImageDrawable(new LhjDiceDrawable(player.color,1));
+            die.setContentDescription(player.name+" "+player.color+" dice");
+            die.setVisibility(View.VISIBLE);
+        }
+    }
+
     private void refreshShuffleDicePanels() {
         if (!homeShuffleEnabled || d == null) return;
         d.tLeftLayout.setVisibility(View.VISIBLE);
@@ -2782,6 +2818,7 @@ public class MainActivity extends AppCompatActivity {
             icon.setImageDrawable(getPieceDrawableByColor(player.color));
             icon.setVisibility(View.VISIBLE);
         }
+        refreshSeatDiceViews();
     }
 
     private void applyPendingHomeShuffle() {
