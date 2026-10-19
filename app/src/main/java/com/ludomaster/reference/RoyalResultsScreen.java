@@ -23,7 +23,11 @@ public final class RoyalResultsScreen {
     }
     private static Button action(Activity a,String label){
         Button b=new Button(a);b.setText(label);b.setTextColor(Color.WHITE);
-        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff135cb1));return b;
+        b.setAllCaps(false);
+        b.setTypeface(null,Typeface.BOLD);
+        b.setBackgroundResource(R.drawable.lhj_button_blue);
+        b.setElevation(dp(a,4));
+        return b;
     }
     public static void show(Activity a,String summary,String league,boolean canUpload,String uuid){
         Dialog dialog=new Dialog(a);
@@ -34,9 +38,14 @@ public final class RoyalResultsScreen {
         GradientDrawable backdrop=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
             new int[]{0xfffff6d3,0xffffe69a,0xfffff7e0});
         root.setBackground(backdrop);
-        TextView title=text(a,"LUDO HO JAYE",29,0xff172B54);
+        TextView title=text(a,"Ludo Ho Jaye!!!",29,0xff172B54);
         title.setTypeface(null,Typeface.BOLD);root.addView(title);
-        root.addView(text(a,"🏆",52,0xffDAA520));
+        android.widget.ImageView logo=new android.widget.ImageView(a);
+        logo.setImageResource(R.drawable.lhj_emblem_approved);
+        LinearLayout.LayoutParams logoLayout=new LinearLayout.LayoutParams(dp(a,126),dp(a,126));
+        logoLayout.gravity=Gravity.CENTER_HORIZONTAL;
+        root.addView(logo,logoLayout);
+        root.addView(text(a,"WINNER!",28,0xffD08B11));
         TextView subtitle=text(a,"MATCH COMPLETED",22,0xff172B54);root.addView(subtitle);
         root.addView(text(a,summary==null?"Match finished":summary,15,0xff172B54));
         if(league!=null && !league.trim().isEmpty())
@@ -55,11 +64,18 @@ public final class RoyalResultsScreen {
         };
         submit.setOnClickListener(v->MatchUploader.prompt(a,uuid,refresh));
         refresh.run();
-        root.addView(submit);
+        LinearLayout.LayoutParams submitParams=new LinearLayout.LayoutParams(-1,dp(a,58));
+        submitParams.topMargin=dp(a,12);
+        root.addView(submit,submitParams);
+        Button refreshButton=action(a,"Refresh upload status");
+        refreshButton.setBackgroundResource(R.drawable.lhj_button_white);
+        refreshButton.setTextColor(0xff172B54);
+        refreshButton.setOnClickListener(v->refresh.run());
+        root.addView(refreshButton,new LinearLayout.LayoutParams(-1,dp(a,50)));
         if(!canUpload)root.addView(text(a,"Match could not be saved locally. Submission is unavailable.",13,0xffffaaaa));
         Button done=action(a,"DONE");
         done.setOnClickListener(v->{dialog.dismiss();a.finish();});
-        root.addView(done);
+        root.addView(done,new LinearLayout.LayoutParams(-1,dp(a,52)));
         scroller.addView(root);
         dialog.setContentView(scroller);
         Window window=dialog.getWindow();
