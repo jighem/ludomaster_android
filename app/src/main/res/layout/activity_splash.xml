@@ -3,31 +3,40 @@
     android:id="@+id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/ludo_masters_game_background"
+    android:background="#EAF7FF"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp">
-
-    <ImageView android:id="@+id/brand_logo"
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
+    android:padding="28dp">
+    <ImageView
+        android:id="@+id/brand_logo"
+        android:layout_width="178dp"
+        android:layout_height="178dp"
         android:scaleType="fitCenter"
-        android:adjustViewBounds="true"
-        android:contentDescription="@string/app_name"
-        android:src="@drawable/ludo_masters_splash"/>
-
-    <ImageView android:layout_width="84dp"
-        android:layout_height="84dp"
-        android:layout_marginTop="24dp"
-        android:scaleType="fitCenter"
-        android:contentDescription="@string/lm_shield_description"
-        android:src="@drawable/lm_shield"/>
-
-    <TextView android:layout_width="wrap_content"
+        android:contentDescription="@string/lhj_emblem_description"
+        android:src="@drawable/lhj_emblem" />
+    <TextView
+        android:id="@+id/brand_title"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:text="PLAY • COMPETE • MASTER"
-        android:textColor="#FFE4AA"
-        android:textSize="15sp"
-        android:letterSpacing="0.08"/>
+        android:layout_marginTop="20dp"
+        android:text="@string/app_name"
+        android:textStyle="bold"
+        android:textSize="34sp"
+        android:textColor="#172B54"
+        android:gravity="center" />
+    <TextView
+        android:id="@+id/brand_tagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/lhj_tagline"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:textColor="#2586F5"
+        android:gravity="center"/>
+    <ProgressBar
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginTop="42dp"
+        android:indeterminateTint="#23BF75" />
 </LinearLayout>
