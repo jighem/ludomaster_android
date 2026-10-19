@@ -3247,6 +3247,13 @@ public class MainActivity extends AppCompatActivity {
         playername2 = findViewById(R.id.pname2);
         playername3 = findViewById(R.id.pname3);
         playername4 = findViewById(R.id.pname4);
+        // Player names are displayed upright in the HUD badges. Hide the
+        // legacy in-yard labels to avoid upside-down names and dice overlaps,
+        // while retaining the TextView references used by seat assignment.
+        playername1.setVisibility(View.INVISIBLE);
+        playername2.setVisibility(View.INVISIBLE);
+        playername3.setVisibility(View.INVISIBLE);
+        playername4.setVisibility(View.INVISIBLE);
 
         mainDiceImageView = findViewById(R.id.maindiceimageview);
         hintArrow = findViewById(R.id.hintarrowleft);
@@ -3542,6 +3549,8 @@ public class MainActivity extends AppCompatActivity {
         lps.setMarginStart(-((int)displayMetrics.density));
         lps.endToEnd = R.id.tleftdicebg;
         lps.bottomToBottom = R.id.tleftdicebg;
+        lps.topToTop = R.id.tleftdicebg;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.endToStart = ConstraintLayout.LayoutParams.UNSET;
@@ -3559,6 +3568,8 @@ public class MainActivity extends AppCompatActivity {
         lps.setMarginStart(-((int)(2*displayMetrics.density)));
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
         lps.bottomToBottom = R.id.trightdicebg;
+        lps.topToTop = R.id.trightdicebg;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -3576,6 +3587,8 @@ public class MainActivity extends AppCompatActivity {
         lps.setMarginStart(-((int)(2*displayMetrics.density)));
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
         lps.bottomToBottom = R.id.brightdicebg;
+        lps.topToTop = R.id.brightdicebg;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -3593,6 +3606,8 @@ public class MainActivity extends AppCompatActivity {
         lps.setMarginStart(-((int)displayMetrics.density));
         lps.endToEnd = R.id.bleftdicebg;
         lps.bottomToBottom = R.id.bleftdicebg;
+        lps.topToTop = R.id.bleftdicebg;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.endToStart = ConstraintLayout.LayoutParams.UNSET;
