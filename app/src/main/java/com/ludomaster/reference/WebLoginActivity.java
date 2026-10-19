@@ -29,7 +29,7 @@ public final class WebLoginActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER);
         root.setPadding(dp(30),dp(24),dp(30),dp(24));
-        root.setBackgroundColor(0xff101e37);
+        root.setBackgroundColor(0xffE5EFFF);
         ImageView shield = new ImageView(this);
         shield.setImageResource(R.drawable.lhj_emblem);
         root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
@@ -37,12 +37,12 @@ public final class WebLoginActivity extends Activity {
         title.setText("LUDO HO JAYE");
         title.setTypeface(null,Typeface.BOLD);
         title.setTextSize(26);
-        title.setTextColor(0xffffd277);
+        title.setTextColor(0xff172B54);
         title.setGravity(Gravity.CENTER);
         root.addView(title);
         TextView subtitle = new TextView(this);
         subtitle.setText("Sign in with your ludohojaye.com account");
-        subtitle.setTextColor(Color.WHITE);
+        subtitle.setTextColor(0xff516481);
         subtitle.setGravity(Gravity.CENTER);
         subtitle.setPadding(0,dp(12),0,dp(20));
         root.addView(subtitle);
@@ -63,7 +63,7 @@ public final class WebLoginActivity extends Activity {
         root.addView(signIn);
         status = new TextView(this);
         status.setGravity(Gravity.CENTER);
-        status.setTextColor(Color.WHITE);
+        status.setTextColor(0xff172B54);
         root.addView(status);
         Button offline = new Button(this);
         offline.setText("Back to offline play");
@@ -77,17 +77,17 @@ public final class WebLoginActivity extends Activity {
         root.addView(register);
         TextView powered=new TextView(this);
         powered.setText("Powered by ludohojaye.com");
-        powered.setTextColor(0xffffd277);
+        powered.setTextColor(0xff2586F5);
         powered.setGravity(Gravity.CENTER);
         root.addView(powered);
         signIn.setOnClickListener(v -> submit());
         setContentView(root);
     }
     private void styleInput(EditText field) {
-        field.setTextColor(Color.WHITE);
-        field.setHintTextColor(0xffc1cee0);
+        field.setTextColor(0xff172B54);
+        field.setHintTextColor(0xff64748B);
         field.setPadding(dp(12),dp(4),dp(12),dp(4));
-        field.setBackgroundColor(0xff253753);
+        field.setBackgroundColor(0xffFFFFFF);
     }
     private int dp(int n) {return Math.round(n*getResources().getDisplayMetrics().density);}
     private void submit() {
