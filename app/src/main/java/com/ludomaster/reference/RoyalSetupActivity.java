@@ -136,8 +136,7 @@ public final class RoyalSetupActivity extends Activity {
                 if(data.length()==0){Toast.makeText(RoyalSetupActivity.this,"No accessible leagues",Toast.LENGTH_LONG).show();return;}
                 String[] titles=new String[data.length()];
                 for(int i=0;i<data.length();i++)titles[i]=data.optJSONObject(i).optString("name","League "+(i+1));
-                new AlertDialog.Builder(RoyalSetupActivity.this).setTitle("Choose league")
-                  .setItems(titles,(dialog,index)->{
+                LhjDialog.choose(RoyalSetupActivity.this,"Choose league",titles,(dialog,index)->{
                      JSONObject league=data.optJSONObject(index);
                      selectedLeagueId=league.optInt("id",0);
                      selectedLeagueName=league.optString("name","");
@@ -151,7 +150,7 @@ public final class RoyalSetupActivity extends Activity {
                             @Override public void loaded(JSONArray result){roster=result;Toast.makeText(RoyalSetupActivity.this,"Registered players loaded",Toast.LENGTH_SHORT).show();}
                             @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
                          });
-                  }).show();
+                  });
             }
             @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
         });
@@ -184,20 +183,18 @@ public final class RoyalSetupActivity extends Activity {
         if(eligible.isEmpty()){Toast.makeText(this,"No available registered players in this league",Toast.LENGTH_LONG).show();return;}
         String[] labels=new String[eligible.size()];
         for(int i=0;i<eligible.size();i++)labels[i]=eligible.get(i).optString("full_name","Player");
-        new AlertDialog.Builder(this).setTitle("Select player for seat "+(seat+1))
-            .setItems(labels,(dialog,index)->{
+        LhjDialog.choose(this,"Select player for seat "+(seat+1),labels,(dialog,index)->{
                 JSONObject selected=eligible.get(index);
                 playerIds.set(seat,selected.optInt("id"));
                 names.get(seat).setText(selected.optString("full_name"));
-            }).setNegativeButton("Cancel",null).show();
+            });
     }
     private String name(int i){return names.get(i).getText().toString().trim();}
     private void startMatch(){
         if(SecureLogin.token(this)!=null && selectedLeagueId<=0){
-            new AlertDialog.Builder(this).setTitle("Choose league first")
-                .setMessage("Select the Ludohojaye league for this match before starting.")
-                .setPositiveButton("Select League",(dialog,which)->chooseLeague())
-                .setNegativeButton("Cancel",null).show();
+            LhjDialog.confirm(this,"Choose league first",
+                "Select the Ludo Ho Jaye league for this match before starting.",
+                "Select League",this::chooseLeague);
             return;
         }
         for(int i=0;i<count;i++)if(name(i).isEmpty()){
