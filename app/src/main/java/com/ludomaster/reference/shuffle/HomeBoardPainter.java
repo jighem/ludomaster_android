@@ -78,7 +78,6 @@ public final class HomeBoardPainter {
         // Add a subtle raised-tile finish directly on the recoloured board.
         // All strokes are inside existing 15x15 tile bounds: this never changes
         // track coordinates, image dimensions, lane directions or touch targets.
-        applyGloss(output);
         return output;
     }
     private static void applyGloss(Bitmap output) {
