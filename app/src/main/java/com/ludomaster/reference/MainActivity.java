@@ -184,7 +184,8 @@ public class MainActivity extends AppCompatActivity {
 
     // ingame menu button and items
     ConstraintLayout ingamemenuitemslayout;
-    ImageView ingamemenubtn,menuremoveplayersbtn,menuexitbtn;
+    ImageView ingamemenubtn;
+    TextView menuremoveplayersbtn, menuexitbtn;
 
     // ingameexitgamelayout
     ConstraintLayout quitgamelayout;
