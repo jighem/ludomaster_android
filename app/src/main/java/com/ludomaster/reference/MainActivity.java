@@ -1212,13 +1212,14 @@ public class MainActivity extends AppCompatActivity {
         for (String color : new String[]{"red","green","yellow","blue"}) {
             TextView cell = new TextView(this);
             cell.setTextSize(11);
-            cell.setTextColor(Color.WHITE);
+            cell.setTextColor(0xff172B54);
             cell.setGravity(Gravity.CENTER);
             cell.setMaxLines(4);
             cell.setPadding(hudDp(2),hudDp(3),hudDp(2),hudDp(3));
             GradientDrawable background = new GradientDrawable();
-            background.setColor(Color.rgb(20,31,55));
-            background.setCornerRadius(hudDp(9));
+            background.setColors(new int[]{0xffFFFFFF,0xffEBF5FF});
+            background.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+            background.setCornerRadius(hudDp(16));
             int accent;
             switch (color) {
                 case "red": accent=0xffe84248; break;
@@ -1242,8 +1243,9 @@ public class MainActivity extends AppCompatActivity {
         android.widget.Button audio=new android.widget.Button(this);
         audio.setText("SOUND");
         audio.setTextSize(10);
-        audio.setTextColor(Color.WHITE);
-        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff18559c));
+        audio.setTextColor(0xff172B54);
+        audio.setAllCaps(false);
+        audio.setBackgroundResource(R.drawable.lhj_button_white);
         ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(108),hudDp(45));
         params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
         params.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
