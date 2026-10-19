@@ -73,7 +73,9 @@ public final class HomeBoardPainter {
         }
         Bitmap output=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
         output.setPixels(pixels,0,w,0,0,w,h);
-        return output;
+        Bitmap styled=LhjPremiumBoardRenderer.enhance(output);
+        output.recycle();
+        return styled;
     }
 
 }
