@@ -1469,14 +1469,6 @@ public class MainActivity extends AppCompatActivity {
             this.diceImgView = diceImgView;
             this.numberOfPlayers = nop;
             diceAnimationDrawable = new AnimationDrawable();
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0001,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0002,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0003,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0004,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0005,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0006,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0007,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0008,null),50);
 
             tLeftLayout = findViewById(R.id.tleftdicebg);
             tRightLayout = findViewById(R.id.trightdicebg);
@@ -1606,6 +1598,9 @@ public class MainActivity extends AppCompatActivity {
                 diceRollSound.seekTo(5);
                 diceRollSound.start();
             }
+            diceAnimationDrawable=new AnimationDrawable();
+            for(int frame=0;frame<8;frame++)
+                diceAnimationDrawable.addFrame(new LhjDiceDrawable(currentPlayerColor,1+(frame%6)),50);
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
@@ -1618,22 +1613,22 @@ public class MainActivity extends AppCompatActivity {
                 } catch (Exception e) {}
                 switch (ch) {
                     case 1:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice1, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 1));
                         break;
                     case 2:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice2, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 2));
                         break;
                     case 3:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice3, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 3));
                         break;
                     case 4:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice4, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 4));
                         break;
                     case 5:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice5, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 5));
                         break;
                     case 6:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice6, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 6));
                         break;
                 }
                 isRolling = false;
