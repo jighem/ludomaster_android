@@ -178,7 +178,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -215,7 +215,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -252,7 +252,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -289,7 +289,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -326,7 +326,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -363,7 +363,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -400,7 +400,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -437,7 +437,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -474,7 +474,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -511,7 +511,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -548,7 +548,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -585,7 +585,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -624,7 +624,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -662,7 +662,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -700,7 +700,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -738,7 +738,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -763,7 +763,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/yellowpiece" />
+            app:srcCompat="@drawable/lhj_token_yellow" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -785,7 +785,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/greenpiece" />
+            app:srcCompat="@drawable/lhj_token_green" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -808,7 +808,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/bluepiece" />
+            app:srcCompat="@drawable/lhj_token_blue" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -830,7 +830,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/redpiece" />
+            app:srcCompat="@drawable/lhj_token_red" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageView
@@ -1230,7 +1230,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield1"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/bluepiece" />
+                        app:srcCompat="@drawable/lhj_token_blue" />
 
                     <ImageView
                         android:id="@+id/winorlose1"
@@ -1288,7 +1288,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield2"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/redpiece" />
+                        app:srcCompat="@drawable/lhj_token_red" />
 
                     <ImageView
                         android:id="@+id/winorlose2"
@@ -1346,7 +1346,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield3"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/greenpiece" />
+                        app:srcCompat="@drawable/lhj_token_green" />
 
                     <ImageView
                         android:id="@+id/winorlose3"
@@ -1405,7 +1405,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield4"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/yellowpiece" />
+                        app:srcCompat="@drawable/lhj_token_yellow" />
 
                     <ImageView
                         android:id="@+id/winorlose4"
@@ -1470,7 +1470,7 @@
                     android:layout_marginTop="5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView132"
-                    app:srcCompat="@drawable/bluepiece" />
+                    app:srcCompat="@drawable/lhj_token_blue" />
 
                 <ImageView
                     android:id="@+id/imageView138"
@@ -1479,7 +1479,7 @@
                     android:layout_marginStart="30dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView137"
-                    app:srcCompat="@drawable/redpiece" />
+                    app:srcCompat="@drawable/lhj_token_red" />
 
                 <ImageView
                     android:id="@+id/imageView140"
@@ -1489,7 +1489,7 @@
                     android:layout_marginTop="5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView138"
-                    app:srcCompat="@drawable/yellowpiece" />
+                    app:srcCompat="@drawable/lhj_token_yellow" />
 
                 <ImageView
                     android:id="@+id/imageView135"
@@ -1499,7 +1499,7 @@
                     android:layout_marginTop="5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView133"
-                    app:srcCompat="@drawable/greenpiece" />
+                    app:srcCompat="@drawable/lhj_token_green" />
 
                 <TextView
                     android:id="@+id/team1name1"
@@ -1838,7 +1838,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/bluepiece" />
+                    app:srcCompat="@drawable/lhj_token_blue" />
 
                 <TextView
                     android:id="@+id/rmp1name"
@@ -1887,7 +1887,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/redpiece" />
+                    app:srcCompat="@drawable/lhj_token_red" />
 
                 <TextView
                     android:id="@+id/rmp2name"
@@ -1936,7 +1936,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/greenpiece" />
+                    app:srcCompat="@drawable/lhj_token_green" />
 
                 <TextView
                     android:id="@+id/rmp3name"
@@ -1987,7 +1987,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/yellowpiece" />
+                    app:srcCompat="@drawable/lhj_token_yellow" />
 
                 <TextView
                     android:id="@+id/rmp4name"
@@ -2088,7 +2088,7 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/redpiece" />
+                    app:srcCompat="@drawable/lhj_token_red" />
 
                 <ImageView
                     android:id="@+id/confirmrmpnobtn"
