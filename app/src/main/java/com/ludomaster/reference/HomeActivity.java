@@ -2301,7 +2301,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         button.setTextSize(20);
         button.setAllCaps(false);
         button.setTypeface(null, android.graphics.Typeface.BOLD);
-        button.setBackground(lhjRounded(color, 0xFFFFFFFF));
+        button.setBackgroundResource(color == 0xFF25A95E ? R.drawable.lhj_button_green : R.drawable.lhj_button_blue);
         button.setElevation(lhjDp(5));
         button.setMinHeight(0);
         button.setMinimumHeight(0);
@@ -2328,7 +2328,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         audio.setAllCaps(false);
         audio.setTextColor(0xFF172B54);
         audio.setTextSize(13);
-        audio.setBackground(lhjRounded(0xFFFFFFFF, 0xFFB8D6F3));
+        audio.setBackgroundResource(R.drawable.lhj_button_white);
         header.addView(audio, new android.widget.LinearLayout.LayoutParams(lhjDp(165), lhjDp(50)));
         royalAudioButton = audio;
         audio.setOnClickListener(v -> AudioSettings.show(this));
@@ -2347,7 +2347,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         emblem.setImageResource(R.drawable.lhj_emblem_approved);
         emblem.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
         emblem.setContentDescription("Ludo Ho Jaye logo");
-        body.addView(emblem, new android.widget.LinearLayout.LayoutParams(lhjDp(132), lhjDp(132)));
+        body.addView(emblem, new android.widget.LinearLayout.LayoutParams(lhjDp(164), lhjDp(164)));
 
         android.widget.TextView title = new android.widget.TextView(this);
         title.setText("Ludo Ho Jaye!!!");
@@ -2369,22 +2369,24 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
 
         android.widget.Button computerBtn = lhjMenuButton("COMPUTER", 0xFF25A95E);
         android.widget.LinearLayout.LayoutParams cp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(74));
-        cp.topMargin = lhjDp(46);
+        cp.topMargin = lhjDp(28);
         body.addView(computerBtn, cp);
         computerBtn.setOnClickListener(v -> startRoyalMatchSetup(true));
+        computerBtn.setContentDescription("Start Ludo against computer players");
 
         android.widget.Button passBtn = lhjMenuButton("PASS & PLAY", 0xFF2586F5);
         android.widget.LinearLayout.LayoutParams pp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(74));
         pp.topMargin = lhjDp(16);
         body.addView(passBtn, pp);
         passBtn.setOnClickListener(v -> startRoyalMatchSetup(false));
+        passBtn.setContentDescription("Play Ludo locally with friends");
 
         android.widget.Button login = new android.widget.Button(this);
         login.setTextColor(0xFF172B54);
         login.setTextSize(14);
         login.setTypeface(null, android.graphics.Typeface.BOLD);
         login.setAllCaps(false);
-        login.setBackground(lhjRounded(0xFFFFFFFF, 0xFFB8D6F3));
+        login.setBackgroundResource(R.drawable.lhj_button_white);
         android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(56));
         lp.topMargin = lhjDp(10);
         shell.addView(login, lp);
