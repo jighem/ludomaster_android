@@ -2391,7 +2391,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         lp.topMargin = lhjDp(10);
         shell.addView(login, lp);
         royalLoginButton = login;
-        login.setOnClickListener(v -> startActivity(new Intent(this, WebLoginActivity.class)));
+        login.setOnClickListener(v -> startActivity(new Intent(this,
+            SecureLogin.token(this)==null ? WebLoginActivity.class : LhjProfileActivity.class)));
 
         root.addView(landing, new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1, -1));
         landing.setElevation(1000f);
