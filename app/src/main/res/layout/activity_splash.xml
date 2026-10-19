@@ -3,7 +3,7 @@
     android:id="@+id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#EAF7FF"
+    android:background="@drawable/lhj_menu_sky"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="24dp">
