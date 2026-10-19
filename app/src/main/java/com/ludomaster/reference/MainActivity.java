@@ -990,13 +990,13 @@ public class MainActivity extends AppCompatActivity {
     private Drawable getStylishIconDrawableByColor(String colour) {
         switch(colour){
             case "red":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.redpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_red,null);
             case "blue":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.bluepiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_blue,null);
             case "green":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.greenpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_green,null);
             case "yellow":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.yellowpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_yellow,null);
         }
         return null;
     }
@@ -1840,25 +1840,25 @@ public class MainActivity extends AppCompatActivity {
         switch (color) {
             case "red":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.redpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_red, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "green":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.greenpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_green, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "blue":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.bluepiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_blue, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "yellow":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.yellowpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_yellow, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
