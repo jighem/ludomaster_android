@@ -37,14 +37,14 @@ public final class RoyalSetupActivity extends Activity {
         root.setPadding(dp(26),dp(42),dp(26),dp(28));
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setBackgroundResource(R.drawable.ludo_masters_game_background);
+        root.setBackgroundColor(0xffE0F5E9);
         scroll.addView(root);
         ImageView shield=new ImageView(this);
-        shield.setImageResource(R.drawable.lm_shield);
+        shield.setImageResource(R.drawable.lhj_emblem);
         root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
-        TextView heading=text(computer?"COMPUTER MATCH":"PASS N PLAY",27,0xffffd46a);
+        TextView heading=text(computer?"COMPUTER MATCH":"PASS & PLAY",27,0xff172B54);
         root.addView(heading);
-        countLabel=text("PLAYERS: 2",18,Color.WHITE);
+        countLabel=text("PLAYERS: 2",18,0xff172B54);
         countLabel.setPadding(0,dp(14),0,dp(6));root.addView(countLabel);
         LinearLayout nums=new LinearLayout(this);root.addView(nums);
         for(int n=2;n<=4;n++){
@@ -61,19 +61,19 @@ public final class RoyalSetupActivity extends Activity {
         addPlayer.setOnClickListener(v->LeaguePlayerCreator.show(this,selectedLeagueId,()->refreshRoster()));
         players=new LinearLayout(this);players.setOrientation(1);
         root.addView(players,new LinearLayout.LayoutParams(-1,-2));
-        TextView note=text("OPTIONAL RULES",19,0xffffd46a);
+        TextView note=text("OPTIONAL RULES",19,0xff172B54);
         note.setPadding(0,dp(18),0,dp(8));root.addView(note);
         String[] labels={"Combat scoring (+5 kill / -5 death)",
                 "Earn and use immunity shields","Dynamic Home Shuffle (swap homes during play)"};
         for(int i=0;i<3;i++){
             final int idx=i;
             CheckBox cb=new CheckBox(this);
-            cb.setText(labels[i]);cb.setTextColor(Color.WHITE);cb.setTextSize(15);
-            cb.setButtonTintList(ColorStateList.valueOf(0xffffd46a));
+            cb.setText(labels[i]);cb.setTextColor(0xff172B54);cb.setTextSize(15);
+            cb.setButtonTintList(ColorStateList.valueOf(0xff2586F5));
             root.addView(cb);
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
-        root.addView(text("HOME SHUFFLE INTERVAL",14,0xffffd46a));
+        root.addView(text("HOME SHUFFLE INTERVAL",14,0xff172B54));
         Spinner shuffleInterval=new Spinner(this);
         String[] intervals={"1 minute","2 minutes","3 minutes","5 minutes","10 minutes"};
         int[] values={60,120,180,300,600};
@@ -85,7 +85,7 @@ public final class RoyalSetupActivity extends Activity {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
         });
         root.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
-        root.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,Color.WHITE));
+        root.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,0xff172B54));
         Button play=button("START MATCH");
         root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
@@ -94,7 +94,7 @@ public final class RoyalSetupActivity extends Activity {
         saved.setOnClickListener(v->MatchUploader.showSavedMatches(this));
         Button back=button("BACK");
         root.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
-        root.addView(text("Powered by ludohojaye.com",13,0xffffd46a));
+        root.addView(text("Powered by ludohojaye.com",13,0xff172B54));
         back.setOnClickListener(v->finish());
         updatePlayers();
         setContentView(scroll);
@@ -108,15 +108,15 @@ public final class RoyalSetupActivity extends Activity {
     }
     private Button button(String name){
         Button btn=new Button(this);btn.setText(name);btn.setTextColor(Color.WHITE);
-        btn.setBackgroundTintList(ColorStateList.valueOf(0xff0757bf));return btn;
+        btn.setBackgroundTintList(ColorStateList.valueOf(0xff2586F5));return btn;
     }
     private void updatePlayers(){
         countLabel.setText("PLAYERS: "+count);
         players.removeAllViews();names.clear();playerIds.clear();
         for(int i=0;i<count;i++){
             EditText field=new EditText(this);
-            field.setSingleLine(true);field.setTextColor(Color.WHITE);
-            field.setHintTextColor(0xffb6cbea);
+            field.setSingleLine(true);field.setTextColor(0xff172B54);
+            field.setHintTextColor(0xff64748B);
             field.setHint(computer?(i==0?"Your name":"Computer "+i):"Player "+(i+1));
             field.setText(computer?(i==0?"You":"Computer "+i):"Player "+(i+1));
             players.addView(field,new LinearLayout.LayoutParams(-1,dp(52)));
