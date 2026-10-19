@@ -95,12 +95,11 @@ public final class LhjDialog {
         LinearLayout rows = new LinearLayout(activity);
         rows.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(rows);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, -2);
-        scrollParams.weight = 1;
+        int maxHeight = Math.round(activity.getResources().getDisplayMetrics().heightPixels * 0.53f);
+        int listHeight = Math.min(maxHeight, dp(activity, Math.max(1, labels.length) * 62));
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(-1, listHeight);
         card.addView(scroll, scrollParams);
         AlertDialog dialog = create(activity, card);
-        int maxHeight = Math.round(activity.getResources().getDisplayMetrics().heightPixels * 0.53f);
-        scroll.setMaximumHeight(maxHeight);
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
             TextView row = text(activity, labels[i], 16, NAVY, false);
