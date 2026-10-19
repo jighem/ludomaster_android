@@ -120,7 +120,14 @@ public final class LhjDialog {
         cp.topMargin = dp(activity, 8);
         card.addView(cancel, cp);
         cancel.setOnClickListener(v -> dialog.dismiss());
+        android.view.inputmethod.InputMethodManager keyboard = (android.view.inputmethod.InputMethodManager)
+            activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+        if (keyboard != null && activity.getCurrentFocus() != null)
+            keyboard.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
+        dialog.getWindow();
         dialog.show();
+        if (dialog.getWindow() != null)
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
     public static void confirm(Activity activity, String title, String message,
