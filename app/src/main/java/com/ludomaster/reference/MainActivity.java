@@ -3166,6 +3166,7 @@ public class MainActivity extends AppCompatActivity {
         pxWidth = displayMetrics.widthPixels;
         pxHeight = displayMetrics.heightPixels-getStatusBarHeight();
         ludoBoard = findViewById(R.id.imageView);
+        ludoBoard.setForeground(new LhjBoardGlossDrawable());
         red1activecircle = findViewById(R.id.red1activecircle);
         red2activecircle = findViewById(R.id.red2activecircle);
         red3activecircle = findViewById(R.id.red3activecircle);
