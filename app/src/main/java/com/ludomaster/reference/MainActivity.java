@@ -1481,6 +1481,7 @@ public class MainActivity extends AppCompatActivity {
             bRightImgColor = findViewById(R.id.brightpieceimage);
 
             mainColor = color;
+            diceImgView.setImageDrawable(new LhjDiceDrawable(mainColor,1));
 
             diceHandler = new Handler();
             isRolling = false;
@@ -3016,6 +3017,8 @@ public class MainActivity extends AppCompatActivity {
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
+        if(mainDiceImageView != null)
+            mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor,1));
         currentPlayerSelectedIndex = currentPlayer.getIndex();
         currentPlayerName = currentPlayer.name;
         //Toast.makeText(this, currentPlayerColor+"", Toast.LENGTH_SHORT).show();
