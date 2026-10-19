@@ -34,7 +34,7 @@ public final class RoyalResultsScreen {
         GradientDrawable backdrop=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
             new int[]{0xff102344,0xff142f65,0xff06152e});
         root.setBackground(backdrop);
-        TextView title=text(a,"LUDO MASTERS",29,0xffffd579);
+        TextView title=text(a,"LUDO HO JAYE",29,0xffffd579);
         title.setTypeface(null,Typeface.BOLD);root.addView(title);
         TextView subtitle=text(a,"MATCH COMPLETED",22,Color.WHITE);root.addView(subtitle);
         root.addView(text(a,summary==null?"Match finished":summary,15,0xffe8f0ff));
