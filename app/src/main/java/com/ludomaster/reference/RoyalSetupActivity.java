@@ -40,7 +40,7 @@ public final class RoyalSetupActivity extends Activity {
         root.setBackgroundColor(0xffE0F5E9);
         scroll.addView(root);
         ImageView shield=new ImageView(this);
-        shield.setImageResource(R.drawable.lhj_emblem);
+        shield.setImageResource(R.drawable.lhj_emblem_approved);
         root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
         TextView heading=text(computer?"COMPUTER MATCH":"PASS & PLAY",27,0xff172B54);
         root.addView(heading);

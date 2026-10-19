@@ -13,7 +13,7 @@
         android:layout_height="208dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/lhj_emblem_description"
-        android:src="@drawable/lhj_emblem" />
+        android:src="@drawable/lhj_emblem_approved" />
     <TextView
         android:id="@+id/brand_title"
         android:layout_width="wrap_content"

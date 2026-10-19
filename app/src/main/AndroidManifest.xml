@@ -4,9 +4,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:allowBackup="false"
-        android:icon="@drawable/lhj_emblem"
+        android:icon="@mipmap/lhj_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/lhj_emblem"
+        android:roundIcon="@mipmap/lhj_launcher"
         android:screenOrientation="portrait"
         android:supportsRtl="true"
         android:theme="@style/Theme.LudoMasters">
