@@ -37,7 +37,7 @@ public final class RoyalSetupActivity extends Activity {
         root.setPadding(dp(26),dp(42),dp(26),dp(28));
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setBackgroundColor(0xffE0F5E9);
+        root.setBackgroundResource(R.drawable.lhj_menu_sky);
         scroll.addView(root);
         ImageView shield=new ImageView(this);
         shield.setImageResource(R.drawable.lhj_emblem_approved);
@@ -108,24 +108,44 @@ public final class RoyalSetupActivity extends Activity {
     }
     private Button button(String name){
         Button btn=new Button(this);btn.setText(name);btn.setTextColor(Color.WHITE);
-        btn.setBackgroundTintList(ColorStateList.valueOf(0xff2586F5));return btn;
+        btn.setAllCaps(false);
+        btn.setTypeface(null,android.graphics.Typeface.BOLD);
+        btn.setBackgroundResource(R.drawable.lhj_button_blue);
+        btn.setElevation(dp(3));
+        return btn;
     }
     private void updatePlayers(){
         countLabel.setText("PLAYERS: "+count);
         players.removeAllViews();names.clear();playerIds.clear();
         for(int i=0;i<count;i++){
+            LinearLayout playerCard=new LinearLayout(this);
+            playerCard.setOrientation(LinearLayout.VERTICAL);
+            playerCard.setPadding(dp(14),dp(12),dp(14),dp(12));
+            playerCard.setBackgroundResource(R.drawable.lhj_card_white);
+            playerCard.setElevation(dp(3));
+            LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);
+            cardParams.topMargin=dp(12);
+            players.addView(playerCard,cardParams);
+            TextView seatTitle=text("PLAYER "+(i+1)+(computer && i>0?"  -  COMPUTER":""),
+                    14,0xff172B54);
+            seatTitle.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+            playerCard.addView(seatTitle,new LinearLayout.LayoutParams(-1,dp(30)));
             EditText field=new EditText(this);
             field.setSingleLine(true);field.setTextColor(0xff172B54);
             field.setHintTextColor(0xff64748B);
             field.setHint(computer?(i==0?"Your name":"Computer "+i):"Player "+(i+1));
             field.setText(computer?(i==0?"You":"Computer "+i):"Player "+(i+1));
-            players.addView(field,new LinearLayout.LayoutParams(-1,dp(52)));
+            field.setBackgroundResource(R.drawable.lhj_button_white);
+            field.setPadding(dp(12),0,dp(12),0);
+            playerCard.addView(field,new LinearLayout.LayoutParams(-1,dp(52)));
             names.add(field);
             playerIds.add(0);
             if(SecureLogin.token(this)!=null && (!computer || i==0)) {
                 final int seat=i;
-                Button choose=button("CHOOSE REGISTERED PLAYER "+(i+1));
-                players.addView(choose,new LinearLayout.LayoutParams(-1,dp(45)));
+                Button choose=button("Choose registered player");
+                LinearLayout.LayoutParams pickParams=new LinearLayout.LayoutParams(-1,dp(48));
+                pickParams.topMargin=dp(10);
+                playerCard.addView(choose,pickParams);
                 choose.setOnClickListener(v->choosePlayer(seat));
             }
         }
