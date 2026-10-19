@@ -856,6 +856,7 @@
 
     <TextView
         android:id="@+id/pname1"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
@@ -877,6 +878,7 @@
 
     <TextView
         android:id="@+id/pname2"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
@@ -898,6 +900,7 @@
 
     <TextView
         android:id="@+id/pname3"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="1dp"
@@ -919,6 +922,7 @@
 
     <TextView
         android:id="@+id/pname4"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="1dp"
@@ -1061,8 +1065,8 @@
 
     <ImageView
         android:id="@+id/maindiceimageview"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
         android:scaleType="fitCenter"
         android:layout_marginBottom="5dp"
         app:layout_constraintBottom_toBottomOf="@+id/bleftdicebg"
