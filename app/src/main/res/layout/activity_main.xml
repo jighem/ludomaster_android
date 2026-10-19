@@ -950,7 +950,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/relativeLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber1"
@@ -978,7 +978,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber2"
@@ -1006,7 +1006,7 @@
         app:layout_constraintEnd_toEndOf="@+id/relativeLayout"
         app:layout_constraintTop_toTopOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber3"
@@ -1033,7 +1033,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/relativeLayout"
         app:layout_constraintEnd_toEndOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber4"
@@ -1221,7 +1221,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp1"
@@ -1279,7 +1279,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp2"
@@ -1337,7 +1337,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp3"
@@ -1396,7 +1396,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp4"
