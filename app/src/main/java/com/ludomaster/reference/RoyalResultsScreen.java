@@ -70,7 +70,7 @@ public final class RoyalResultsScreen {
         Button refreshButton=action(a,"Refresh upload status");
         refreshButton.setBackgroundResource(R.drawable.lhj_button_white);
         refreshButton.setTextColor(0xff172B54);
-        refreshButton.setOnClickListener(v->refresh.run());
+        refreshButton.setOnClickListener(v->MatchUploader.refreshOne(a,uuid,refresh));
         root.addView(refreshButton,new LinearLayout.LayoutParams(-1,dp(a,50)));
         if(!canUpload)root.addView(text(a,"Match could not be saved locally. Submission is unavailable.",13,0xffffaaaa));
         Button done=action(a,"DONE");
@@ -84,6 +84,8 @@ public final class RoyalResultsScreen {
         dialog.setCancelable(false);
         dialog.setCanceledOnTouchOutside(false);
         dialog.show();
+        if(canUpload && SecureLogin.token(a)!=null && MatchUploader.localStatus(a,uuid).startsWith("Uploaded"))
+            MatchUploader.refreshOne(a,uuid,refresh);
         if(dialog.getWindow()!=null)dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT);
     }
 }
