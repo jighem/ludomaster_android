@@ -32,16 +32,17 @@ public final class RoyalResultsScreen {
         LinearLayout root=new LinearLayout(a);root.setOrientation(1);
         root.setPadding(dp(a,22),dp(a,25),dp(a,22),dp(a,20));
         GradientDrawable backdrop=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-            new int[]{0xff102344,0xff142f65,0xff06152e});
+            new int[]{0xfffff6d3,0xffffe69a,0xfffff7e0});
         root.setBackground(backdrop);
-        TextView title=text(a,"LUDO HO JAYE",29,0xffffd579);
+        TextView title=text(a,"LUDO HO JAYE",29,0xff172B54);
         title.setTypeface(null,Typeface.BOLD);root.addView(title);
-        TextView subtitle=text(a,"MATCH COMPLETED",22,Color.WHITE);root.addView(subtitle);
-        root.addView(text(a,summary==null?"Match finished":summary,15,0xffe8f0ff));
+        root.addView(text(a,"🏆",52,0xffDAA520));
+        TextView subtitle=text(a,"MATCH COMPLETED",22,0xff172B54);root.addView(subtitle);
+        root.addView(text(a,summary==null?"Match finished":summary,15,0xff172B54));
         if(league!=null && !league.trim().isEmpty())
-            root.addView(text(a,"Selected league: "+league,16,0xffffd579));
-        root.addView(text(a,"Powered by ludohojaye.com",13,0xffffd579));
-        TextView receipt=text(a,"Saved locally — not submitted",14,0xffffd579);
+            root.addView(text(a,"Selected league: "+league,16,0xff172B54));
+        root.addView(text(a,"Powered by ludohojaye.com",13,0xff2586F5));
+        TextView receipt=text(a,"Saved locally — not submitted",14,0xff172B54);
         root.addView(receipt);
         Button submit=action(a,"SUBMIT SCORE TO LUDOHOJAYE");
         submit.setEnabled(canUpload);
