@@ -41,7 +41,6 @@
             android:layout_gravity="center"
             android:gravity="center"
             android:rotation="180"
-            android:foreground="@drawable/lhj_board_frame_overlay"
             app:srcCompat="@drawable/ludofinalboard3" />
 
         <ImageView
@@ -1082,7 +1081,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/ingamemenuitemslayout"
         android:layout_width="232dp"
-        android:layout_height="wrap_content"
+        android:layout_height="154dp"
         android:layout_marginStart="12dp"
         android:layout_marginBottom="10dp"
         android:background="@drawable/lhj_game_menu_panel"
