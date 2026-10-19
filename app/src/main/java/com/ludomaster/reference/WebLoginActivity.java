@@ -31,10 +31,10 @@ public final class WebLoginActivity extends Activity {
         root.setPadding(dp(30),dp(24),dp(30),dp(24));
         root.setBackgroundColor(0xff101e37);
         ImageView shield = new ImageView(this);
-        shield.setImageResource(R.drawable.lm_shield);
+        shield.setImageResource(R.drawable.lhj_emblem);
         root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
         TextView title = new TextView(this);
-        title.setText("LUDO MASTERS");
+        title.setText("LUDO HO JAYE");
         title.setTypeface(null,Typeface.BOLD);
         title.setTextSize(26);
         title.setTextColor(0xffffd277);
