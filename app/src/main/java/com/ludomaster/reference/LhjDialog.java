@@ -124,7 +124,6 @@ public final class LhjDialog {
             activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
         if (keyboard != null && activity.getCurrentFocus() != null)
             keyboard.hideSoftInputFromWindow(activity.getCurrentFocus().getWindowToken(), 0);
-        dialog.getWindow();
         dialog.show();
         if (dialog.getWindow() != null)
             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
