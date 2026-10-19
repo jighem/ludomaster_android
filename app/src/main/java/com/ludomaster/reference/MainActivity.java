@@ -2095,7 +2095,7 @@ public class MainActivity extends AppCompatActivity {
             playername1.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
             ((ConstraintLayout.LayoutParams)playername1.getLayoutParams()).topMargin = (int) (30 * displayMetrics.density);
 
-            playername2.setRotation(180);
+            playername2.setRotation(0);
             ((ConstraintLayout.LayoutParams)playername2.getLayoutParams()).topMargin =  (int) (30 * displayMetrics.density);
 
             playername4.getLayoutParams().width = (int) (total);
@@ -2773,7 +2773,7 @@ public class MainActivity extends AppCompatActivity {
             die.setScaleType(ImageView.ScaleType.FIT_CENTER);
             die.setClickable(false);
             die.setFocusable(false);
-            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(51),hudDp(51));
+            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(42),hudDp(42));
             p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
             p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
             if(i<2)p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
@@ -2791,7 +2791,7 @@ public class MainActivity extends AppCompatActivity {
             if(die==null)continue;
             die.setImageDrawable(new LhjDiceDrawable(player.color,1));
             die.setContentDescription(player.name+" "+player.color+" dice");
-            die.setVisibility(View.VISIBLE);
+            die.setVisibility(player.color.equals(currentPlayerColor)?View.INVISIBLE:View.VISIBLE);
         }
     }
 
@@ -3068,6 +3068,7 @@ public class MainActivity extends AppCompatActivity {
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
+        refreshSeatDiceViews();
         if(mainDiceImageView != null)
             mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor,1));
         currentPlayerSelectedIndex = currentPlayer.getIndex();
@@ -3215,7 +3216,7 @@ public class MainActivity extends AppCompatActivity {
         pxWidth = displayMetrics.widthPixels;
         pxHeight = displayMetrics.heightPixels-getStatusBarHeight();
         ludoBoard = findViewById(R.id.imageView);
-        ludoBoard.setForeground(new LhjBoardGlossDrawable());
+        // Keep original board markings unobstructed until exact-fit 3D board artwork is ready.
         red1activecircle = findViewById(R.id.red1activecircle);
         red2activecircle = findViewById(R.id.red2activecircle);
         red3activecircle = findViewById(R.id.red3activecircle);
