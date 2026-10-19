@@ -125,6 +125,11 @@ public final class LhjDialog {
 
     public static void confirm(Activity activity, String title, String message,
                                String actionLabel, Runnable onAction) {
+        confirm(activity, title, message, "Cancel", actionLabel, onAction);
+    }
+
+    public static void confirm(Activity activity, String title, String message,
+                               String cancelLabel, String actionLabel, Runnable onAction) {
         LinearLayout card = panel(activity, title);
         TextView body = text(activity, message, 16, 0xff516481, false);
         body.setPadding(0, dp(activity, 8), 0, dp(activity, 18));
@@ -132,13 +137,14 @@ public final class LhjDialog {
         LinearLayout actions = new LinearLayout(activity);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         card.addView(actions);
-        Button cancel = button(activity, "Cancel", false);
+        Button cancel = button(activity, cancelLabel, false);
         Button action = button(activity, actionLabel, true);
         LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, dp(activity, 52), 1);
         left.rightMargin = dp(activity, 10);
         actions.addView(cancel, left);
         actions.addView(action, new LinearLayout.LayoutParams(0, dp(activity, 52), 1));
         AlertDialog dialog = create(activity, card);
+        dialog.setCanceledOnTouchOutside(false);
         cancel.setOnClickListener(v -> dialog.dismiss());
         action.setOnClickListener(v -> { dialog.dismiss(); onAction.run(); });
         dialog.show();
