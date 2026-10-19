@@ -47,7 +47,16 @@ public final class MatchUploader {
             .setNeutralButton("REFRESH STATUS",(d,w)->refreshSavedStatuses(activity,files,count))
             .setPositiveButton("CLOSE",null).show();
     }
+    public static void refreshOne(Activity activity,String uuid,Runnable whenDone) {
+        if(uuid==null || uuid.isEmpty())return;
+        File file=new File(new File(activity.getFilesDir(),"offline-matches"),uuid+".json");
+        if(!file.isFile()){Toast.makeText(activity,"No saved match receipt",Toast.LENGTH_SHORT).show();return;}
+        refreshSavedStatuses(activity,new File[]{file},1,whenDone);
+    }
     private static void refreshSavedStatuses(Activity activity,File[] files,int count){
+        refreshSavedStatuses(activity,files,count,null);
+    }
+    private static void refreshSavedStatuses(Activity activity,File[] files,int count,Runnable whenDone){
         final String token=SecureLogin.token(activity);
         if(token==null){
             Toast.makeText(activity,"Log in to refresh approval status",Toast.LENGTH_LONG).show();return;
@@ -95,7 +104,8 @@ public final class MatchUploader {
             final int changed=updated,failed=failures;
             activity.runOnUiThread(()->{
                 Toast.makeText(activity,"Status refreshed: "+changed+" changed"+(failed>0?", "+failed+" unavailable":""),Toast.LENGTH_LONG).show();
-                showSavedMatches(activity);
+                if(whenDone!=null)whenDone.run();
+                else showSavedMatches(activity);
             });
         }).start();
     }
