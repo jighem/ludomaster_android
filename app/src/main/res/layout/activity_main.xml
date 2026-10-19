@@ -14,9 +14,9 @@
         android:layout_width="64dp"
         android:layout_height="64dp"
         android:layout_marginTop="6dp"
-        android:contentDescription="@string/lm_shield_description"
+        android:contentDescription="@string/lhj_emblem_description"
         android:scaleType="fitCenter"
-        android:src="@drawable/lm_shield"
+        android:src="@drawable/lhj_emblem_approved"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
