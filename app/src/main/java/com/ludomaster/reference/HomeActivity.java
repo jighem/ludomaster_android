@@ -2350,7 +2350,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         body.addView(emblem, new android.widget.LinearLayout.LayoutParams(lhjDp(132), lhjDp(132)));
 
         android.widget.TextView title = new android.widget.TextView(this);
-        title.setText("Ludo Ho Jaye!");
+        title.setText("Ludo Ho Jaye!!!");
         title.setTextColor(0xFF172B54);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         title.setTextSize(33);
