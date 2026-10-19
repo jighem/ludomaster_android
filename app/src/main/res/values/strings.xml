@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">Ludo Ho Jaye</string>
+    <string name="lhj_display_title">Ludo Ho Jaye!!!</string>
     <string name="lhj_tagline">Dosti Bhi, Takkar Bhi!</string>
     <string name="lhj_emblem_description">Ludo Ho Jaye four color token emblem</string>
     <string name="profilenote">*Your country name &amp; Flag will be shown to other players when you play online multiplayer</string>
