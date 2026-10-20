@@ -103,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean offlineResultSaved;
     private LinearLayout statsHud;
     private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
+    private final java.util.Map<String,ImageView> statsAvatarViews = new java.util.HashMap<>();
+    private final java.util.Map<Integer,ImageView> seatDiceViews = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -164,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
 
     static boolean isDiceMovableExtraChance = false;
     Dice d;
+    private final DiceRules diceRules = new DiceRules(new java.security.SecureRandom());
 
     MediaPlayer gameStartSound,diceRollSound,stepSound,safeSound,deathSound,pantaSound,congratulationSound;
     int sizeOfBox;
@@ -184,7 +187,8 @@ public class MainActivity extends AppCompatActivity {
 
     // ingame menu button and items
     ConstraintLayout ingamemenuitemslayout;
-    ImageView ingamemenubtn,menuremoveplayersbtn,menuexitbtn;
+    ImageView ingamemenubtn;
+    TextView menuremoveplayersbtn, menuexitbtn;
 
     // ingameexitgamelayout
     ConstraintLayout quitgamelayout;
@@ -315,6 +319,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void onClickForBot() {
+            if (currentPlayerDice < 1 || !otherwiseLegal(this,currentPlayerDice)
+                    || blockedByOwnPawn(this,currentPlayerDice)) return;
             if (isAlive && isClickable && currentPlayerColor.equals(colour)) {
                 diceValue = currentPlayerDice;
                 currentPlayerDice = -1;
@@ -352,13 +358,12 @@ public class MainActivity extends AppCompatActivity {
                     piece.setElevation(currBlock);
                 }
             },400);
-            globalHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if(isBotPiece) {
-                        d.roll();
-                    }
-                }
+            final String botColour = colour;
+            final int expectedTurn = shuffleTurnGeneration;
+            globalHandler.postDelayed(() -> {
+                if (isBotPiece && !shuffleMatchEnding && d != null &&
+                    expectedTurn == shuffleTurnGeneration &&
+                    botColour.equals(currentPlayerColor)) d.roll();
             },550);
         }
 
@@ -723,6 +728,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         public boolean check(int diceValue) {
+            if (blockedByOwnPawn(this,diceValue)) {
+                inactiveState();
+                return false;
+            }
             if (homeShuffleEnabled && homeShuffleEngine != null) {
                 int remaining = isReadyToEnterWinnerZone ?
                     (6 - currWinnerBlock) : (stepsUntilShuffleEntrance + 6);
@@ -989,13 +998,13 @@ public class MainActivity extends AppCompatActivity {
     private Drawable getStylishIconDrawableByColor(String colour) {
         switch(colour){
             case "red":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.redpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_red,null);
             case "blue":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.bluepiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_blue,null);
             case "green":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.greenpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_green,null);
             case "yellow":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.yellowpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_yellow,null);
         }
         return null;
     }
@@ -1086,8 +1095,64 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Predict the final square using the same entrance and finishing-lane
+     * transition rules as Piece.move(), without altering the live piece.
+     * A pawn may pass through another pawn; only the landing square matters.
+     */
+    private int landingSquare(Piece p, int steps) {
+        return LudoLandingRules.destination(
+            p.currBlock,p.startPosition,p.isAlive,p.isReadyToEnterWinnerZone,
+            p.currWinnerBlock,p.stepsUntilShuffleEntrance,p.endPosition,
+            homeShuffleEnabled && homeShuffleEngine!=null,steps,
+            getWinnerBlocks(p.endPosition));
+    }
+
+    /** Same colour may stack only on designated safe track squares. */
+    private boolean blockedByOwnPawn(Piece moving, int face) {
+        if (!moving.isAlive) return false; // All starts are safe squares.
+        int destination=landingSquare(moving,face);
+        if (destination<0 || safeSpots.contains(destination)) return false;
+        java.util.ArrayList<Integer> occupied=new java.util.ArrayList<>();
+        for(Piece other:getPiecesByColor(moving.colour)) {
+            if(other!=moving && other.isAlive && !other.hasCompletedItsPurpose)
+                occupied.add(other.currBlock);
+        }
+        int[] squares=new int[occupied.size()];
+        for(int i=0;i<squares.length;i++)squares[i]=occupied.get(i);
+        return LudoLandingRules.occupiedByFriend(destination,false,squares);
+    }
+
+    private boolean otherwiseLegal(Piece p,int face) {
+        if(face<1 || face>6 || p.hasCompletedItsPurpose || p.isThisPlayerWon)return false;
+        if(!p.isAlive)return face==6;
+        if(homeShuffleEnabled && homeShuffleEngine!=null) {
+            int remaining=p.isReadyToEnterWinnerZone?
+                (6-p.currWinnerBlock):(p.stepsUntilShuffleEntrance+6);
+            return face<=remaining;
+        }
+        return p.numberOfSteps+face<57;
+    }
+
+    /** No preference for any player; face excluded only if all viable pieces collide. */
+    private boolean faceIsOwnCollisionBlocked(int face) {
+        boolean hasNormallyLegal=false;
+        for(Piece piece:getPiecesByColor(currentPlayerColor)) {
+            if(!otherwiseLegal(piece,face))continue;
+            hasNormallyLegal=true;
+            if(!blockedByOwnPawn(piece,face))return false;
+        }
+        return hasNormallyLegal;
+    }
+
     private void executeSelectedPiece(Piece selected) {
         if (!currentPlayerColor.equals(selected.colour) || currentPlayerDice < 1) return;
+        if (!otherwiseLegal(selected,currentPlayerDice)
+                || blockedByOwnPawn(selected,currentPlayerDice)) {
+            Toast.makeText(this,"Choose a different pawn: landing blocked",
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (selected.isAlive && selected.isClickable && !selected.hasCompletedItsPurpose) {
             int rolled = currentPlayerDice;
             currentPlayerDice = -1;
@@ -1201,7 +1266,7 @@ public class MainActivity extends AppCompatActivity {
         statsHud.setPadding(hudDp(4), hudDp(4), hudDp(4), hudDp(4));
         statsHud.setClipChildren(false);
         ConstraintLayout.LayoutParams hudParams = new ConstraintLayout.LayoutParams(
-            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(79));
+            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(106));
         hudParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
         hudParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
         hudParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
@@ -1211,13 +1276,14 @@ public class MainActivity extends AppCompatActivity {
         for (String color : new String[]{"red","green","yellow","blue"}) {
             TextView cell = new TextView(this);
             cell.setTextSize(11);
-            cell.setTextColor(Color.WHITE);
+            cell.setTextColor(0xff172B54);
             cell.setGravity(Gravity.CENTER);
             cell.setMaxLines(4);
             cell.setPadding(hudDp(2),hudDp(3),hudDp(2),hudDp(3));
             GradientDrawable background = new GradientDrawable();
-            background.setColor(Color.rgb(20,31,55));
-            background.setCornerRadius(hudDp(9));
+            background.setColors(new int[]{0xffFFFFFF,0xffEBF5FF});
+            background.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+            background.setCornerRadius(hudDp(16));
             int accent;
             switch (color) {
                 case "red": accent=0xffe84248; break;
@@ -1226,11 +1292,20 @@ public class MainActivity extends AppCompatActivity {
                 default: accent=0xff428aff;
             }
             background.setStroke(hudDp(2),accent);
-            cell.setBackground(background);
+            LinearLayout badge=new LinearLayout(this);
+            badge.setOrientation(LinearLayout.VERTICAL);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(background);
+            ImageView avatar=new ImageView(this);
+            avatar.setImageResource(R.drawable.lhj_avatar_human);
+            avatar.setContentDescription("Player avatar");
+            badge.addView(avatar,new LinearLayout.LayoutParams(hudDp(34),hudDp(34)));
+            badge.addView(cell,new LinearLayout.LayoutParams(-1,0,1f));
             LinearLayout.LayoutParams cellParams=new LinearLayout.LayoutParams(0,-1,1f);
             cellParams.setMargins(hudDp(2),0,hudDp(2),0);
-            statsHud.addView(cell,cellParams);
+            statsHud.addView(badge,cellParams);
             statsCells.put(color,cell);
+            statsAvatarViews.put(color,avatar);
         }
         statsHud.bringToFront();
         addLiveAudioButton(root);
@@ -1241,8 +1316,9 @@ public class MainActivity extends AppCompatActivity {
         android.widget.Button audio=new android.widget.Button(this);
         audio.setText("SOUND");
         audio.setTextSize(10);
-        audio.setTextColor(Color.WHITE);
-        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff18559c));
+        audio.setTextColor(0xff172B54);
+        audio.setAllCaps(false);
+        audio.setBackgroundResource(R.drawable.lhj_button_white);
         ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(108),hudDp(45));
         params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
         params.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
@@ -1267,10 +1343,14 @@ public class MainActivity extends AppCompatActivity {
             if (cell == null) continue;
             String name=offlinePlayerNames.get(color);
             if (name==null) {
-                cell.setVisibility(View.GONE);
+                ((View)cell.getParent()).setVisibility(View.GONE);
                 continue;
             }
-            cell.setVisibility(View.VISIBLE);
+            ((View)cell.getParent()).setVisibility(View.VISIBLE);
+            ImageView avatar=statsAvatarViews.get(color);
+            if(avatar!=null)avatar.setImageResource(
+                name.toLowerCase(java.util.Locale.ROOT).startsWith("computer")
+                    ?R.drawable.lhj_avatar_robot:R.drawable.lhj_avatar_human);
             if(name.length()>10) name=name.substring(0,9)+"…";
             int kills=getCount(killCounts,color);
             int deaths=getCount(deathCounts,color);
@@ -1303,12 +1383,10 @@ public class MainActivity extends AppCompatActivity {
         incrementCount(deathCounts, defender.colour);
         if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
         refreshStatsHud();
-        if (combatScoringEnabled || immunityEnabled) {
-            String summary = attacker.colour + " captured " + defender.colour;
-            if (combatScoringEnabled) summary += " (+5 / -5)";
-            if (immunityEnabled) summary += " - shield earned";
-            Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
-        }
+        String summary = "Great capture! " + attacker.colour + " takes " + defender.colour;
+        if (combatScoringEnabled) summary += "  +5 points";
+        if (immunityEnabled) summary += "  +1 shield";
+        Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
         continuation.accept(true);
     }
 
@@ -1359,7 +1437,15 @@ public class MainActivity extends AppCompatActivity {
         if (piece.diceValue == 6 || piece.currWinnerBlock > 5 || (captured && !piece.isThisPlayerWon)) {
             isDiceMovableExtraChance = true;
             if (!piece.isBotPiece) hintArrow.setVisibility(View.VISIBLE);
-            else globalHandler.postDelayed(() -> d.roll(), 150);
+            else {
+                final String expectedColour = piece.colour;
+                final int expectedTurn = shuffleTurnGeneration;
+                globalHandler.postDelayed(() -> {
+                    if (!shuffleMatchEnding && d != null &&
+                        expectedTurn == shuffleTurnGeneration &&
+                        expectedColour.equals(currentPlayerColor)) d.roll();
+                }, 150);
+            }
         } else {
             switchPlayers();
             d.isDiceClickable = true;
@@ -1466,14 +1552,6 @@ public class MainActivity extends AppCompatActivity {
             this.diceImgView = diceImgView;
             this.numberOfPlayers = nop;
             diceAnimationDrawable = new AnimationDrawable();
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0001,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0002,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0003,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0004,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0005,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0006,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0007,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0008,null),50);
 
             tLeftLayout = findViewById(R.id.tleftdicebg);
             tRightLayout = findViewById(R.id.trightdicebg);
@@ -1486,6 +1564,7 @@ public class MainActivity extends AppCompatActivity {
             bRightImgColor = findViewById(R.id.brightpieceimage);
 
             mainColor = color;
+            diceImgView.setImageDrawable(new LhjDiceDrawable(mainColor,1));
 
             diceHandler = new Handler();
             isRolling = false;
@@ -1593,6 +1672,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void roll() {
+            if (isRolling || shuffleMatchEnding || players == null || players.isEmpty()) return;
             isRolling = true;
             isDiceClickable = false;
             isDiceMovableExtraChance = false;
@@ -1603,37 +1683,57 @@ public class MainActivity extends AppCompatActivity {
                 diceRollSound.seekTo(5);
                 diceRollSound.start();
             }
+            diceAnimationDrawable=new AnimationDrawable();
+            for(int frame=0;frame<8;frame++)
+                diceAnimationDrawable.addFrame(new LhjDiceDrawable(currentPlayerColor,1+(frame%6)),50);
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
             diceHandler.postDelayed(() -> {
-                int ch = (int) Math.ceil(Math.random()*6);
-                String number = editText.getText().toString();
-                try {
-                    int n = Integer.parseInt(number);
-                    ch = n;
-                } catch (Exception e) {}
+                final boolean thirdRollLimited = diceRules.nextRollExcludesSix();
+                int ch = diceRules.roll(face -> !faceIsOwnCollisionBlocked(face));
+                if(ch==0) {
+                    isRolling=false;
+                    Toast.makeText(MainActivity.this,
+                        "No free landing square. Turn passed!",Toast.LENGTH_SHORT).show();
+                    switchPlayers();
+                    isDiceClickable=true;
+                    return;
+                }
+                if (thirdRollLimited) {
+                    Toast.makeText(MainActivity.this,
+                        "Hot streak! Third roll: 1 to 5", Toast.LENGTH_SHORT).show();
+                } else if (ch == 6) {
+                    Toast.makeText(MainActivity.this, "SIX! Roll again after your move!",
+                        Toast.LENGTH_SHORT).show();
+                }
                 switch (ch) {
                     case 1:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice1, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 1));
                         break;
                     case 2:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice2, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 2));
                         break;
                     case 3:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice3, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 3));
                         break;
                     case 4:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice4, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 4));
                         break;
                     case 5:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice5, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 5));
                         break;
                     case 6:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice6, null));
+                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 6));
                         break;
                 }
                 isRolling = false;
+                // Reward the result visually, never alter the random outcome.
+                mainDiceImageView.animate().cancel();
+                mainDiceImageView.setScaleX(0.89f);
+                mainDiceImageView.setScaleY(0.89f);
+                mainDiceImageView.animate().scaleX(1f).scaleY(1f)
+                    .setDuration(210).setInterpolator(new OvershootInterpolator(1.15f)).start();
 
                 currentPlayerDice = ch;
                 // Ensure active pieces are promoted when their roll is available.
@@ -1648,6 +1748,8 @@ public class MainActivity extends AppCompatActivity {
                  int autoMoveBlock = -1;
 
                  List<Piece> movablePieces = new ArrayList<>();
+                 // An automatic choice must not leak across different dice rolls.
+                 autoMove = null;
 
                 for(Piece p : pieces)
                 {
@@ -1826,11 +1928,24 @@ public class MainActivity extends AppCompatActivity {
                     //Toast.makeText(MainActivity.this, bestMovablePiece.colour+","+bestMovablePiece.startPosition, Toast.LENGTH_SHORT).show();
                     bestMovablePiece.onClickForBot();
                 } else if (chances == 0) {
-                        diceHandler.postDelayed(() -> {
+                    // A six still grants its extra roll when no pawn can move.
+                    // The third roll remains restricted to 1..5 by DiceRules.
+                    final boolean extraRoll = ch == 6;
+                    final String originalColour = currentPlayerColor;
+                    final int expectedGeneration = shuffleTurnGeneration;
+                    diceHandler.postDelayed(() -> {
+                        if (shuffleMatchEnding || !originalColour.equals(currentPlayerColor)
+                            || expectedGeneration != shuffleTurnGeneration) return;
+                        if (extraRoll) {
+                            isDiceMovableExtraChance = true;
+                            if (currentPlayer.isBot) roll();
+                            else hintArrow.setVisibility(View.VISIBLE);
+                        } else {
                             switchPlayers();
                             isDiceClickable = true;
-                        }, 500);
-                    }
+                        }
+                    }, 500);
+                }
             }, 350);
             }
     }
@@ -1839,25 +1954,25 @@ public class MainActivity extends AppCompatActivity {
         switch (color) {
             case "red":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.redpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_red, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "green":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.greenpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_green, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "blue":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.bluepiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_blue, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "yellow":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.yellowpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_yellow, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
@@ -2081,7 +2196,7 @@ public class MainActivity extends AppCompatActivity {
             playername1.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
             ((ConstraintLayout.LayoutParams)playername1.getLayoutParams()).topMargin = (int) (30 * displayMetrics.density);
 
-            playername2.setRotation(180);
+            playername2.setRotation(0);
             ((ConstraintLayout.LayoutParams)playername2.getLayoutParams()).topMargin =  (int) (30 * displayMetrics.density);
 
             playername4.getLayoutParams().width = (int) (total);
@@ -2653,7 +2768,18 @@ public class MainActivity extends AppCompatActivity {
             mainDiceImageView.setVisibility(GONE);
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
+            initializeSeatDiceViews();
             initialiseHomeShuffle();
+            // Generate the same 15x15 home finish for standard and shuffle games.
+            // The game's original tile positions and input controls are unchanged.
+            android.graphics.Bitmap baseBoard=android.graphics.BitmapFactory.decodeResource(
+                getResources(),R.drawable.ludofinalboard3);
+            if(baseBoard!=null) {
+                android.graphics.Bitmap premiumBoard=
+                    com.ludomaster.reference.shuffle.LhjPremiumBoardRenderer.enhance(baseBoard);
+                baseBoard.recycle();
+                ludoBoard.setImageBitmap(premiumBoard);
+            }
             if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
         redHomeBlink.setLayoutParams(lp);
@@ -2746,6 +2872,45 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** In Shuffle mode any seat may become occupied, including originally unused seats. */
+
+    /** Non-clickable player-specific dice, never replacing the active roll control. */
+    private void initializeSeatDiceViews() {
+        if(!seatDiceViews.isEmpty())return;
+        int[] pads={R.id.bleftdicebg,R.id.tleftdicebg,
+                    R.id.trightdicebg,R.id.brightdicebg};
+        for(int i=0;i<4;i++){
+            ConstraintLayout pad=findViewById(pads[i]);
+            ImageView die=new ImageView(this);
+            die.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            die.setClickable(false);
+            die.setFocusable(false);
+            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(42),hudDp(42));
+            p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+            p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
+            if(i<2) {
+                p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+                p.setMarginEnd(hudDp(11));
+            } else {
+                p.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+                p.setMarginStart(hudDp(9));
+            }
+            pad.addView(die,p);
+            seatDiceViews.put(i+1,die);
+        }
+        refreshSeatDiceViews();
+    }
+
+    private void refreshSeatDiceViews() {
+        for(ImageView die:seatDiceViews.values())die.setVisibility(View.GONE);
+        for(Player player:players){
+            ImageView die=seatDiceViews.get(player.position);
+            if(die==null)continue;
+            die.setImageDrawable(new LhjDiceDrawable(player.color,1));
+            die.setContentDescription(player.name+" "+player.color+" dice");
+            die.setVisibility(player.color.equals(currentPlayerColor)?View.INVISIBLE:View.VISIBLE);
+        }
+    }
+
     private void refreshShuffleDicePanels() {
         if (!homeShuffleEnabled || d == null) return;
         d.tLeftLayout.setVisibility(View.VISIBLE);
@@ -2769,6 +2934,7 @@ public class MainActivity extends AppCompatActivity {
             icon.setImageDrawable(getPieceDrawableByColor(player.color));
             icon.setVisibility(View.VISIBLE);
         }
+        refreshSeatDiceViews();
     }
 
     private void applyPendingHomeShuffle() {
@@ -3014,10 +3180,16 @@ public class MainActivity extends AppCompatActivity {
 
     void switchPlayers()
     {
+        diceRules.startTurn();
+        currentPlayerDice = -1;
+        autoMove = null;
         ++shuffleTurnGeneration;
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
+        refreshSeatDiceViews();
+        if(mainDiceImageView != null)
+            mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor,1));
         currentPlayerSelectedIndex = currentPlayer.getIndex();
         currentPlayerName = currentPlayer.name;
         //Toast.makeText(this, currentPlayerColor+"", Toast.LENGTH_SHORT).show();
@@ -3163,6 +3335,7 @@ public class MainActivity extends AppCompatActivity {
         pxWidth = displayMetrics.widthPixels;
         pxHeight = displayMetrics.heightPixels-getStatusBarHeight();
         ludoBoard = findViewById(R.id.imageView);
+        // Keep original board markings unobstructed until exact-fit 3D board artwork is ready.
         red1activecircle = findViewById(R.id.red1activecircle);
         red2activecircle = findViewById(R.id.red2activecircle);
         red3activecircle = findViewById(R.id.red3activecircle);
@@ -3193,6 +3366,13 @@ public class MainActivity extends AppCompatActivity {
         playername2 = findViewById(R.id.pname2);
         playername3 = findViewById(R.id.pname3);
         playername4 = findViewById(R.id.pname4);
+        // Player names are displayed upright in the HUD badges. Hide the
+        // legacy in-yard labels to avoid upside-down names and dice overlaps,
+        // while retaining the TextView references used by seat assignment.
+        playername1.setVisibility(View.INVISIBLE);
+        playername2.setVisibility(View.INVISIBLE);
+        playername3.setVisibility(View.INVISIBLE);
+        playername4.setVisibility(View.INVISIBLE);
 
         mainDiceImageView = findViewById(R.id.maindiceimageview);
         hintArrow = findViewById(R.id.hintarrowleft);
@@ -3485,9 +3665,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = ConstraintLayout.LayoutParams.UNSET;
-        lps.setMarginStart(-((int)displayMetrics.density));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = R.id.tleftdicebg;
+        lps.topToTop = R.id.tleftdicebg;
         lps.bottomToBottom = R.id.tleftdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(hudDp(11));
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.endToStart = ConstraintLayout.LayoutParams.UNSET;
@@ -3502,9 +3692,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = R.id.trightdicebg;
-        lps.setMarginStart(-((int)(2*displayMetrics.density)));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.topToTop = R.id.trightdicebg;
         lps.bottomToBottom = R.id.trightdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(hudDp(9));
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -3519,9 +3719,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = R.id.brightdicebg;
-        lps.setMarginStart(-((int)(2*displayMetrics.density)));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.topToTop = R.id.brightdicebg;
         lps.bottomToBottom = R.id.brightdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(hudDp(9));
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -3536,9 +3746,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = ConstraintLayout.LayoutParams.UNSET;
-        lps.setMarginStart(-((int)displayMetrics.density));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = R.id.bleftdicebg;
+        lps.topToTop = R.id.bleftdicebg;
         lps.bottomToBottom = R.id.bleftdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(hudDp(11));
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.endToStart = ConstraintLayout.LayoutParams.UNSET;

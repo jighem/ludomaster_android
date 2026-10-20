@@ -29,20 +29,20 @@ public final class WebLoginActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER);
         root.setPadding(dp(30),dp(24),dp(30),dp(24));
-        root.setBackgroundColor(0xff101e37);
+        root.setBackgroundResource(R.drawable.lhj_menu_sky);
         ImageView shield = new ImageView(this);
-        shield.setImageResource(R.drawable.lm_shield);
-        root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
+        shield.setImageResource(R.drawable.lhj_emblem_approved);
+        root.addView(shield,new LinearLayout.LayoutParams(dp(150),dp(150)));
         TextView title = new TextView(this);
-        title.setText("LUDO MASTERS");
+        title.setText("Ludo Ho Jaye!!!");
         title.setTypeface(null,Typeface.BOLD);
         title.setTextSize(26);
-        title.setTextColor(0xffffd277);
+        title.setTextColor(0xff172B54);
         title.setGravity(Gravity.CENTER);
         root.addView(title);
         TextView subtitle = new TextView(this);
         subtitle.setText("Sign in with your ludohojaye.com account");
-        subtitle.setTextColor(Color.WHITE);
+        subtitle.setTextColor(0xff516481);
         subtitle.setGravity(Gravity.CENTER);
         subtitle.setPadding(0,dp(12),0,dp(20));
         root.addView(subtitle);
@@ -59,35 +59,46 @@ public final class WebLoginActivity extends Activity {
         styleInput(password);
         root.addView(password,new LinearLayout.LayoutParams(-1,dp(58)));
         signIn = new Button(this);
-        signIn.setText("SIGN IN");
-        root.addView(signIn);
+        signIn.setText("Sign In");
+        signIn.setAllCaps(false);
+        signIn.setTextColor(Color.WHITE);
+        signIn.setTypeface(null,Typeface.BOLD);
+        signIn.setBackgroundResource(R.drawable.lhj_button_blue);
+        LinearLayout.LayoutParams signInParams=new LinearLayout.LayoutParams(-1,dp(60));
+        signInParams.topMargin=dp(18);
+        root.addView(signIn,signInParams);
         status = new TextView(this);
         status.setGravity(Gravity.CENTER);
-        status.setTextColor(Color.WHITE);
+        status.setTextColor(0xff172B54);
         root.addView(status);
         Button offline = new Button(this);
         offline.setText("Back to offline play");
         offline.setOnClickListener(v -> finish());
+        offline.setAllCaps(false);
+        offline.setBackgroundResource(R.drawable.lhj_button_white);
+        offline.setTextColor(0xff172B54);
         root.addView(offline);
         Button register=new Button(this);
         register.setText("DON'T HAVE AN ACCOUNT? REGISTER AT LUDOHOJAYE.COM");
         register.setAllCaps(false);
         register.setOnClickListener(v->startActivity(new android.content.Intent(
             android.content.Intent.ACTION_VIEW,android.net.Uri.parse("https://ludohojaye.com/"))));
+        register.setBackgroundResource(R.drawable.lhj_button_white);
+        register.setTextColor(0xff172B54);
         root.addView(register);
         TextView powered=new TextView(this);
         powered.setText("Powered by ludohojaye.com");
-        powered.setTextColor(0xffffd277);
+        powered.setTextColor(0xff2586F5);
         powered.setGravity(Gravity.CENTER);
         root.addView(powered);
         signIn.setOnClickListener(v -> submit());
         setContentView(root);
     }
     private void styleInput(EditText field) {
-        field.setTextColor(Color.WHITE);
-        field.setHintTextColor(0xffc1cee0);
+        field.setTextColor(0xff172B54);
+        field.setHintTextColor(0xff64748B);
         field.setPadding(dp(12),dp(4),dp(12),dp(4));
-        field.setBackgroundColor(0xff253753);
+        field.setBackgroundResource(R.drawable.lhj_button_white);
     }
     private int dp(int n) {return Math.round(n*getResources().getDisplayMetrics().density);}
     private void submit() {

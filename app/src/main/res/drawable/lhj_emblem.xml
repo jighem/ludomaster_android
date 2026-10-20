@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Off-white outer rim, soft under-ring and navy badge. -->
+    <path android:fillColor="#D3E0EF" android:pathData="M54,3 A51,51 0,1 1,54 105 A51,51 0,1 1,54 3 Z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M54,4 A49,49 0,1 1,54 102 A49,49 0,1 1,54 4 Z"/>
+    <path android:fillColor="#172B54" android:pathData="M54,11 A42,42 0,1 1,54 95 A42,42 0,1 1,54 11 Z"/>
+    <path android:fillColor="#243E70" android:pathData="M54,15 A38,38 0,1 1,54 91 A38,38 0,1 1,54 15 Z"/>
+    <!-- Clearly defined pawns: four independent toy-like silhouettes around the central dice. -->
+    <group android:name="red_pawn" android:rotation="-45" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#AF1D33" android:pathData="M43,39 Q43,33 47,29 Q48,26 48,23 A7,7 0,1 1,60 23 Q60,26 61,29 Q65,33 65,39 Q54,44 43,39 Z"/>
+        <path android:fillColor="#F04452" android:pathData="M45,37 Q46,31 49,28 Q49,26 49,24 A5,5 0,1 1,59 24 Q59,26 60,28 Q63,31 63,37 Q54,41 45,37 Z"/>
+        <path android:fillColor="#FF9AA6" android:pathData="M49,22 Q50,17 54,18 Q57,18 58,21 Q54,19 49,22 Z"/>
+    </group>
+    <group android:name="yellow_pawn" android:rotation="45" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#B87911" android:pathData="M43,39 Q43,33 47,29 Q48,26 48,23 A7,7 0,1 1,60 23 Q60,26 61,29 Q65,33 65,39 Q54,44 43,39 Z"/>
+        <path android:fillColor="#FFC342" android:pathData="M45,37 Q46,31 49,28 Q49,26 49,24 A5,5 0,1 1,59 24 Q59,26 60,28 Q63,31 63,37 Q54,41 45,37 Z"/>
+        <path android:fillColor="#FFE9A4" android:pathData="M49,22 Q50,17 54,18 Q57,18 58,21 Q54,19 49,22 Z"/>
+    </group>
+    <group android:name="blue_pawn" android:rotation="135" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#1253B4" android:pathData="M43,39 Q43,33 47,29 Q48,26 48,23 A7,7 0,1 1,60 23 Q60,26 61,29 Q65,33 65,39 Q54,44 43,39 Z"/>
+        <path android:fillColor="#2586F5" android:pathData="M45,37 Q46,31 49,28 Q49,26 49,24 A5,5 0,1 1,59 24 Q59,26 60,28 Q63,31 63,37 Q54,41 45,37 Z"/>
+        <path android:fillColor="#A9D9FF" android:pathData="M49,22 Q50,17 54,18 Q57,18 58,21 Q54,19 49,22 Z"/>
+    </group>
+    <group android:name="green_pawn" android:rotation="-135" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#138052" android:pathData="M43,39 Q43,33 47,29 Q48,26 48,23 A7,7 0,1 1,60 23 Q60,26 61,29 Q65,33 65,39 Q54,44 43,39 Z"/>
+        <path android:fillColor="#23BF75" android:pathData="M45,37 Q46,31 49,28 Q49,26 49,24 A5,5 0,1 1,59 24 Q59,26 60,28 Q63,31 63,37 Q54,41 45,37 Z"/>
+        <path android:fillColor="#ADFFDA" android:pathData="M49,22 Q50,17 54,18 Q57,18 58,21 Q54,19 49,22 Z"/>
+    </group>
+    <!-- High-contrast central die, tilted slightly, with three clear pips. -->
+    <group android:rotation="12" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#9CACCA" android:pathData="M44,44 Q44,41 47,41 L62,41 Q65,41 65,44 L65,62 Q65,65 62,65 L47,65 Q44,65 44,62 Z"/>
+        <path android:fillColor="#FFFFFF" android:pathData="M43,43 Q43,40 46,40 L61,40 Q64,40 64,43 L64,61 Q64,64 61,64 L46,64 Q43,64 43,61 Z"/>
+        <path android:fillColor="#172B54" android:pathData="M48,46 A2,2 0,1 1,48 50 A2,2 0,1 1,48 46 Z"/>
+        <path android:fillColor="#172B54" android:pathData="M54,50 A2,2 0,1 1,54 54 A2,2 0,1 1,54 50 Z"/>
+        <path android:fillColor="#172B54" android:pathData="M60,56 A2,2 0,1 1,60 60 A2,2 0,1 1,60 56 Z"/>
+    </group>
+</vector>

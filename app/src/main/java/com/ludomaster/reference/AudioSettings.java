@@ -18,7 +18,7 @@ public final class AudioSettings {
         TextView hint=new TextView(activity);
         hint.setText("Changes are saved for the next game. Sound files can be replaced in app/src/main/res/raw.");
         box.addView(hint);
-        new AlertDialog.Builder(activity).setTitle("Ludo Masters — Audio").setView(box)
+        new AlertDialog.Builder(activity).setTitle("Ludo Ho Jaye — Audio").setView(box)
           .setNegativeButton("Cancel",null)
           .setPositiveButton("Save",(d,w)->{
               prefs.edit().putBoolean("sound",sound.isChecked())

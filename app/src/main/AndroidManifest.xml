@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ludomaster.reference">
-
     <uses-permission android:name="android.permission.INTERNET" />
-
     <application
         android:allowBackup="false"
-        android:icon="@drawable/lm_shield"
+        android:icon="@mipmap/lhj_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/lm_shield"
+        android:roundIcon="@mipmap/lhj_launcher"
         android:screenOrientation="portrait"
         android:supportsRtl="true"
         android:theme="@style/Theme.LudoMasters">
-
-
         <activity
             android:name=".SplashActivity"
             android:exported="true"
@@ -25,14 +21,8 @@
         </activity>
         <activity android:name=".RoyalSetupActivity" android:exported="false" />
         <activity android:name=".WebLoginActivity" android:exported="false" />
+        <activity android:name=".LhjProfileActivity" android:exported="false" />
         <activity android:name=".HomeActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:screenOrientation="portrait"></activity>
-
-
-
+        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait"/>
     </application>
-
 </manifest>
