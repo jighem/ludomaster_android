@@ -1099,26 +1099,11 @@ public class MainActivity extends AppCompatActivity {
      * A pawn may pass through another pawn; only the landing square matters.
      */
     private int landingSquare(Piece p, int steps) {
-        if (!p.isAlive) return p.startPosition;
-        int square=p.currBlock;
-        boolean inLane=p.isReadyToEnterWinnerZone;
-        int laneStep=p.currWinnerBlock;
-        int entranceSteps=p.stepsUntilShuffleEntrance;
-        for(int i=0;i<steps;i++) {
-            if (inLane) {
-                int[] lane=getWinnerBlocks(p.endPosition);
-                if(laneStep>=lane.length)return -1;
-                square=lane[laneStep++];
-            } else {
-                square=(square+1)%52;
-                if(homeShuffleEnabled && homeShuffleEngine!=null) {
-                    if(entranceSteps>0 && --entranceSteps==0) inLane=true;
-                } else if(square==p.endPosition) {
-                    inLane=true;
-                }
-            }
-        }
-        return square;
+        return LudoLandingRules.destination(
+            p.currBlock,p.startPosition,p.isAlive,p.isReadyToEnterWinnerZone,
+            p.currWinnerBlock,p.stepsUntilShuffleEntrance,p.endPosition,
+            homeShuffleEnabled && homeShuffleEngine!=null,steps,
+            getWinnerBlocks(p.endPosition));
     }
 
     /** Same colour may stack only on designated safe track squares. */
@@ -1126,11 +1111,14 @@ public class MainActivity extends AppCompatActivity {
         if (!moving.isAlive) return false; // All starts are safe squares.
         int destination=landingSquare(moving,face);
         if (destination<0 || safeSpots.contains(destination)) return false;
-        for (Piece other:getPiecesByColor(moving.colour)) {
-            if (other!=moving && other.isAlive && !other.hasCompletedItsPurpose
-                && other.currBlock==destination) return true;
+        java.util.ArrayList<Integer> occupied=new java.util.ArrayList<>();
+        for(Piece other:getPiecesByColor(moving.colour)) {
+            if(other!=moving && other.isAlive && !other.hasCompletedItsPurpose)
+                occupied.add(other.currBlock);
         }
-        return false;
+        int[] squares=new int[occupied.size()];
+        for(int i=0;i<squares.length;i++)squares[i]=occupied.get(i);
+        return LudoLandingRules.occupiedByFriend(destination,false,squares);
     }
 
     private boolean otherwiseLegal(Piece p,int face) {
