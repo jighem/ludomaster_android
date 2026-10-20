@@ -166,6 +166,7 @@ public class MainActivity extends AppCompatActivity {
 
     static boolean isDiceMovableExtraChance = false;
     Dice d;
+    private final DiceRules diceRules = new DiceRules(new java.security.SecureRandom());
 
     MediaPlayer gameStartSound,diceRollSound,stepSound,safeSound,deathSound,pantaSound,congratulationSound;
     int sizeOfBox;
@@ -1604,6 +1605,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void roll() {
+            if (isRolling || shuffleMatchEnding || players == null || players.isEmpty()) return;
             isRolling = true;
             isDiceClickable = false;
             isDiceMovableExtraChance = false;
@@ -1621,12 +1623,15 @@ public class MainActivity extends AppCompatActivity {
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
             diceHandler.postDelayed(() -> {
-                int ch = (int) Math.ceil(Math.random()*6);
-                String number = editText.getText().toString();
-                try {
-                    int n = Integer.parseInt(number);
-                    ch = n;
-                } catch (Exception e) {}
+                final boolean thirdRollLimited = diceRules.nextRollExcludesSix();
+                int ch = diceRules.roll();
+                if (thirdRollLimited) {
+                    Toast.makeText(MainActivity.this,
+                        "Hot streak! Third roll: 1 to 5", Toast.LENGTH_SHORT).show();
+                } else if (ch == 6) {
+                    Toast.makeText(MainActivity.this, "SIX! Roll again after your move!",
+                        Toast.LENGTH_SHORT).show();
+                }
                 switch (ch) {
                     case 1:
                         mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 1));
@@ -1662,6 +1667,8 @@ public class MainActivity extends AppCompatActivity {
                  int autoMoveBlock = -1;
 
                  List<Piece> movablePieces = new ArrayList<>();
+                 // An automatic choice must not leak across different dice rolls.
+                 autoMove = null;
 
                 for(Piece p : pieces)
                 {
@@ -1840,11 +1847,24 @@ public class MainActivity extends AppCompatActivity {
                     //Toast.makeText(MainActivity.this, bestMovablePiece.colour+","+bestMovablePiece.startPosition, Toast.LENGTH_SHORT).show();
                     bestMovablePiece.onClickForBot();
                 } else if (chances == 0) {
-                        diceHandler.postDelayed(() -> {
+                    // A six still grants its extra roll when no pawn can move.
+                    // The third roll remains restricted to 1..5 by DiceRules.
+                    final boolean extraRoll = ch == 6;
+                    final String originalColour = currentPlayerColor;
+                    final int expectedGeneration = shuffleTurnGeneration;
+                    diceHandler.postDelayed(() -> {
+                        if (shuffleMatchEnding || !originalColour.equals(currentPlayerColor)
+                            || expectedGeneration != shuffleTurnGeneration) return;
+                        if (extraRoll) {
+                            isDiceMovableExtraChance = true;
+                            if (currentPlayer.isBot) roll();
+                            else hintArrow.setVisibility(View.VISIBLE);
+                        } else {
                             switchPlayers();
                             isDiceClickable = true;
-                        }, 500);
-                    }
+                        }
+                    }, 500);
+                }
             }, 350);
             }
     }
@@ -3079,6 +3099,9 @@ public class MainActivity extends AppCompatActivity {
 
     void switchPlayers()
     {
+        diceRules.startTurn();
+        currentPlayerDice = -1;
+        autoMove = null;
         ++shuffleTurnGeneration;
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
