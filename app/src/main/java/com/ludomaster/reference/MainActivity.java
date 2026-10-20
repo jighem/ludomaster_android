@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
     private com.ludomaster.reference.shuffle.HomeShuffleEngine homeShuffleEngine;
     private long nextShuffleDueAtMs;
     private TextView shuffleCountdownView;
+    private TextView centralDiceResultView;
+    private final Runnable hideCentralDiceResult = () -> { if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE); };
     private boolean shuffleMatchEnding;
     private volatile int shuffleRepaintVersion;
     private int shuffleTurnGeneration;
@@ -1466,6 +1468,7 @@ public class MainActivity extends AppCompatActivity {
             this.diceImgView = diceImgView;
             this.numberOfPlayers = nop;
             diceAnimationDrawable = new AnimationDrawable();
+            // Keep the original clone frames; frame timing is handled below.
             diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0001,null),50);
             diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0002,null),50);
             diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0003,null),50);
@@ -1603,6 +1606,7 @@ public class MainActivity extends AppCompatActivity {
                 diceRollSound.seekTo(5);
                 diceRollSound.start();
             }
+            updateDicePlayerTint();
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
@@ -1634,6 +1638,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
                 isRolling = false;
+                showCentralDiceResult(ch);
 
                 currentPlayerDice = ch;
                 // Ensure active pieces are promoted when their roll is available.
@@ -2654,6 +2659,7 @@ public class MainActivity extends AppCompatActivity {
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
             initialiseHomeShuffle();
+            addCentralDiceResultView();
             if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
         redHomeBlink.setLayoutParams(lp);
@@ -2745,6 +2751,52 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    private void updateDicePlayerTint() {
+        if (mainDiceImageView == null) return;
+        int tint;
+        switch (currentPlayerColor == null ? "" : currentPlayerColor) {
+            case "red": tint = 0xffffb5b5; break;
+            case "green": tint = 0xffa8f4b9; break;
+            case "blue": tint = 0xffa9dcff; break;
+            case "yellow": tint = 0xffffe7a1; break;
+            default: mainDiceImageView.clearColorFilter(); return;
+        }
+        // Apply tint to the rendered image, not the ImageView: changing the
+        // ImageView drawable during the roll otherwise loses the colour.
+        mainDiceImageView.setColorFilter(tint, android.graphics.PorterDuff.Mode.MULTIPLY);
+    }
+
+    private void addCentralDiceResultView() {
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        centralDiceResultView = new TextView(this);
+        centralDiceResultView.setTextSize(35);
+        centralDiceResultView.setTextColor(Color.WHITE);
+        centralDiceResultView.setGravity(Gravity.CENTER);
+        centralDiceResultView.setTypeface(null, android.graphics.Typeface.BOLD);
+        centralDiceResultView.setShadowLayer(hudDp(3), 0, hudDp(2), Color.BLACK);
+        centralDiceResultView.setBackgroundColor(0xaa17253b);
+        centralDiceResultView.setElevation(hudDp(12));
+        centralDiceResultView.setVisibility(View.GONE);
+        centralDiceResultView.setClickable(false);
+        centralDiceResultView.setFocusable(false);
+        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(hudDp(64), hudDp(64));
+        params.startToStart = R.id.imageView;
+        params.endToEnd = R.id.imageView;
+        params.topToTop = R.id.imageView;
+        params.bottomToBottom = R.id.imageView;
+        root.addView(centralDiceResultView, params);
+    }
+
+    private void showCentralDiceResult(int number) {
+        if (centralDiceResultView == null) return;
+        globalHandler.removeCallbacks(hideCentralDiceResult);
+        centralDiceResultView.setText(String.valueOf(number));
+        centralDiceResultView.setVisibility(View.VISIBLE);
+        centralDiceResultView.bringToFront();
+        globalHandler.postDelayed(hideCentralDiceResult, 1500);
+    }
+
     /** In Shuffle mode any seat may become occupied, including originally unused seats. */
     private void refreshShuffleDicePanels() {
         if (!homeShuffleEnabled || d == null) return;
@@ -2758,8 +2810,16 @@ public class MainActivity extends AppCompatActivity {
         d.bRightImgColor.setVisibility(View.INVISIBLE);
         for (Player player : players) {
             ImageView icon;
-            // All dice icons are bound to the same seat map as pawn home yards.
-            switch (player.position) {
+            // Resolve icon seat from authoritative colour-home mapping.
+            // Board painter physical slots: 0 top-right, 1 bottom-right,
+            // 2 bottom-left, 3 top-left. Dice panel IDs follow screen corners.
+            // Do NOT use shuffleSeatForSlot here: that legacy mapping is used
+            // for token geometry and is not the on-screen dice-panel mapping.
+            int physicalSlot = homeShuffleEngine.homeSlot(shuffleColourIndex(player.color));
+            int turns = ((Math.round(ludoBoard.getRotation() / 90f) % 4) + 4) % 4;
+            int screenSlot = (physicalSlot + turns) % 4;
+            int playerSeat = new int[]{3, 4, 1, 2}[screenSlot];
+            switch (playerSeat) {
                 case 1: icon = d.bLeftImgColor; break;
                 case 2: icon = d.tLeftImgColor; break;
                 case 3: icon = d.tRightImgColor; break;
@@ -3018,6 +3078,7 @@ public class MainActivity extends AppCompatActivity {
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
+        updateDicePlayerTint();
         currentPlayerSelectedIndex = currentPlayer.getIndex();
         currentPlayerName = currentPlayer.name;
         //Toast.makeText(this, currentPlayerColor+"", Toast.LENGTH_SHORT).show();
