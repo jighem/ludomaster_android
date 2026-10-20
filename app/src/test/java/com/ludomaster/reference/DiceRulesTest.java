@@ -51,4 +51,26 @@ public class DiceRulesTest {
         }
         for(int value=1;value<=6;value++) assertTrue("Missing "+value,seen[value]);
     }
+    @Test public void skipsForbiddenFacesWithoutBiasAmongRemaining() {
+        DiceRules dice=new DiceRules(new MaxRollRandom());
+        // Only 2 and 4 are legal; deterministic max-index selection chooses 4.
+        assertEquals(4,dice.roll(face -> face==2 || face==4));
+        assertEquals(4,dice.roll(face -> face==2 || face==4));
+    }
+
+    @Test public void fullyBlockedDieReturnsZeroAndDoesNotMutateStreak() {
+        DiceRules dice=new DiceRules(new MaxRollRandom());
+        dice.roll();dice.roll();
+        assertEquals(0,dice.roll(face -> false));
+        assertEquals(2,dice.consecutiveSixes());
+        assertTrue(dice.nextRollExcludesSix());
+    }
+
+    @Test public void collisionFilteringNeverPermitsThirdSix() {
+        DiceRules dice=new DiceRules(new MaxRollRandom());
+        assertEquals(6,dice.roll(face -> true));
+        assertEquals(6,dice.roll(face -> true));
+        assertEquals(5,dice.roll(face -> face==5 || face==6));
+    }
+
 }
