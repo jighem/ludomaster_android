@@ -5,78 +5,129 @@ import android.graphics.Color;
 import android.graphics.ColorFilter;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 
-/** Glossy player-coloured die face. Rendering only; roll rules stay in MainActivity. */
+/**
+ * Three-visible-face isometric die (top/front/right). Front face always
+ * displays the actual rolled result; the other faces are visual context only.
+ * All pips are white and no animation frame controls the dice result.
+ */
 public final class LhjDiceDrawable extends Drawable {
     private final String color;
     private final int face;
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     private int alpha=255;
 
-    public LhjDiceDrawable(String color,int face){
+    public LhjDiceDrawable(String color,int face) {
         this.color=color==null?"blue":color;
         this.face=Math.max(1,Math.min(6,face));
     }
-    private int[] palette(){
-        switch(color){
-            case "red":return new int[]{0xffff8190,0xfff22b4b,0xffa0102b};
-            case "green":return new int[]{0xff9affc1,0xff1cc873,0xff08794b};
-            case "yellow":return new int[]{0xffffee94,0xffffc627,0xffb7760a};
-            default:return new int[]{0xff9cdaff,0xff218ffa,0xff06539f};
+
+    private int[] palette() {
+        switch(color) {
+            case "red":return new int[]{0xffffa3aa,0xfff42b4f,0xff9a1029};
+            case "green":return new int[]{0xffb4ffce,0xff19c678,0xff086a43};
+            case "yellow":return new int[]{0xfffff4ae,0xffffc42b,0xff9d6507};
+            default:return new int[]{0xffbce9ff,0xff248efd,0xff064887};
         }
     }
-    private void pip(Canvas canvas,float x,float y,float radius){
-        p.setShader(null);
-        p.setStyle(Paint.Style.FILL);
-        p.setColor(0x5b0a2340);
-        canvas.drawCircle(x+1.1f,y+1.2f,radius+0.25f,p);
-        p.setColor(Color.WHITE);
-        canvas.drawCircle(x,y,radius,p);
-        p.setColor(0xffe1f4ff);
-        canvas.drawCircle(x-radius*.2f,y-radius*.2f,radius*.50f,p);
+
+    private static Path quad(float[] v) {
+        Path path=new Path();
+        path.moveTo(v[0],v[1]);path.lineTo(v[2],v[3]);
+        path.lineTo(v[4],v[5]);path.lineTo(v[6],v[7]);
+        path.close();
+        return path;
     }
-    @Override public void draw(Canvas canvas){
-        Rect bounds=getBounds();
-        if(bounds.isEmpty())return;
-        int save=canvas.save();
-        canvas.translate(bounds.left,bounds.top);
-        canvas.scale(bounds.width()/80f,bounds.height()/80f);
-        int[] palette=palette();
-        p.setShader(null);p.setStyle(Paint.Style.FILL);
-        p.setColor(0x68041b34);
-        canvas.drawRoundRect(new RectF(8,9,76,77),18,18,p);
-        p.setColor(palette[2]);
-        canvas.drawRoundRect(new RectF(4,3,74,73),16,16,p);
-        p.setShader(new LinearGradient(12,7,68,70,palette,null,Shader.TileMode.CLAMP));
-        canvas.drawRoundRect(new RectF(7,4,71,68),14,14,p);
+
+    private static float[] project(float[] q,float u,float v) {
+        return new float[]{
+            (1-u)*(1-v)*q[0]+u*(1-v)*q[2]+u*v*q[4]+(1-u)*v*q[6],
+            (1-u)*(1-v)*q[1]+u*(1-v)*q[3]+u*v*q[5]+(1-u)*v*q[7]
+        };
+    }
+
+    private void drawFace(Canvas c,float[] q,int start,int end) {
+        p.setShader(new LinearGradient(q[0],q[1],q[4],q[5],
+            start,end,Shader.TileMode.CLAMP));
+        p.setStyle(Paint.Style.FILL);
+        c.drawPath(quad(q),p);
         p.setShader(null);
-        p.setColor(0x86ffffff);
-        canvas.drawRoundRect(new RectF(13,9,64,19),7,7,p);
+        p.setColor(0xa8ffffff);
         p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(2.5f);
-        p.setColor(0xb8ffffff);
-        canvas.drawRoundRect(new RectF(8,5,70,67),13,13,p);
+        p.setStrokeWidth(1.3f);
+        c.drawPath(quad(q),p);
         p.setStyle(Paint.Style.FILL);
-        boolean[] cells=new boolean[9];
-        switch(face){
-            case 1: cells[4]=true;break;
-            case 2:cells[0]=cells[8]=true;break;
-            case 3:cells[0]=cells[4]=cells[8]=true;break;
-            case 4:cells[0]=cells[2]=cells[6]=cells[8]=true;break;
-            case 5:cells[0]=cells[2]=cells[4]=cells[6]=cells[8]=true;break;
-            case 6:cells[0]=cells[2]=cells[3]=cells[5]=cells[6]=cells[8]=true;break;
-        }
-        for(int i=0;i<9;i++)if(cells[i])
-            pip(canvas,22f+(i%3)*17f,20f+(i/3)*17f,5.6f);
-        canvas.restoreToCount(save);
     }
-    @Override public void setAlpha(int a){alpha=a;invalidateSelf();}
-    @Override public void setColorFilter(ColorFilter f){p.setColorFilter(f);invalidateSelf();}
+
+    private void dot(Canvas c,float[] q,float u,float v,float radius) {
+        float[] at=project(q,u,v);
+        p.setShader(null);p.setColor(0x5c09213a);
+        c.drawCircle(at[0]+.8f,at[1]+.8f,radius+.3f,p);
+        p.setColor(Color.WHITE);
+        c.drawCircle(at[0],at[1],radius,p);
+        p.setColor(0x99d9f3ff);
+        c.drawCircle(at[0]-radius*.22f,at[1]-radius*.22f,radius*.48f,p);
+    }
+
+    private void pips(Canvas c,float[] q,int n,float radius) {
+        switch(n) {
+            case 1: dot(c,q,.5f,.5f,radius);break;
+            case 2: dot(c,q,.25f,.25f,radius);dot(c,q,.75f,.75f,radius);break;
+            case 3:
+                dot(c,q,.25f,.25f,radius);dot(c,q,.5f,.5f,radius);
+                dot(c,q,.75f,.75f,radius);break;
+            case 4:
+                dot(c,q,.25f,.25f,radius);dot(c,q,.75f,.25f,radius);
+                dot(c,q,.25f,.75f,radius);dot(c,q,.75f,.75f,radius);break;
+            case 5:
+                dot(c,q,.25f,.25f,radius);dot(c,q,.75f,.25f,radius);
+                dot(c,q,.5f,.5f,radius);dot(c,q,.25f,.75f,radius);
+                dot(c,q,.75f,.75f,radius);break;
+            case 6:
+                for(int col=0;col<2;col++)for(int row=0;row<3;row++)
+                    dot(c,q,col==0?.25f:.75f,.22f+row*.28f,radius);break;
+        }
+    }
+
+    @Override public void draw(Canvas canvas) {
+        Rect r=getBounds();
+        if(r.isEmpty())return;
+        int state=canvas.save();
+        canvas.translate(r.left,r.top);
+        canvas.scale(r.width()/80f,r.height()/80f);
+        int[] palette=palette();
+        float[] top={9,25,32,9,73,21,50,37};
+        float[] front={9,25,50,37,50,71,9,58};
+        float[] right={50,37,73,21,73,55,50,71};
+        p.setShader(null);p.setStyle(Paint.Style.FILL);
+        p.setColor(0x4306192d);
+        canvas.drawOval(10,66,76,79,p);
+        drawFace(canvas,top,palette[0],palette[1]);
+        drawFace(canvas,right,palette[1],palette[2]);
+        drawFace(canvas,front,palette[0],palette[1]);
+        // Real die orientation: adjacent faces cannot be opposing sides.
+        int[] topValues={0,2,3,1,2,3,2};
+        int[] rightValues={0,3,1,2,6,1,4};
+        pips(canvas,top,topValues[face],2.45f);
+        pips(canvas,right,rightValues[face],2.15f);
+        pips(canvas,front,face,3.0f);
+        p.setShader(null);
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(1.6f);
+        p.setColor(0xc5ffffff);
+        canvas.drawLine(10,26,32,11,p);
+        canvas.drawLine(32,11,71,22,p);
+        canvas.drawLine(10,26,10,57,p);
+        p.setStyle(Paint.Style.FILL);
+        canvas.restoreToCount(state);
+    }
+    @Override public void setAlpha(int value) {alpha=Math.max(0,Math.min(255,value));invalidateSelf();}
+    @Override public void setColorFilter(ColorFilter filter){p.setColorFilter(filter);invalidateSelf();}
     @Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}
     @Override public int getIntrinsicWidth(){return 80;}
     @Override public int getIntrinsicHeight(){return 80;}
