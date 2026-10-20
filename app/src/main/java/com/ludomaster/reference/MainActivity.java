@@ -319,6 +319,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void onClickForBot() {
+            if (currentPlayerDice < 1 || !otherwiseLegal(this,currentPlayerDice)
+                    || blockedByOwnPawn(this,currentPlayerDice)) return;
             if (isAlive && isClickable && currentPlayerColor.equals(colour)) {
                 diceValue = currentPlayerDice;
                 currentPlayerDice = -1;
@@ -1145,6 +1147,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void executeSelectedPiece(Piece selected) {
         if (!currentPlayerColor.equals(selected.colour) || currentPlayerDice < 1) return;
+        if (!otherwiseLegal(selected,currentPlayerDice)
+                || blockedByOwnPawn(selected,currentPlayerDice)) {
+            Toast.makeText(this,"Choose a different pawn: landing blocked",
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (selected.isAlive && selected.isClickable && !selected.hasCompletedItsPurpose) {
             int rolled = currentPlayerDice;
             currentPlayerDice = -1;
