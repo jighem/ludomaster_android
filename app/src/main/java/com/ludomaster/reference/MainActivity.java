@@ -356,13 +356,12 @@ public class MainActivity extends AppCompatActivity {
                     piece.setElevation(currBlock);
                 }
             },400);
-            globalHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if(isBotPiece) {
-                        d.roll();
-                    }
-                }
+            final String botColour = colour;
+            final int expectedTurn = shuffleTurnGeneration;
+            globalHandler.postDelayed(() -> {
+                if (isBotPiece && !shuffleMatchEnding && d != null &&
+                    expectedTurn == shuffleTurnGeneration &&
+                    botColour.equals(currentPlayerColor)) d.roll();
             },550);
         }
 
@@ -1378,7 +1377,15 @@ public class MainActivity extends AppCompatActivity {
         if (piece.diceValue == 6 || piece.currWinnerBlock > 5 || (captured && !piece.isThisPlayerWon)) {
             isDiceMovableExtraChance = true;
             if (!piece.isBotPiece) hintArrow.setVisibility(View.VISIBLE);
-            else globalHandler.postDelayed(() -> d.roll(), 150);
+            else {
+                final String expectedColour = piece.colour;
+                final int expectedTurn = shuffleTurnGeneration;
+                globalHandler.postDelayed(() -> {
+                    if (!shuffleMatchEnding && d != null &&
+                        expectedTurn == shuffleTurnGeneration &&
+                        expectedColour.equals(currentPlayerColor)) d.roll();
+                }, 150);
+            }
         } else {
             switchPlayers();
             d.isDiceClickable = true;
