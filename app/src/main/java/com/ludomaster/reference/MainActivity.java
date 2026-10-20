@@ -1321,12 +1321,10 @@ public class MainActivity extends AppCompatActivity {
         incrementCount(deathCounts, defender.colour);
         if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
         refreshStatsHud();
-        if (combatScoringEnabled || immunityEnabled) {
-            String summary = attacker.colour + " captured " + defender.colour;
-            if (combatScoringEnabled) summary += " (+5 / -5)";
-            if (immunityEnabled) summary += " - shield earned";
-            Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
-        }
+        String summary = "Great capture! " + attacker.colour + " takes " + defender.colour;
+        if (combatScoringEnabled) summary += "  +5 points";
+        if (immunityEnabled) summary += "  +1 shield";
+        Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
         continuation.accept(true);
     }
 
@@ -1660,6 +1658,12 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
                 isRolling = false;
+                // Reward the result visually, never alter the random outcome.
+                mainDiceImageView.animate().cancel();
+                mainDiceImageView.setScaleX(0.89f);
+                mainDiceImageView.setScaleY(0.89f);
+                mainDiceImageView.animate().scaleX(1f).scaleY(1f)
+                    .setDuration(210).setInterpolator(new OvershootInterpolator(1.15f)).start();
 
                 currentPlayerDice = ch;
                 // Ensure active pieces are promoted when their roll is available.
