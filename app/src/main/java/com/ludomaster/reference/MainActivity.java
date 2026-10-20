@@ -1468,6 +1468,7 @@ public class MainActivity extends AppCompatActivity {
             this.diceImgView = diceImgView;
             this.numberOfPlayers = nop;
             diceAnimationDrawable = new AnimationDrawable();
+            // Keep the original clone frames; frame timing is handled below.
             diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0001,null),50);
             diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0002,null),50);
             diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0003,null),50);
@@ -2761,6 +2762,8 @@ public class MainActivity extends AppCompatActivity {
             case "yellow": tint = 0xffffe7a1; break;
             default: mainDiceImageView.clearColorFilter(); return;
         }
+        // Apply tint to the rendered image, not the ImageView: changing the
+        // ImageView drawable during the roll otherwise loses the colour.
         mainDiceImageView.setColorFilter(tint, android.graphics.PorterDuff.Mode.MULTIPLY);
     }
 
