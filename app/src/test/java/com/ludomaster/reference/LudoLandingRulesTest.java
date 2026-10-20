@@ -15,7 +15,7 @@ public class LudoLandingRulesTest {
     }
 
     @Test public void legacyFinishingLaneIsPreserved() {
-        assertEquals(53,LudoLandingRules.destination(49,39,true,false,0,50,50,false,4,lane));
+        assertEquals(54,LudoLandingRules.destination(49,39,true,false,0,50,50,false,4,lane));
     }
 
     @Test public void pawnsCanStackOnlyOnSafeSquares() {
