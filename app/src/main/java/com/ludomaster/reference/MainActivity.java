@@ -726,6 +726,10 @@ public class MainActivity extends AppCompatActivity {
 
 
         public boolean check(int diceValue) {
+            if (blockedByOwnPawn(this,diceValue)) {
+                inactiveState();
+                return false;
+            }
             if (homeShuffleEnabled && homeShuffleEngine != null) {
                 int remaining = isReadyToEnterWinnerZone ?
                     (6 - currWinnerBlock) : (stepsUntilShuffleEntrance + 6);
@@ -1087,6 +1091,68 @@ public class MainActivity extends AppCompatActivity {
                 p.piece.setClickable(true);
             }
         }
+    }
+
+    /**
+     * Predict the final square using the same entrance and finishing-lane
+     * transition rules as Piece.move(), without altering the live piece.
+     * A pawn may pass through another pawn; only the landing square matters.
+     */
+    private int landingSquare(Piece p, int steps) {
+        if (!p.isAlive) return p.startPosition;
+        int square=p.currBlock;
+        boolean inLane=p.isReadyToEnterWinnerZone;
+        int laneStep=p.currWinnerBlock;
+        int entranceSteps=p.stepsUntilShuffleEntrance;
+        for(int i=0;i<steps;i++) {
+            if (inLane) {
+                int[] lane=getWinnerBlocks(p.endPosition);
+                if(laneStep>=lane.length)return -1;
+                square=lane[laneStep++];
+            } else {
+                square=(square+1)%52;
+                if(homeShuffleEnabled && homeShuffleEngine!=null) {
+                    if(entranceSteps>0 && --entranceSteps==0) inLane=true;
+                } else if(square==p.endPosition) {
+                    inLane=true;
+                }
+            }
+        }
+        return square;
+    }
+
+    /** Same colour may stack only on designated safe track squares. */
+    private boolean blockedByOwnPawn(Piece moving, int face) {
+        if (!moving.isAlive) return false; // All starts are safe squares.
+        int destination=landingSquare(moving,face);
+        if (destination<0 || safeSpots.contains(destination)) return false;
+        for (Piece other:getPiecesByColor(moving.colour)) {
+            if (other!=moving && other.isAlive && !other.hasCompletedItsPurpose
+                && other.currBlock==destination) return true;
+        }
+        return false;
+    }
+
+    private boolean otherwiseLegal(Piece p,int face) {
+        if(face<1 || face>6 || p.hasCompletedItsPurpose || p.isThisPlayerWon)return false;
+        if(!p.isAlive)return face==6;
+        if(homeShuffleEnabled && homeShuffleEngine!=null) {
+            int remaining=p.isReadyToEnterWinnerZone?
+                (6-p.currWinnerBlock):(p.stepsUntilShuffleEntrance+6);
+            return face<=remaining;
+        }
+        return p.numberOfSteps+face<57;
+    }
+
+    /** No preference for any player; face excluded only if all viable pieces collide. */
+    private boolean faceIsOwnCollisionBlocked(int face) {
+        boolean hasNormallyLegal=false;
+        for(Piece piece:getPiecesByColor(currentPlayerColor)) {
+            if(!otherwiseLegal(piece,face))continue;
+            hasNormallyLegal=true;
+            if(!blockedByOwnPawn(piece,face))return false;
+        }
+        return hasNormallyLegal;
     }
 
     private void executeSelectedPiece(Piece selected) {
@@ -1629,7 +1695,15 @@ public class MainActivity extends AppCompatActivity {
             diceAnimationDrawable.start();
             diceHandler.postDelayed(() -> {
                 final boolean thirdRollLimited = diceRules.nextRollExcludesSix();
-                int ch = diceRules.roll();
+                int ch = diceRules.roll(face -> !faceIsOwnCollisionBlocked(face));
+                if(ch==0) {
+                    isRolling=false;
+                    Toast.makeText(MainActivity.this,
+                        "No free landing square. Turn passed!",Toast.LENGTH_SHORT).show();
+                    switchPlayers();
+                    isDiceClickable=true;
+                    return;
+                }
                 if (thirdRollLimited) {
                     Toast.makeText(MainActivity.this,
                         "Hot streak! Third roll: 1 to 5", Toast.LENGTH_SHORT).show();
