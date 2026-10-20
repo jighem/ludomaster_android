@@ -2808,7 +2808,14 @@ public class MainActivity extends AppCompatActivity {
         for (Player player : players) {
             ImageView icon;
             // Resolve icon seat from authoritative colour-home mapping.
-            int playerSeat = shuffleSeatForSlot(homeShuffleEngine.homeSlot(shuffleColourIndex(player.color)));
+            // Board painter physical slots: 0 top-right, 1 bottom-right,
+            // 2 bottom-left, 3 top-left. Dice panel IDs follow screen corners.
+            // Do NOT use shuffleSeatForSlot here: that legacy mapping is used
+            // for token geometry and is not the on-screen dice-panel mapping.
+            int physicalSlot = homeShuffleEngine.homeSlot(shuffleColourIndex(player.color));
+            int turns = ((Math.round(ludoBoard.getRotation() / 90f) % 4) + 4) % 4;
+            int screenSlot = (physicalSlot + turns) % 4;
+            int playerSeat = new int[]{3, 4, 1, 2}[screenSlot];
             switch (playerSeat) {
                 case 1: icon = d.bLeftImgColor; break;
                 case 2: icon = d.tLeftImgColor; break;
