@@ -1958,7 +1958,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }, 500);
                 }
-            }, 350);
+            }, 780);
             }
     }
 
