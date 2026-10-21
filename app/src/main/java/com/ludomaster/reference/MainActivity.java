@@ -75,6 +75,10 @@ public class MainActivity extends AppCompatActivity {
     private com.ludomaster.reference.shuffle.HomeShuffleEngine homeShuffleEngine;
     private long nextShuffleDueAtMs;
     private TextView shuffleCountdownView;
+    private TextView centralDiceResultView;
+    private final Runnable hideCentralDiceResult = () -> {
+        if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
+    };
     private boolean shuffleMatchEnding;
     private volatile int shuffleRepaintVersion;
     private int shuffleTurnGeneration;
@@ -1683,9 +1687,16 @@ public class MainActivity extends AppCompatActivity {
                 diceRollSound.seekTo(5);
                 diceRollSound.start();
             }
-            diceAnimationDrawable=new AnimationDrawable();
-            for(int frame=0;frame<8;frame++)
-                diceAnimationDrawable.addFrame(new LhjDiceDrawable(currentPlayerColor,1+(frame%6)),50);
+            // Animate the PR #25 Ludo Ho Jaye die itself, not the legacy clone sprites.
+            // The independent DiceRules determines the final face below.
+            diceAnimationDrawable = new AnimationDrawable();
+            for (int frame = 0; frame < 12; frame++) {
+                float phase = (frame + 1) / 12f;
+                diceAnimationDrawable.addFrame(
+                    new LhjDiceDrawable(currentPlayerColor, 1 + (frame * 5 % 6),
+                        360f * (1f - phase) * 1.4f, 360f * (1f - phase) * 1.15f,
+                        frame * 41f), 35 + frame * 5);
+            }
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
@@ -1728,6 +1739,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
                 isRolling = false;
+                showCentralDiceResult(ch);
                 // Reward the result visually, never alter the random outcome.
                 mainDiceImageView.animate().cancel();
                 mainDiceImageView.setScaleX(0.89f);
@@ -1946,7 +1958,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }, 500);
                 }
-            }, 350);
+            }, 780);
             }
     }
 
@@ -2770,6 +2782,7 @@ public class MainActivity extends AppCompatActivity {
             d = new Dice(mainDiceImageView, nop, color);
             initializeSeatDiceViews();
             initialiseHomeShuffle();
+            addCentralDiceResultView();
             // Generate the same 15x15 home finish for standard and shuffle games.
             // The game's original tile positions and input controls are unchanged.
             android.graphics.Bitmap baseBoard=android.graphics.BitmapFactory.decodeResource(
@@ -2903,7 +2916,7 @@ public class MainActivity extends AppCompatActivity {
     private void refreshSeatDiceViews() {
         for(ImageView die:seatDiceViews.values())die.setVisibility(View.GONE);
         for(Player player:players){
-            ImageView die=seatDiceViews.get(player.position);
+            ImageView die=seatDiceViews.get(currentHudSeat(player));
             if(die==null)continue;
             die.setImageDrawable(new LhjDiceDrawable(player.color,1));
             die.setContentDescription(player.name+" "+player.color+" dice");
@@ -2911,8 +2924,54 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /** Resolve HUD seat from exactly the same mapping used to move a colour's home. */
+    private int currentHudSeat(Player player) {
+        if (homeShuffleEnabled && homeShuffleEngine != null) {
+            return shuffleSeatForSlot(homeShuffleEngine.homeSlot(shuffleColourIndex(player.color)));
+        }
+        return player.position;
+    }
+
+    private void addCentralDiceResultView() {
+        ConstraintLayout root = findViewById(R.id.activitybg);
+        if (root == null || centralDiceResultView != null) return;
+        centralDiceResultView = new TextView(this);
+        centralDiceResultView.setTextSize(35);
+        centralDiceResultView.setTextColor(Color.WHITE);
+        centralDiceResultView.setGravity(Gravity.CENTER);
+        centralDiceResultView.setTypeface(null, android.graphics.Typeface.BOLD);
+        centralDiceResultView.setShadowLayer(hudDp(2), 0, hudDp(2), Color.BLACK);
+        centralDiceResultView.setBackgroundColor(0xcc17253b);
+        centralDiceResultView.setElevation(hudDp(14));
+        centralDiceResultView.setVisibility(View.GONE);
+        centralDiceResultView.setClickable(false);
+        centralDiceResultView.setFocusable(false);
+        ConstraintLayout.LayoutParams params =
+            new ConstraintLayout.LayoutParams(hudDp(66), hudDp(66));
+        params.startToStart = R.id.imageView;
+        params.endToEnd = R.id.imageView;
+        params.topToTop = R.id.imageView;
+        params.bottomToBottom = R.id.imageView;
+        root.addView(centralDiceResultView, params);
+    }
+
+    private void showCentralDiceResult(int result) {
+        if (centralDiceResultView == null) return;
+        globalHandler.removeCallbacks(hideCentralDiceResult);
+        centralDiceResultView.setText(String.valueOf(result));
+        int colour = 0xff248efd;
+        if ("red".equals(currentPlayerColor)) colour = 0xfff42b4f;
+        else if ("green".equals(currentPlayerColor)) colour = 0xff19c678;
+        else if ("yellow".equals(currentPlayerColor)) colour = 0xffffc42b;
+        centralDiceResultView.setBackgroundTintList(
+            android.content.res.ColorStateList.valueOf(colour));
+        centralDiceResultView.setVisibility(View.VISIBLE);
+        centralDiceResultView.bringToFront();
+        globalHandler.postDelayed(hideCentralDiceResult, 1500);
+    }
+
     private void refreshShuffleDicePanels() {
-        if (!homeShuffleEnabled || d == null) return;
+        if (!homeShuffleEnabled || d == null || players == null) return;
         d.tLeftLayout.setVisibility(View.VISIBLE);
         d.tRightLayout.setVisibility(View.VISIBLE);
         d.bLeftLayout.setVisibility(View.VISIBLE);
@@ -2923,8 +2982,9 @@ public class MainActivity extends AppCompatActivity {
         d.bRightImgColor.setVisibility(View.INVISIBLE);
         for (Player player : players) {
             ImageView icon;
-            // All dice icons are bound to the same seat map as pawn home yards.
-            switch (player.position) {
+            // Follow the authoritative colour-to-home assignment, never the
+            // player's original seat or a stale cached icon assignment.
+            switch (currentHudSeat(player)) {
                 case 1: icon = d.bLeftImgColor; break;
                 case 2: icon = d.tLeftImgColor; break;
                 case 3: icon = d.tRightImgColor; break;
@@ -2932,6 +2992,7 @@ public class MainActivity extends AppCompatActivity {
                 default: continue;
             }
             icon.setImageDrawable(getPieceDrawableByColor(player.color));
+            icon.setContentDescription(player.name + " " + player.color + " pawn");
             icon.setVisibility(View.VISIBLE);
         }
         refreshSeatDiceViews();
