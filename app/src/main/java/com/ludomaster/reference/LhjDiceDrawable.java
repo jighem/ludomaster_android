@@ -1,5 +1,7 @@
 package com.ludomaster.reference;
 
+import android.graphics.Camera;
+import android.graphics.Matrix;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ColorFilter;
@@ -19,12 +21,21 @@ import android.graphics.drawable.Drawable;
 public final class LhjDiceDrawable extends Drawable {
     private final String color;
     private final int face;
+    private final float rotationX, rotationY, rotationZ;
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     private int alpha=255;
 
     public LhjDiceDrawable(String color,int face) {
+        this(color,face,0f,0f,0f);
+    }
+
+    /** Independent presentation angles. They never affect the rolled number. */
+    public LhjDiceDrawable(String color,int face,float x,float y,float z) {
         this.color=color==null?"blue":color;
         this.face=Math.max(1,Math.min(6,face));
+        this.rotationX=x;
+        this.rotationY=y;
+        this.rotationZ=z;
     }
 
     private int[] palette() {
@@ -100,6 +111,20 @@ public final class LhjDiceDrawable extends Drawable {
         int state=canvas.save();
         canvas.translate(r.left,r.top);
         canvas.scale(r.width()/80f,r.height()/80f);
+        if(rotationX!=0f || rotationY!=0f || rotationZ!=0f) {
+            Camera camera = new Camera();
+            camera.setLocation(0f, 0f, -160f);
+            camera.save();
+            camera.rotateX(rotationX);
+            camera.rotateY(rotationY);
+            camera.rotateZ(rotationZ);
+            Matrix matrix = new Matrix();
+            camera.getMatrix(matrix);
+            camera.restore();
+            matrix.preTranslate(-40f,-40f);
+            matrix.postTranslate(40f,40f);
+            canvas.concat(matrix);
+        }
         int[] palette=palette();
         float[] top={9,25,32,9,73,21,50,37};
         float[] front={9,25,50,37,50,71,9,58};
