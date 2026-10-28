@@ -285,6 +285,12 @@ public class MainActivity extends AppCompatActivity {
             this.piece = piece;
             this.readyToPick = readyToPick;
             this.pieceIcon = pieceIcon;
+            // A neutral backing separates the existing artwork from matching homes.
+            android.graphics.drawable.GradientDrawable contrast = new android.graphics.drawable.GradientDrawable();
+            contrast.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            contrast.setColor(0xEEFFFFFF);
+            contrast.setStroke(hudDp(1), 0xFF26354A);
+            pieceIcon.setBackground(contrast);
             this.pieceStandIcon = pieceStandIcon;
             this.startPosition = startPosition;
             this.defX = defX;
