@@ -96,18 +96,17 @@ public final class LhjPremiumBoardRenderer {
         float r=Math.min(sx,sy)*.47f;
         for(int yy=2;yy<=4;yy+=2)for(int xx=2;xx<=4;xx+=2){
             float cx=left+xx*sx,cy=top+yy*sy;
-            p.setColor(0x35061E39);
-            canvas.drawCircle(cx,cy+sy*.07f,r*1.08f,p);
-            p.setColor(darken(sampled,.20f));
-            canvas.drawCircle(cx,cy,r,p);
-            p.setShader(new LinearGradient(cx-r,cy-r,cx+r,cy+r,
-                new int[]{brighten(sampled,.52f),sampled,darken(sampled,.08f)},
-                null,Shader.TileMode.CLAMP));
-            canvas.drawCircle(cx,cy,r*.87f,p);
+            // Hollow seats: leave the yard surface visible in the centre.
+            // Sampled colour already follows ownership after a home shuffle.
             p.setShader(null);
-            p.setColor(0xA0FFFFFF);
-            canvas.drawArc(new RectF(cx-r*.59f,cy-r*.68f,cx+r*.49f,cy+r*.31f),
-                204,110,false,p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(Math.max(2f, r*.20f));
+            p.setColor(darken(sampled,.28f));
+            canvas.drawCircle(cx,cy,r*.91f,p);
+            p.setStrokeWidth(Math.max(1f, r*.10f));
+            p.setColor(sampled);
+            canvas.drawCircle(cx,cy,r*.91f,p);
+            p.setStyle(Paint.Style.FILL);
         }
     }
 

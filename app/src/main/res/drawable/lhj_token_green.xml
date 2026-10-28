@@ -3,6 +3,11 @@
     android:width="34dp" android:height="41dp"
     android:viewportWidth="64" android:viewportHeight="80">
     <path android:fillColor="#510B1730" android:pathData="M8,71C8,76 18,79 32,79C46,79 56,76 56,71C56,66 46,64 32,64C18,64 8,66 8,71Z"/>
+    <!-- Shape-following neon rim; original pawn artwork stays above it. -->
+    <path android:fillColor="#00000000" android:strokeColor="#22F779" android:strokeAlpha=".22" android:strokeWidth="7" android:strokeLineJoin="round" android:pathData="M8,62C9,53 20,48 32,48C44,48 55,53 56,62L56,67C55,73 45,76 32,76C19,76 9,73 8,67Z M24,37C23,47 18,52 18,57C18,64 46,64 46,57C46,52 41,47 40,37Z M15,23A17,17 0,1 1,49 23A17,17 0,1 1,15 23Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="#172B54" android:strokeAlpha="1" android:strokeWidth="5" android:strokeLineJoin="round" android:pathData="M8,62C9,53 20,48 32,48C44,48 55,53 56,62L56,67C55,73 45,76 32,76C19,76 9,73 8,67Z M24,37C23,47 18,52 18,57C18,64 46,64 46,57C46,52 41,47 40,37Z M15,23A17,17 0,1 1,49 23A17,17 0,1 1,15 23Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="#22F779" android:strokeAlpha="1" android:strokeWidth="3.5" android:strokeLineJoin="round" android:pathData="M8,62C9,53 20,48 32,48C44,48 55,53 56,62L56,67C55,73 45,76 32,76C19,76 9,73 8,67Z M24,37C23,47 18,52 18,57C18,64 46,64 46,57C46,52 41,47 40,37Z M15,23A17,17 0,1 1,49 23A17,17 0,1 1,15 23Z"/>
+    <path android:fillColor="#00000000" android:strokeColor="#B1FFD1" android:strokeAlpha="1" android:strokeWidth="1.5" android:strokeLineJoin="round" android:pathData="M8,62C9,53 20,48 32,48C44,48 55,53 56,62L56,67C55,73 45,76 32,76C19,76 9,73 8,67Z M24,37C23,47 18,52 18,57C18,64 46,64 46,57C46,52 41,47 40,37Z M15,23A17,17 0,1 1,49 23A17,17 0,1 1,15 23Z"/>
     <path android:fillColor="#096A3D" android:pathData="M8,62C9,53 20,48 32,48C44,48 55,53 56,62L56,67C55,73 45,76 32,76C19,76 9,73 8,67Z"/>
     <path android:fillColor="#19CC73" android:pathData="M10,61C10,55 20,50 32,50C44,50 54,55 54,61C54,67 44,71 32,71C20,71 10,67 10,61Z"/>
     <path android:fillColor="#93F1B7" android:fillAlpha="0.67" android:pathData="M14,58C19,54 26,53 35,53C29,55 24,58 21,62C18,63 16,62 14,61Z"/>
