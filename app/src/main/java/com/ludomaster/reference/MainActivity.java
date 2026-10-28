@@ -168,6 +168,14 @@ public class MainActivity extends AppCompatActivity {
     static boolean isDiceMovableExtraChance = false;
     Dice d;
     private final DiceRules diceRules = new DiceRules(new java.security.SecureRandom());
+    private final BoardAwareDiceEngine boardAwareDiceEngine = new BoardAwareDiceEngine(60);
+    private final java.util.Random botTieBreaker = new java.security.SecureRandom();
+    private BoardAwareDiceEngine.Mode diceMode = BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
+    private AnimatorSet diceTumbleAnimator;
+    private TextView centralDiceResultView;
+    private final Runnable hideCentralDiceResult = () -> {
+        if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
+    };
 
     MediaPlayer gameStartSound,diceRollSound,stepSound,safeSound,deathSound,pantaSound,congratulationSound;
     int sizeOfBox;
@@ -1139,6 +1147,89 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private boolean isSquareThreatened(int square, String ownerColor) {
+        if (square < 0 || square >= 52 || safeSpots.contains(square) || players == null) return false;
+        for (Player player : players) {
+            if (ownerColor.equals(player.color)) continue;
+            for (Piece enemy : getPiecesByColor(player.color)) {
+                if (!enemy.isAlive || enemy.hasCompletedItsPurpose ||
+                        enemy.currBlock < 0 || enemy.currBlock >= 52 || safeSpots.contains(enemy.currBlock))
+                    continue;
+                int distance = (square - enemy.currBlock + 52) % 52;
+                if (distance >= 1 && distance <= 6) return true;
+            }
+        }
+        return false;
+    }
+
+    private Piece opponentOnSquare(Piece moving, int destination) {
+        if (destination < 0 || destination >= 52 || safeSpots.contains(destination) || players == null)
+            return null;
+        for (Player player : players) {
+            if (moving.colour.equals(player.color)) continue;
+            for (Piece enemy : getPiecesByColor(player.color)) {
+                if (enemy.isAlive && !enemy.hasCompletedItsPurpose && enemy.currBlock == destination)
+                    return enemy;
+            }
+        }
+        return null;
+    }
+
+    private int finishingProgress(Piece piece, int destination) {
+        int[] lane = getWinnerBlocks(piece.endPosition);
+        for (int i=0;i<lane.length;i++) if (lane[i] == destination) return i + 1;
+        return 0;
+    }
+
+    private StrategicBot.Move assessBotMove(Piece piece, int face) {
+        boolean legal = otherwiseLegal(piece,face) && !blockedByOwnPawn(piece,face);
+        if (!legal) return new StrategicBot.Move(false,false,false,false,false,false,false,false,0);
+        int destination = landingSquare(piece,face);
+        Piece target = opponentOnSquare(piece,destination);
+        boolean safe = destination >= 0 && safeSpots.contains(destination);
+        boolean capture = target != null;
+        boolean shielded = capture && immunityShields.getOrDefault(target.colour,0) > 0;
+        boolean escaped = piece.isAlive && isSquareThreatened(piece.currBlock,piece.colour) &&
+                (safe || !isSquareThreatened(destination,piece.colour));
+        int laneProgress = finishingProgress(piece,destination);
+        int[] lane = getWinnerBlocks(piece.endPosition);
+        boolean finish = lane.length > 0 && destination == lane[lane.length-1];
+        int progress = laneProgress > 0 ? laneProgress * 3 : piece.numberOfSteps / 2;
+        return new StrategicBot.Move(true,capture,shielded,finish,escaped,safe,
+                !piece.isAlive,isSquareThreatened(destination,piece.colour),progress);
+    }
+
+    private double tacticalScoreForFace(int face) {
+        double best = 0d;
+        for (Piece piece : getPiecesByColor(currentPlayerColor)) {
+            if (!otherwiseLegal(piece,face) || blockedByOwnPawn(piece,face)) continue;
+            int destination = landingSquare(piece,face);
+            Piece target = opponentOnSquare(piece,destination);
+            boolean safe = destination >= 0 && safeSpots.contains(destination);
+            boolean escaped = piece.isAlive && isSquareThreatened(piece.currBlock,piece.colour) &&
+                    (safe || !isSquareThreatened(destination,piece.colour));
+            int laneProgress = finishingProgress(piece,destination);
+            int[] lane = getWinnerBlocks(piece.endPosition);
+            boolean finish = lane.length > 0 && destination == lane[lane.length-1];
+            boolean shielded = target != null && immunityShields.getOrDefault(target.colour,0) > 0;
+            double score = BoardAwareDiceEngine.opportunityScore(target != null,shielded,escaped,safe,
+                    !piece.isAlive,laneProgress,finish);
+            best = Math.max(best,score);
+        }
+        return best;
+    }
+
+    private double diceWeightForFace(int face) {
+        if (diceMode == BoardAwareDiceEngine.Mode.FAIR_RANDOM) return 1d;
+        return boardAwareDiceEngine.weight(diceMode,tacticalScoreForFace(face));
+    }
+
+    private int chooseStrategicBotMove(List<Piece> candidates, int face) {
+        List<StrategicBot.Move> assessed = new ArrayList<>();
+        for (Piece candidate : candidates) assessed.add(assessBotMove(candidate,face));
+        return StrategicBot.selectWeightedIndex(assessed,botTieBreaker);
+    }
+
     private boolean isHorizontalTrackSquare(int targetBox) {
         return (targetBox >= 0 && targetBox <= 4) || (targetBox >= 18 && targetBox <= 30) ||
                 (targetBox >= 44 && targetBox <= 57) || (targetBox >= 64 && targetBox <= 69);
@@ -1200,6 +1291,42 @@ public class MainActivity extends AppCompatActivity {
 
     private int hudDp(float amount) {
         return Math.round(amount * getResources().getDisplayMetrics().density);
+    }
+
+    private void addCentralDiceResultView() {
+        RelativeLayout boardLayer = findViewById(R.id.relativeLayout);
+        if (boardLayer == null || centralDiceResultView != null) return;
+        centralDiceResultView = new TextView(this);
+        centralDiceResultView.setTextSize(32);
+        centralDiceResultView.setTextColor(Color.WHITE);
+        centralDiceResultView.setTypeface(null,Typeface.BOLD);
+        centralDiceResultView.setGravity(Gravity.CENTER);
+        centralDiceResultView.setElevation(hudDp(12));
+        centralDiceResultView.setClickable(false);
+        centralDiceResultView.setFocusable(false);
+        centralDiceResultView.setVisibility(View.GONE);
+        GradientDrawable background = new GradientDrawable();
+        background.setShape(GradientDrawable.RECTANGLE);
+        background.setCornerRadius(hudDp(14));
+        centralDiceResultView.setBackground(background);
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(hudDp(62),hudDp(62));
+        params.addRule(RelativeLayout.CENTER_IN_PARENT);
+        boardLayer.addView(centralDiceResultView,params);
+    }
+
+    private void showCentralDiceResult(int result) {
+        if (centralDiceResultView == null) return;
+        globalHandler.removeCallbacks(hideCentralDiceResult);
+        int color = 0xff248efd;
+        if ("red".equals(currentPlayerColor)) color = 0xfff04452;
+        else if ("green".equals(currentPlayerColor)) color = 0xff23bf75;
+        else if ("yellow".equals(currentPlayerColor)) color = 0xffffc342;
+        centralDiceResultView.setText(String.valueOf(result));
+        centralDiceResultView.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(color));
+        centralDiceResultView.setVisibility(View.VISIBLE);
+        centralDiceResultView.bringToFront();
+        globalHandler.postDelayed(hideCentralDiceResult,1500);
     }
 
     /** Always-visible, compact stats strip above the original board, without altering its tiles. */
@@ -1629,16 +1756,31 @@ public class MainActivity extends AppCompatActivity {
                 diceRollSound.start();
             }
             diceAnimationDrawable=new AnimationDrawable();
+            // The drawable already renders a glossy three-face cube. Animate
+            // that drawable on its ImageView instead of importing clone sprites.
+            // Eight frames take 330 ms; the 350 ms result callback allows settling.
             for(int frame=0;frame<8;frame++)
-                diceAnimationDrawable.addFrame(new LhjDiceDrawable(currentPlayerColor,1+(frame%6)),50);
+                diceAnimationDrawable.addFrame(
+                    new LhjDiceDrawable(currentPlayerColor,1+(frame%6)),frame==7?50:40);
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
+            mainDiceImageView.setCameraDistance(hudDp(700));
+            ObjectAnimator tumbleX = ObjectAnimator.ofFloat(mainDiceImageView,View.ROTATION_X,0f,720f);
+            ObjectAnimator tumbleY = ObjectAnimator.ofFloat(mainDiceImageView,View.ROTATION_Y,0f,720f);
+            diceTumbleAnimator = new AnimatorSet();
+            diceTumbleAnimator.playTogether(tumbleX,tumbleY);
+            diceTumbleAnimator.setDuration(330);
+            diceTumbleAnimator.setInterpolator(new LinearInterpolator());
+            diceTumbleAnimator.start();
             diceHandler.postDelayed(() -> {
                 final boolean thirdRollLimited = diceRules.nextRollExcludesSix();
-                int ch = diceRules.roll(face -> !faceIsOwnCollisionBlocked(face));
+                int ch = diceRules.roll(face -> !faceIsOwnCollisionBlocked(face),MainActivity.this::diceWeightForFace);
                 if(ch==0) {
                     isRolling=false;
+                    if (diceTumbleAnimator != null) diceTumbleAnimator.cancel();
+                    mainDiceImageView.setRotationX(0f);
+                    mainDiceImageView.setRotationY(0f);
                     Toast.makeText(MainActivity.this,
                         "No free landing square. Turn passed!",Toast.LENGTH_SHORT).show();
                     switchPlayers();
@@ -1673,6 +1815,9 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
                 isRolling = false;
+                if (diceTumbleAnimator != null) diceTumbleAnimator.cancel();
+                mainDiceImageView.setRotationX(0f);
+                mainDiceImageView.setRotationY(0f);
                 // Reward the result visually, never alter the random outcome.
                 mainDiceImageView.animate().cancel();
                 mainDiceImageView.setScaleX(0.89f);
@@ -1681,6 +1826,7 @@ public class MainActivity extends AppCompatActivity {
                     .setDuration(210).setInterpolator(new OvershootInterpolator(1.15f)).start();
 
                 currentPlayerDice = ch;
+                showCentralDiceResult(ch);
                 // Ensure active pieces are promoted when their roll is available.
 
                 List<Piece> pieces = getPiecesByColor(currentPlayerColor);
@@ -1690,8 +1836,6 @@ public class MainActivity extends AppCompatActivity {
                 //Toast.makeText(MainActivity.this, currentPlayer.color+"", Toast.LENGTH_SHORT).show();
 
                  int chances = 0;
-                 int autoMoveBlock = -1;
-
                  List<Piece> movablePieces = new ArrayList<>();
                  // An automatic choice must not leak across different dice rolls.
                  autoMove = null;
@@ -1700,16 +1844,8 @@ public class MainActivity extends AppCompatActivity {
                 {
                     if(p.check(ch))
                     {
-                        if(chances==0) {
-                            autoMoveBlock = p.currBlock;
-                            autoMove = p;
-                        }
-                        else if(autoMoveBlock!=-1 && autoMoveBlock==p.currBlock) {
-
-                        }
-                        else {
-                            autoMove = null;
-                        }
+                        if(chances==0) autoMove = p;
+                        else autoMove = null;
                         if(currentPlayer.isBot) { movablePieces.add(p); }
                         ++chances;
                     }
@@ -1734,144 +1870,14 @@ public class MainActivity extends AppCompatActivity {
                         autoMove.makeAlive();
                     }
                 } else if(currentPlayer.isBot && chances>0) {
-                    Piece bestMovablePiece = movablePieces.get(0);
-                    int bestKillingTargetSteps = 0;
-                    int safetomovepoints = 15;
-                    int pantapriority=0;
-                    int maxprioritytoputinsafeplace = 0;
-                    int safePoints = 0;
-                    int y = currentPlayerIndex;
-
-                    // choosing one with max steps blindly for faster panta minimum priority
-                    int maxsteps = 0;
-                    for(Piece p : movablePieces) {
-                        if(p.isAlive && p.numberOfSteps>=maxsteps && !p.hasCompletedItsPurpose) {
-                            maxsteps = p.numberOfSteps;
-                            bestMovablePiece = p;
-                        }
+                    int selectedIndex = chooseStrategicBotMove(movablePieces,ch);
+                    if (selectedIndex >= 0) {
+                        movablePieces.get(selectedIndex).onClickForBot();
+                    } else {
+                        // Defensive fallback: the move validator remains authoritative.
+                        switchPlayers();
+                        isDiceClickable = true;
                     }
-
-                    // making pieces alive minimum+0.5 priority
-                    if(ch==6) {
-                    for(Piece p : pieces) {
-                        if(!p.isAlive) {
-                            bestMovablePiece = p;
-                            break;
-                        }
-                    } }
-
-
-                    // panta chesing purpose min+1 priority
-                    for(Piece p : movablePieces) {
-                        if(p.isReadyToEnterWinnerZone) {
-                            int thispantapriority = p.currWinnerBlock+ch;
-                            if(thispantapriority>pantapriority) {
-                                pantapriority = thispantapriority;
-                                bestMovablePiece = p;
-                            }
-                        }
-                    }
-
-                    // moving to safe spots medium
-                    for(Piece p : movablePieces) {
-                        if(safeSpots.contains(p.currBlock+ch) && p.isAlive)
-                        {
-                            if(p.numberOfSteps>maxprioritytoputinsafeplace) {
-                                maxprioritytoputinsafeplace = p.numberOfSteps;
-                                bestMovablePiece = p;
-                            }
-                        }
-                    }
-
-
-                    // not going ahead for risky moves & running away from dangerous places max-1 priority
-                    y = x;
-                    for (int i = 0; i < players.size(); i++) {
-                        String colour = players.get(y).getColor();
-                        if (!colour.equals(currentPlayerColor)) {
-                            List<Piece> enemypieces = getPiecesByColor(colour);
-                            Toast.makeText(MainActivity.this, colour, Toast.LENGTH_SHORT).show();
-                            for (Piece tp : enemypieces) {
-                                if (tp.isAlive) {
-                                    for (Piece mp : movablePieces) {
-                                        if (mp.isAlive) {
-                                            int dangerdiff = mp.currBlock - tp.currBlock;
-                                            int safetypoints = 10;
-                                            if (safeSpots.contains(mp.currBlock)) {
-                                                safetypoints = 15;
-                                            }
-                                            /*if (mp.currBlock == tp.currBlock && safeSpots.contains(mp.currBlock)) {
-                                                if(bestMovablePiece.numberOfSteps<=mp.numberOfSteps) { safetypoints = 15; } else { safetypoints = 9; }
-                                            } else*/ if (mp.currBlock >= 0 && mp.currBlock <= 10 && (tp.currBlock >= 51 - (10 - mp.currBlock))) {
-                                                if (tp.currBlock >= 51 - (10 - mp.currBlock)) {
-                                                    safetypoints -= 10 - mp.currBlock;
-                                                }
-                                            } else if (tp.currBlock >= 0 && (tp.currBlock >= mp.currBlock - 10 && tp.currBlock < mp.currBlock)) {
-                                                safetypoints -= mp.currBlock - tp.currBlock;
-                                            } else if (dangerdiff > 10) {
-                                                if (safeSpots.contains(mp.currBlock)) {
-                                                    if (mp.numberOfSteps < bestMovablePiece.numberOfSteps) {
-                                                        safetypoints = 9;
-                                                    } else {
-                                                        safetypoints = 15;
-                                                    }
-                                                }
-                                            } else if (dangerdiff <= -10) {
-                                                if (dangerdiff + ch <= 0) {
-                                                    if (safeSpots.contains(mp.currBlock) && safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 15;
-                                                    } else if (!safeSpots.contains(mp.currBlock) && !safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 5;
-                                                    } else if (!safeSpots.contains(mp.currBlock) && safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 15;
-                                                    } else if (safeSpots.contains(mp.currBlock) && !safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 9;
-                                                    }
-                                                }
-                                            }
-                                        if (safetypoints < safetomovepoints) {
-                                            bestMovablePiece = mp;
-                                            safetomovepoints = safetypoints;
-                                        }
-                                    }
-                                }
-                                }
-                            }
-                            if (y >= (players.size() - 1)) {
-                                y = 0;
-                            } else {
-                                y++;
-                            }
-                        }
-                    }
-
-                    // killing the best piece max priority
-                    y = x;
-                    for (int i = 0; i < players.size(); i++) {
-                        String color = players.get(y).getColor();
-                        if (!color.equals(currentPlayerColor)) {
-                            List<Piece> enemypieces = getPiecesByColor(color);
-                            for (Piece tp : enemypieces) {
-                                if (tp.isAlive && !safeSpots.contains(tp.currBlock)) {
-                                    for (Piece mp : movablePieces) {
-                                        if (tp.currBlock == (mp.currBlock+ch)) {
-                                            if (tp.numberOfSteps > bestKillingTargetSteps) {
-                                                bestKillingTargetSteps = tp.numberOfSteps;
-                                                bestMovablePiece = mp;  // should not be commented at deployment stage
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (y >= (players.size() - 1)) {
-                            y = 0;
-                        } else {
-                            y++;
-                        }
-                    }
-                    //Toast.makeText(MainActivity.this, bestMovablePiece.colour+","+bestMovablePiece.startPosition, Toast.LENGTH_SHORT).show();
-                    bestMovablePiece.onClickForBot();
                 } else if (chances == 0) {
                     // A six still grants its extra roll when no pawn can move.
                     // The third roll remains restricted to 1..5 by DiceRules.
@@ -2028,11 +2034,15 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
         initStatsHud();
+        addCentralDiceResultView();
 
         globalHandler = new Handler();
         offlineMatchStartedAt = System.currentTimeMillis();
         offlineMatchId = UUID.randomUUID().toString();
         selectedLeagueId = getIntent().getIntExtra("league_id",0);
+        // League play stays fair-random unless the league later exposes a documented mode.
+        diceMode = selectedLeagueId > 0 ? BoardAwareDiceEngine.Mode.FAIR_RANDOM
+                : BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
         selectedLeagueName = getIntent().getStringExtra("league_name");
         int[] mappedIds = getIntent().getIntArrayExtra("league_player_ids");
         String[] mappedNames = getIntent().getStringArrayExtra("league_player_names");
@@ -2097,7 +2107,7 @@ public class MainActivity extends AppCompatActivity {
         float lifty = (float) (24.5 * displayMetrics.density);
         pieceWidth = 34 * displayMetrics.density;
         pieceHeight = 41 * displayMetrics.density;
-        boardTokenScale = TokenLayoutEngine.boardScale(blockSize, pieceWidth);
+        boardTokenScale = TokenLayoutEngine.boardScale(blockSize, pieceWidth, pieceHeight);
         float pushx;
         if (homeCircleWidth >= pieceWidth) {
             pushx = (float) ((homeCircleWidth - pieceWidth) / 2);
@@ -2978,6 +2988,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         shuffleMatchEnding = true;
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
+        if (globalHandler != null) globalHandler.removeCallbacks(hideCentralDiceResult);
+        if (diceTumbleAnimator != null) diceTumbleAnimator.cancel();
         super.onDestroy();
     }
 
