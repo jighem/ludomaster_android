@@ -171,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
     private final BoardAwareDiceEngine boardAwareDiceEngine = new BoardAwareDiceEngine(60);
     private final java.util.Random botTieBreaker = new java.security.SecureRandom();
     private BoardAwareDiceEngine.Mode diceMode = BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
+    private final java.util.Map<String,Integer> homeRollMisses = new java.util.HashMap<>();
     private TextView centralDiceResultView;
     private final Runnable hideCentralDiceResult = () -> {
         if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
@@ -1220,7 +1221,14 @@ public class MainActivity extends AppCompatActivity {
 
     private double diceWeightForFace(int face) {
         if (diceMode == BoardAwareDiceEngine.Mode.FAIR_RANDOM) return 1d;
-        return boardAwareDiceEngine.weight(diceMode,tacticalScoreForFace(face));
+        double weight = boardAwareDiceEngine.weight(diceMode,tacticalScoreForFace(face));
+        boolean allHome = true;
+        for (Piece piece : getPiecesByColor(currentPlayerColor))
+            if (piece.isAlive || piece.hasCompletedItsPurpose) allHome = false;
+        if (face == 6 && allHome)
+            weight += Math.min(4,homeRollMisses.getOrDefault(currentPlayerColor,0));
+        else if (face == 6 && diceRules.consecutiveSixes() > 0) weight *= 0.35d;
+        return weight;
     }
 
     private int chooseStrategicBotMove(List<Piece> candidates, int face) {
@@ -1309,7 +1317,7 @@ public class MainActivity extends AppCompatActivity {
         background.setCornerRadius(hudDp(14));
         centralDiceResultView.setBackground(background);
         RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(hudDp(62),hudDp(62));
-        params.addRule(RelativeLayout.CENTER_IN_PARENT);
+
         boardLayer.addView(centralDiceResultView,params);
     }
 
@@ -1323,6 +1331,8 @@ public class MainActivity extends AppCompatActivity {
         centralDiceResultView.setText(String.valueOf(result));
         centralDiceResultView.setBackgroundTintList(
                 android.content.res.ColorStateList.valueOf(color));
+        centralDiceResultView.setX(ludoBoard.getX() + (ludoBoard.getWidth()-hudDp(62))/2f);
+        centralDiceResultView.setY(ludoBoard.getY() + (ludoBoard.getHeight()-hudDp(62))/2f);
         centralDiceResultView.setVisibility(View.VISIBLE);
         centralDiceResultView.bringToFront();
         globalHandler.postDelayed(hideCentralDiceResult,1500);
@@ -1804,6 +1814,11 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "SIX! Roll again after your move!",
                         Toast.LENGTH_SHORT).show();
                 }
+                boolean allHome = true;
+                for (Piece piece : getPiecesByColor(currentPlayerColor))
+                    if (piece.isAlive || piece.hasCompletedItsPurpose) allHome = false;
+                homeRollMisses.put(currentPlayerColor,allHome && ch != 6
+                    ? homeRollMisses.getOrDefault(currentPlayerColor,0)+1 : 0);
                 setDiceFace(mainDiceImageView,ch);
                 isRolling = false;
                 // Reward the result visually, never alter the random outcome.
@@ -2028,9 +2043,8 @@ public class MainActivity extends AppCompatActivity {
         offlineMatchStartedAt = System.currentTimeMillis();
         offlineMatchId = UUID.randomUUID().toString();
         selectedLeagueId = getIntent().getIntExtra("league_id",0);
-        // League play stays fair-random unless the league later exposes a documented mode.
-        diceMode = selectedLeagueId > 0 ? BoardAwareDiceEngine.Mode.FAIR_RANDOM
-                : BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
+        // Competitive and casual games share the documented balanced dice mode.
+        diceMode = BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
         selectedLeagueName = getIntent().getStringExtra("league_name");
         int[] mappedIds = getIntent().getIntArrayExtra("league_player_ids");
         String[] mappedNames = getIntent().getStringArrayExtra("league_player_names");
@@ -2092,7 +2106,7 @@ public class MainActivity extends AppCompatActivity {
         float total = onePercentWidth * 40;
         float homeCircleWidth = (float) ((total * 0.64) * 0.25);
         float pieceBlockSize = (float) (pxWidth * 0.065);
-        float lifty = (41 * displayMetrics.density - homeCircleWidth) / 2f;
+        float lifty = (41 * displayMetrics.density - homeCircleWidth) / 2f + 5f;
         pieceWidth = 34 * displayMetrics.density;
         pieceHeight = 41 * displayMetrics.density;
         boardTokenScale = TokenLayoutEngine.boardScale(blockSize, pieceWidth, pieceHeight);
@@ -2107,7 +2121,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             pushXForPieces = (float) -((pieceWidth - pieceBlockSize) / 2);
         }
-        pushYForPieces = (pieceHeight - blockSize) / 2f;
+        pushYForPieces = (pieceHeight - blockSize) / 2f + 5f;
         if (!normalPiece) {
             pushx /= 1.5;
             lifty /= 3;
@@ -2828,7 +2842,7 @@ public class MainActivity extends AppCompatActivity {
             die.setScaleType(ImageView.ScaleType.FIT_CENTER);
             die.setClickable(false);
             die.setFocusable(false);
-            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(42),hudDp(42));
+            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(54.6f),hudDp(54.6f));
             p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
             p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
             if(i%2==0) {
@@ -3321,6 +3335,8 @@ public class MainActivity extends AppCompatActivity {
         playername4.setVisibility(View.INVISIBLE);
 
         mainDiceImageView = findViewById(R.id.maindiceimageview);
+        mainDiceImageView.getLayoutParams().width = hudDp(54.6f);
+        mainDiceImageView.getLayoutParams().height = hudDp(54.6f);
         hintArrow = findViewById(R.id.hintarrowleft);
 
         shieldIndex1 = findViewById(R.id.lm_shieldindex1);
