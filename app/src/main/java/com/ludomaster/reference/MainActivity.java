@@ -2092,7 +2092,7 @@ public class MainActivity extends AppCompatActivity {
         float total = onePercentWidth * 40;
         float homeCircleWidth = (float) ((total * 0.64) * 0.25);
         float pieceBlockSize = (float) (pxWidth * 0.065);
-        float lifty = (float) (24.5 * displayMetrics.density);
+        float lifty = (41 * displayMetrics.density - homeCircleWidth) / 2f;
         pieceWidth = 34 * displayMetrics.density;
         pieceHeight = 41 * displayMetrics.density;
         boardTokenScale = TokenLayoutEngine.boardScale(blockSize, pieceWidth, pieceHeight);
@@ -2107,7 +2107,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             pushXForPieces = (float) -((pieceWidth - pieceBlockSize) / 2);
         }
-        pushYForPieces = lifty;
+        pushYForPieces = (pieceHeight - blockSize) / 2f;
         if (!normalPiece) {
             pushx /= 1.5;
             lifty /= 3;
@@ -2820,8 +2820,8 @@ public class MainActivity extends AppCompatActivity {
     /** Non-clickable player-specific dice, never replacing the active roll control. */
     private void initializeSeatDiceViews() {
         if(!seatDiceViews.isEmpty())return;
-        int[] pads={R.id.bleftdicebg,R.id.tleftdicebg,
-                    R.id.trightdicebg,R.id.brightdicebg};
+        int[] pads={R.id.tleftdicebg,R.id.trightdicebg,
+                    R.id.bleftdicebg,R.id.brightdicebg};
         for(int i=0;i<4;i++){
             ConstraintLayout pad=findViewById(pads[i]);
             ImageView die=new ImageView(this);
@@ -2831,7 +2831,7 @@ public class MainActivity extends AppCompatActivity {
             ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(42),hudDp(42));
             p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
             p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
-            if(i<2) {
+            if(i%2==0) {
                 p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
                 p.setMarginEnd(hudDp(11));
             } else {
@@ -2857,10 +2857,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void refreshShuffleDicePanels() {
         if (!homeShuffleEnabled || d == null) return;
-        d.tLeftLayout.setVisibility(View.VISIBLE);
-        d.tRightLayout.setVisibility(View.VISIBLE);
-        d.bLeftLayout.setVisibility(View.VISIBLE);
-        d.bRightLayout.setVisibility(View.VISIBLE);
+        d.tLeftLayout.setVisibility(View.GONE);
+        d.tRightLayout.setVisibility(View.GONE);
+        d.bLeftLayout.setVisibility(View.GONE);
+        d.bRightLayout.setVisibility(View.GONE);
         d.tLeftImgColor.setVisibility(View.INVISIBLE);
         d.tRightImgColor.setVisibility(View.INVISIBLE);
         d.bLeftImgColor.setVisibility(View.INVISIBLE);
@@ -2869,10 +2869,10 @@ public class MainActivity extends AppCompatActivity {
             ImageView icon;
             // All dice icons are bound to the same seat map as pawn home yards.
             switch (player.position) {
-                case 1: icon = d.bLeftImgColor; break;
-                case 2: icon = d.tLeftImgColor; break;
-                case 3: icon = d.tRightImgColor; break;
-                case 4: icon = d.bRightImgColor; break;
+                case 1: icon = d.tLeftImgColor; d.tLeftLayout.setVisibility(View.VISIBLE); break;
+                case 2: icon = d.tRightImgColor; d.tRightLayout.setVisibility(View.VISIBLE); break;
+                case 3: icon = d.bLeftImgColor; d.bLeftLayout.setVisibility(View.VISIBLE); break;
+                case 4: icon = d.bRightImgColor; d.bRightLayout.setVisibility(View.VISIBLE); break;
                 default: continue;
             }
             icon.setImageDrawable(getPieceDrawableByColor(player.color));
