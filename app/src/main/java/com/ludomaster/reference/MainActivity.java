@@ -144,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
     float pos1[][],pos2[][],pos3[][],pos4[][];
 
     float pieceWidth,pieceHeight;
+    float boardTokenScale = 1f;
 
     Drawable redCircle,greenCircle,blueCircle,yellowCircle;
 
@@ -281,6 +282,10 @@ public class MainActivity extends AppCompatActivity {
             this.defX = defX;
             this.defY = defY;
             this.isBotPiece = isBotPiece;
+            this.piece.setPivotX(pieceWidth / 2f);
+            this.piece.setPivotY(pieceHeight / 2f);
+            this.piece.setScaleX(boardTokenScale);
+            this.piece.setScaleY(boardTokenScale);
             this.piece.setTranslationX(defX);
             this.piece.setTranslationY(defY);
             this.readyToPick.setVisibility(View.INVISIBLE);
@@ -381,6 +386,8 @@ public class MainActivity extends AppCompatActivity {
                 currBlock = -1;
                 stepsUntilShuffleEntrance = 50;
                 piece.animate().cancel();
+                piece.setScaleX(boardTokenScale);
+                piece.setScaleY(boardTokenScale);
                 piece.animate().translationX(defX).translationY(defY).setDuration(350).start();
                 return;
             }
@@ -427,13 +434,9 @@ public class MainActivity extends AppCompatActivity {
             piece.setClickable(true);
             rotateAnimator.start();
             readyToPick.setVisibility(View.VISIBLE);
-            if(piece.getScaleX()<1.0f) {
-                piece.setScaleX(0.95f);
-                piece.setScaleY(0.95f);
-            } else {
-                piece.setScaleX(1.0f);
-                piece.setScaleY(1.0f);
-            }
+            piece.setScaleX(boardTokenScale);
+            piece.setScaleY(boardTokenScale);
+            if (currBlock >= 0) layoutTokenSquare(currBlock);
         }
 
         void inactiveState()
@@ -1010,59 +1013,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void checkPantaAdjustments(String color,int targetBox) {
-        int pantaBox=targetBox;
-        boolean horizontal = (pantaBox >= 0 && pantaBox <= 4) || (pantaBox >= 18 && pantaBox <= 30) || (pantaBox >= 44 && pantaBox <= 51) || (pantaBox >= 52 && pantaBox <= 57) || (pantaBox >= 64 && pantaBox <= 69);
-        boolean isWon = false;
-        List<Piece> pairs = getPiecesByColor(color);
-        for(Piece p : pairs) { if(p.hasCompletedItsPurpose) { isWon = true; } else {isWon = false; break;} }
-        if(isWon) {
-            if(horizontal) {
-                float elevation = pairs.get(0).piece.getElevation();
-                float extra = 4 * displayMetrics.density, yextra = 17 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox];
-                float scale = 100f / ((4) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * 4 + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < 4; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setElevation(elevation++);
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i) - (extra * scale * (4 / 2)) + space);
-                    if(normalPiece) { piece.setTranslationY(yt - pieceHeight / 2); } else { piece.setTranslationY(yt - (pieceHeight/2) / 2); }
-                }
-            } else {
-                float elevation = pairs.get(0).piece.getElevation();
-                float extra = 4 * displayMetrics.density, yextra = 8 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox]-pushYForPieces;
-                float scale = 100f / ((4) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * 4 + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < 4; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setElevation(elevation++);
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt);
-                    if(normalPiece) {piece.setTranslationY(yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i)); }
-                    else { piece.setTranslationY((yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i))-(pieceWidth * scale * 0.30f)); }
-                }
-            }
-        }
+        // Completed tokens use the same per-square layout as other tokens.
+        layoutTokenSquare(targetBox);
     }
 
     /**
@@ -1070,17 +1022,37 @@ public class MainActivity extends AppCompatActivity {
      * selectable pawn explicitly instead of relying on z-order or tiny hitboxes.
      */
     private void chooseStackedPieceOrMove(Piece tapped) {
-        if (!currentPlayerColor.equals(tapped.colour) || currentPlayerDice < 1) return;
-        if (tapped.isAlive && tapped.isClickable) {
-            executeSelectedPiece(tapped); // Same-colour pieces are interchangeable here.
-        } else {
-            for(Piece candidate:getPiecesByColor(tapped.colour)) {
-                if(candidate.currBlock==tapped.currBlock && candidate.isAlive && candidate.isClickable) {
-                    executeSelectedPiece(candidate); return;
-                }
-            }
-            executeSelectedPiece(tapped);
+        if (currentPlayerDice < 1) return;
+        if (tapped.currBlock < 0) {
+            if (tapped.colour.equals(currentPlayerColor) && !tapped.isAlive && currentPlayerDice == 6)
+                executeSelectedPiece(tapped);
+            return;
         }
+        // Resolve legal active-player pawns at this square even if another
+        // colour's token is visually above them in a shared safe-square stack.
+        List<Piece> selectable = new ArrayList<>();
+        for (Piece candidate : getPiecesByColor(currentPlayerColor)) {
+            if (candidate.currBlock == tapped.currBlock && candidate.isAlive &&
+                    candidate.isClickable && otherwiseLegal(candidate,currentPlayerDice) &&
+                    !blockedByOwnPawn(candidate,currentPlayerDice)) selectable.add(candidate);
+        }
+        if (selectable.isEmpty()) {
+            if (tapped.colour.equals(currentPlayerColor)) executeSelectedPiece(tapped);
+            return;
+        }
+        if (selectable.size() == 1) {
+            executeSelectedPiece(selectable.get(0));
+            return;
+        }
+        String[] labels = new String[selectable.size()];
+        List<Piece> colorPieces = getPiecesByColor(currentPlayerColor);
+        for (int i=0;i<selectable.size();i++)
+            labels[i] = "Pawn " + (colorPieces.indexOf(selectable.get(i)) + 1);
+        new AlertDialog.Builder(this)
+                .setTitle("Choose a token")
+                .setItems(labels,(dialog,which)->executeSelectedPiece(selectable.get(which)))
+                .setNegativeButton("Cancel",null)
+                .show();
     }
 
     /** Prioritise all movable current-player tokens over other colours after a dice roll. */
@@ -1167,90 +1139,63 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void checkAdjustments(int targetBox) {
-        int xi = currentPlayerIndex;
-        if(currentWinnerPlayerIndex!=-1) {
-            xi = currentWinnerPlayerIndex;
-            currentWinnerPlayerIndex = -1;
-        }
-        List<Piece> pairs = new ArrayList<>();
-        boolean horizontal = (targetBox >= 0 && targetBox <= 4) || (targetBox >= 18 && targetBox <= 30) || (targetBox >= 44 && targetBox <= 51) || (targetBox >= 52 && targetBox <= 57) || (targetBox >= 64 && targetBox <= 69);
-        for(int i = 0; i<players.size(); i++)
-        {
-            if(xi>players.size()-1) { continue; }
-            String colour = players.get(xi).getColor();
-            List<Piece> pieces = getPiecesByColor(colour);
-            if(horizontal)
-                {
-                    for (int j = 3; j >= 0; j--) {
-                        Piece p = pieces.get(j);
-                        if (p.currBlock == targetBox && targetBox != -1 && p.isAlive) {
-                            pairs.add(p);
-                        }
-                    }
-                } else {
-                    for(Piece p : pieces) {
-                        if (p.currBlock == targetBox && targetBox != -1 && p.isAlive) {
-                            pairs.add(p);
-                        }
-                    }
-                }
+    private boolean isHorizontalTrackSquare(int targetBox) {
+        return (targetBox >= 0 && targetBox <= 4) || (targetBox >= 18 && targetBox <= 30) ||
+                (targetBox >= 44 && targetBox <= 57) || (targetBox >= 64 && targetBox <= 69);
+    }
 
-            if(xi>=players.size()-1) { xi = 0; } else { xi++; }
+    /** Re-layout every visible owner on a square, including completed lane pawns. */
+    private void layoutTokenSquare(int targetBox) {
+        if (targetBox < 0 || targetBox >= x.length || players == null || pieceWidth <= 0f) return;
+        List<Piece> occupants = new ArrayList<>();
+        for (Player player : players) {
+            for (Piece piece : getPiecesByColor(player.color)) {
+                if (piece.currBlock == targetBox && (piece.isAlive || piece.hasCompletedItsPurpose))
+                    occupants.add(piece);
+            }
         }
-        int n = pairs.size();
-        if(n>1) {
-            if(horizontal) {
-                float extra = 4 * displayMetrics.density, yextra = 17 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox];
-                float scale = 100f / ((n) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * n + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < n; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i) - (extra * scale * (n / 2)) + space);
-                    if(normalPiece) { piece.setTranslationY(yt - pieceHeight / 2); } else { piece.setTranslationY(yt - (pieceHeight/2) / 2); }
-                }
-            } else {
-                float elevation = pairs.get(0).piece.getElevation();
-                float extra = 4 * displayMetrics.density, yextra = 8 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox]-pushYForPieces;
-                float scale = 100f / ((n) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * n + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < n; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setElevation(elevation++);
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt);
-                    if(normalPiece) {piece.setTranslationY(yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i)); }
-                    else { piece.setTranslationY((yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i))-(pieceWidth * scale * 0.30f)); }
+        int count = occupants.size();
+        boolean horizontal = isHorizontalTrackSquare(targetBox);
+        float baseX = x[targetBox] + pushXForPieces;
+        float baseY = y[targetBox] - pushYForPieces;
+        float scale = boardTokenScale * TokenLayoutEngine.stackScale(count);
+        for (int i=0;i<count;i++) {
+            Piece piece = occupants.get(i);
+            TokenLayoutEngine.Offset offset = TokenLayoutEngine.offset(i,count,horizontal,blockSize);
+            piece.piece.setPivotX(pieceWidth / 2f);
+            piece.piece.setPivotY(pieceHeight / 2f);
+            piece.piece.setScaleX(scale);
+            piece.piece.setScaleY(scale);
+            piece.piece.setTranslationX(baseX + offset.x);
+            piece.piece.setTranslationY(baseY + offset.y);
+            piece.piece.setElevation(hudDp(10) + i);
+        }
+    }
+
+    private void checkAdjustments(int targetBox) {
+        layoutTokenSquare(targetBox);
+    }
+
+    /** Restore home pawns and rebuild track/lane groups after a home reassignment. */
+    private void refreshAllTokenLayouts() {
+        if (players == null) return;
+        java.util.Set<Integer> occupiedSquares = new java.util.HashSet<>();
+        for (Player player : players) {
+            for (Piece piece : getPiecesByColor(player.color)) {
+                if (piece.piece == null) continue;
+                piece.piece.setPivotX(pieceWidth / 2f);
+                piece.piece.setPivotY(pieceHeight / 2f);
+                if (piece.currBlock >= 0 && (piece.isAlive || piece.hasCompletedItsPurpose)) {
+                    occupiedSquares.add(piece.currBlock);
+                } else if (!piece.isAlive && !piece.hasCompletedItsPurpose) {
+                    piece.piece.setScaleX(boardTokenScale);
+                    piece.piece.setScaleY(boardTokenScale);
+                    piece.piece.setTranslationX(piece.defX);
+                    piece.piece.setTranslationY(piece.defY);
                 }
             }
-        } else if(pairs.size()==1) {
-            Piece p = pairs.get(0);
-            p.piece.setScaleX(1.0f);
-            p.piece.setScaleY(1.0f);
-            p.piece.setTranslationX(x[targetBox]+pushXForPieces);
-            p.piece.setTranslationY(y[targetBox]-pushYForPieces);
         }
+        for (Integer square : occupiedSquares) layoutTokenSquare(square);
     }
 
     private int hudDp(float amount) {
@@ -2152,6 +2097,7 @@ public class MainActivity extends AppCompatActivity {
         float lifty = (float) (24.5 * displayMetrics.density);
         pieceWidth = 34 * displayMetrics.density;
         pieceHeight = 41 * displayMetrics.density;
+        boardTokenScale = TokenLayoutEngine.boardScale(blockSize, pieceWidth);
         float pushx;
         if (homeCircleWidth >= pieceWidth) {
             pushx = (float) ((homeCircleWidth - pieceWidth) / 2);
@@ -2975,6 +2921,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+        globalHandler.postDelayed(this::refreshAllTokenLayouts, 360);
         final int[] ownership = homeShuffleEngine.assignment();
         final float rotation = ludoBoard.getRotation();
         final int repaintVersion = ++shuffleRepaintVersion;
