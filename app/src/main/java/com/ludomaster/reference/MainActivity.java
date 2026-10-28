@@ -171,7 +171,6 @@ public class MainActivity extends AppCompatActivity {
     private final BoardAwareDiceEngine boardAwareDiceEngine = new BoardAwareDiceEngine(60);
     private final java.util.Random botTieBreaker = new java.security.SecureRandom();
     private BoardAwareDiceEngine.Mode diceMode = BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
-    private AnimatorSet diceTumbleAnimator;
     private TextView centralDiceResultView;
     private final Runnable hideCentralDiceResult = () -> {
         if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
@@ -1606,6 +1605,33 @@ public class MainActivity extends AppCompatActivity {
         return result.toString();
     }
 
+    private Drawable diceFaceDrawable(int face) {
+        int resourceId;
+        switch (face) {
+            case 2: resourceId = R.drawable.dice2; break;
+            case 3: resourceId = R.drawable.dice3; break;
+            case 4: resourceId = R.drawable.dice4; break;
+            case 5: resourceId = R.drawable.dice5; break;
+            case 6: resourceId = R.drawable.dice6; break;
+            default: resourceId = R.drawable.dice1;
+        }
+        return ResourcesCompat.getDrawable(getResources(),resourceId,getTheme());
+    }
+
+    private void setDiceFace(ImageView view,int face) {
+        if (view != null) view.setImageDrawable(diceFaceDrawable(face));
+    }
+
+    private AnimationDrawable createDiceRollAnimationDrawable() {
+        int[] frames = {R.drawable.dice0001,R.drawable.dice0002,R.drawable.dice0003,
+                R.drawable.dice0004,R.drawable.dice0005,R.drawable.dice0006,
+                R.drawable.dice0007,R.drawable.dice0008};
+        AnimationDrawable animation = new AnimationDrawable();
+        for (int frame : frames)
+            animation.addFrame(ResourcesCompat.getDrawable(getResources(),frame,getTheme()),50);
+        return animation;
+    }
+
     class Dice
     {
         ImageView diceImgView,tLeftImgColor,tRightImgColor,bLeftImgColor,bRightImgColor;
@@ -1636,7 +1662,7 @@ public class MainActivity extends AppCompatActivity {
             bRightImgColor = findViewById(R.id.brightpieceimage);
 
             mainColor = color;
-            diceImgView.setImageDrawable(new LhjDiceDrawable(mainColor,1));
+            setDiceFace(diceImgView,1);
 
             diceHandler = new Handler();
             isRolling = false;
@@ -1755,32 +1781,16 @@ public class MainActivity extends AppCompatActivity {
                 diceRollSound.seekTo(5);
                 diceRollSound.start();
             }
-            diceAnimationDrawable=new AnimationDrawable();
-            // The drawable already renders a glossy three-face cube. Animate
-            // that drawable on its ImageView instead of importing clone sprites.
-            // Eight frames take 330 ms; the 350 ms result callback allows settling.
-            for(int frame=0;frame<8;frame++)
-                diceAnimationDrawable.addFrame(
-                    new LhjDiceDrawable(currentPlayerColor,1+(frame%6)),frame==7?50:40);
+            diceAnimationDrawable=createDiceRollAnimationDrawable();
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
-            mainDiceImageView.setCameraDistance(hudDp(700));
-            ObjectAnimator tumbleX = ObjectAnimator.ofFloat(mainDiceImageView,View.ROTATION_X,0f,720f);
-            ObjectAnimator tumbleY = ObjectAnimator.ofFloat(mainDiceImageView,View.ROTATION_Y,0f,720f);
-            diceTumbleAnimator = new AnimatorSet();
-            diceTumbleAnimator.playTogether(tumbleX,tumbleY);
-            diceTumbleAnimator.setDuration(330);
-            diceTumbleAnimator.setInterpolator(new LinearInterpolator());
-            diceTumbleAnimator.start();
             diceHandler.postDelayed(() -> {
                 final boolean thirdRollLimited = diceRules.nextRollExcludesSix();
                 int ch = diceRules.roll(face -> !faceIsOwnCollisionBlocked(face),MainActivity.this::diceWeightForFace);
                 if(ch==0) {
                     isRolling=false;
-                    if (diceTumbleAnimator != null) diceTumbleAnimator.cancel();
-                    mainDiceImageView.setRotationX(0f);
-                    mainDiceImageView.setRotationY(0f);
+                    setDiceFace(mainDiceImageView,1);
                     Toast.makeText(MainActivity.this,
                         "No free landing square. Turn passed!",Toast.LENGTH_SHORT).show();
                     switchPlayers();
@@ -1794,30 +1804,8 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "SIX! Roll again after your move!",
                         Toast.LENGTH_SHORT).show();
                 }
-                switch (ch) {
-                    case 1:
-                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 1));
-                        break;
-                    case 2:
-                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 2));
-                        break;
-                    case 3:
-                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 3));
-                        break;
-                    case 4:
-                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 4));
-                        break;
-                    case 5:
-                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 5));
-                        break;
-                    case 6:
-                        mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor, 6));
-                        break;
-                }
+                setDiceFace(mainDiceImageView,ch);
                 isRolling = false;
-                if (diceTumbleAnimator != null) diceTumbleAnimator.cancel();
-                mainDiceImageView.setRotationX(0f);
-                mainDiceImageView.setRotationY(0f);
                 // Reward the result visually, never alter the random outcome.
                 mainDiceImageView.animate().cancel();
                 mainDiceImageView.setScaleX(0.89f);
@@ -1897,7 +1885,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }, 500);
                 }
-            }, 350);
+            }, 420);
             }
     }
 
@@ -2861,7 +2849,7 @@ public class MainActivity extends AppCompatActivity {
         for(Player player:players){
             ImageView die=seatDiceViews.get(player.position);
             if(die==null)continue;
-            die.setImageDrawable(new LhjDiceDrawable(player.color,1));
+            setDiceFace(die,1);
             die.setContentDescription(player.name+" "+player.color+" dice");
             die.setVisibility(player.color.equals(currentPlayerColor)?View.INVISIBLE:View.VISIBLE);
         }
@@ -2989,7 +2977,6 @@ public class MainActivity extends AppCompatActivity {
         shuffleMatchEnding = true;
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
         if (globalHandler != null) globalHandler.removeCallbacks(hideCentralDiceResult);
-        if (diceTumbleAnimator != null) diceTumbleAnimator.cancel();
         super.onDestroy();
     }
 
@@ -3148,7 +3135,7 @@ public class MainActivity extends AppCompatActivity {
         currentPlayerColor = currentPlayer.getColor();
         refreshSeatDiceViews();
         if(mainDiceImageView != null)
-            mainDiceImageView.setImageDrawable(new LhjDiceDrawable(currentPlayerColor,1));
+            setDiceFace(mainDiceImageView,1);
         currentPlayerSelectedIndex = currentPlayer.getIndex();
         currentPlayerName = currentPlayer.name;
         //Toast.makeText(this, currentPlayerColor+"", Toast.LENGTH_SHORT).show();
