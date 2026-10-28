@@ -388,17 +388,6 @@ public class MainActivity extends AppCompatActivity {
             checkAdjustments(currBlock);
             currWinnerBlock=0;
             numberOfSteps = 0;
-            if (homeShuffleEnabled && homeShuffleEngine != null) {
-                // Captured pawns must return to their colour's current home;
-                // do not reverse-walk through an obsolete start square.
-                currBlock = -1;
-                stepsUntilShuffleEntrance = 50;
-                piece.animate().cancel();
-                piece.setScaleX(boardTokenScale);
-                piece.setScaleY(boardTokenScale);
-                piece.animate().translationX(defX).translationY(defY).setDuration(350).start();
-                return;
-            }
             if(isSoundOn) {
                 deathSound = MediaPlayer.create(MainActivity.this, R.raw.death);
                 deathSound.start();
@@ -414,17 +403,17 @@ public class MainActivity extends AppCompatActivity {
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
-                    if(currBlock!=startPosition)
+                    if(currBlock >= 0 && currBlock < 52 && currBlock!=startPosition)
                     {
                         if(currBlock==0) currBlock=51; else --currBlock;
                         piece.setTranslationX(x[currBlock]+pushXForPieces);
                         piece.setTranslationY(y[currBlock]-pushYForPieces);
                         globalHandler.postDelayed(this,20);
                     } else {
-                        if(piece.getScaleX()<1.0f) {
-                            piece.setScaleX(1.0f);
-                            piece.setScaleY(1.0f);
-                        }
+                        currBlock = -1;
+                        stepsUntilShuffleEntrance = 50;
+                        piece.setScaleX(boardTokenScale);
+                        piece.setScaleY(boardTokenScale);
                         piece.animate().translationX(defX).translationY(defY).setDuration(400).start();
                         globalHandler.removeCallbacks(this);
                     }
@@ -1048,19 +1037,7 @@ public class MainActivity extends AppCompatActivity {
             if (tapped.colour.equals(currentPlayerColor)) executeSelectedPiece(tapped);
             return;
         }
-        if (selectable.size() == 1) {
-            executeSelectedPiece(selectable.get(0));
-            return;
-        }
-        String[] labels = new String[selectable.size()];
-        List<Piece> colorPieces = getPiecesByColor(currentPlayerColor);
-        for (int i=0;i<selectable.size();i++)
-            labels[i] = "Pawn " + (colorPieces.indexOf(selectable.get(i)) + 1);
-        new AlertDialog.Builder(this)
-                .setTitle("Choose a token")
-                .setItems(labels,(dialog,which)->executeSelectedPiece(selectable.get(which)))
-                .setNegativeButton("Cancel",null)
-                .show();
+        executeSelectedPiece(selectable.get(0));
     }
 
     /** Prioritise all movable current-player tokens over other colours after a dice roll. */
@@ -1116,13 +1093,10 @@ public class MainActivity extends AppCompatActivity {
 
     /** No preference for any player; face excluded only if all viable pieces collide. */
     private boolean faceIsOwnCollisionBlocked(int face) {
-        boolean hasNormallyLegal=false;
-        for(Piece piece:getPiecesByColor(currentPlayerColor)) {
-            if(!otherwiseLegal(piece,face))continue;
-            hasNormallyLegal=true;
-            if(!blockedByOwnPawn(piece,face))return false;
+        for (Piece piece : getPiecesByColor(currentPlayerColor)) {
+            if (otherwiseLegal(piece,face) && blockedByOwnPawn(piece,face)) return true;
         }
-        return hasNormallyLegal;
+        return false;
     }
 
     private void executeSelectedPiece(Piece selected) {
@@ -1625,7 +1599,22 @@ public class MainActivity extends AppCompatActivity {
             case 6: resourceId = R.drawable.dice6; break;
             default: resourceId = R.drawable.dice1;
         }
-        return ResourcesCompat.getDrawable(getResources(),resourceId,getTheme());
+        android.graphics.Bitmap source = android.graphics.BitmapFactory.decodeResource(getResources(),resourceId);
+        int left=source.getWidth(),top=source.getHeight(),right=-1,bottom=-1;
+        for(int y=0;y<source.getHeight();y++) for(int x=0;x<source.getWidth();x++) {
+            if(android.graphics.Color.alpha(source.getPixel(x,y))>10) {
+                left=Math.min(left,x); right=Math.max(right,x);
+                top=Math.min(top,y); bottom=Math.max(bottom,y);
+            }
+        }
+        android.graphics.Bitmap centered=android.graphics.Bitmap.createBitmap(
+            source.getWidth(),source.getHeight(),android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas=new android.graphics.Canvas(centered);
+        float dx=right>=left?(source.getWidth()-1-left-right)/2f:0f;
+        float dy=bottom>=top?(source.getHeight()-1-top-bottom)/2f:0f;
+        canvas.drawBitmap(source,dx,dy,null);
+        source.recycle();
+        return new android.graphics.drawable.BitmapDrawable(getResources(),centered);
     }
 
     private void setDiceFace(ImageView view,int face) {
@@ -2842,7 +2831,7 @@ public class MainActivity extends AppCompatActivity {
             die.setScaleType(ImageView.ScaleType.FIT_CENTER);
             die.setClickable(false);
             die.setFocusable(false);
-            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(54.6f),hudDp(54.6f));
+            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(63),hudDp(63));
             p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
             p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
             if(i%2==0) {
@@ -2865,7 +2854,7 @@ public class MainActivity extends AppCompatActivity {
             if(die==null)continue;
             setDiceFace(die,1);
             die.setContentDescription(player.name+" "+player.color+" dice");
-            die.setVisibility(player.color.equals(currentPlayerColor)?View.INVISIBLE:View.VISIBLE);
+            die.setVisibility(View.GONE);
         }
     }
 
@@ -3335,8 +3324,8 @@ public class MainActivity extends AppCompatActivity {
         playername4.setVisibility(View.INVISIBLE);
 
         mainDiceImageView = findViewById(R.id.maindiceimageview);
-        mainDiceImageView.getLayoutParams().width = hudDp(54.6f);
-        mainDiceImageView.getLayoutParams().height = hudDp(54.6f);
+        mainDiceImageView.getLayoutParams().width = hudDp(63);
+        mainDiceImageView.getLayoutParams().height = hudDp(63);
         hintArrow = findViewById(R.id.hintarrowleft);
 
         shieldIndex1 = findViewById(R.id.lm_shieldindex1);
@@ -3637,7 +3626,7 @@ public class MainActivity extends AppCompatActivity {
         // The pink dice tray occupies the inner half of the legacy 115dp pad.
         // Offset from the outside edge to center a 42dp die in that tray.
         lps.setMarginStart(0);
-        lps.setMarginEnd(hudDp(11));
+        lps.setMarginEnd(0);
         lps.topMargin = 0;
         lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
@@ -3663,7 +3652,7 @@ public class MainActivity extends AppCompatActivity {
         lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
         // The pink dice tray occupies the inner half of the legacy 115dp pad.
         // Offset from the outside edge to center a 42dp die in that tray.
-        lps.setMarginStart(hudDp(9));
+        lps.setMarginStart(0);
         lps.setMarginEnd(0);
         lps.topMargin = 0;
         lps.bottomMargin = 0;
@@ -3690,7 +3679,7 @@ public class MainActivity extends AppCompatActivity {
         lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
         // The pink dice tray occupies the inner half of the legacy 115dp pad.
         // Offset from the outside edge to center a 42dp die in that tray.
-        lps.setMarginStart(hudDp(9));
+        lps.setMarginStart(0);
         lps.setMarginEnd(0);
         lps.topMargin = 0;
         lps.bottomMargin = 0;
@@ -3718,7 +3707,7 @@ public class MainActivity extends AppCompatActivity {
         // The pink dice tray occupies the inner half of the legacy 115dp pad.
         // Offset from the outside edge to center a 42dp die in that tray.
         lps.setMarginStart(0);
-        lps.setMarginEnd(hudDp(11));
+        lps.setMarginEnd(0);
         lps.topMargin = 0;
         lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
