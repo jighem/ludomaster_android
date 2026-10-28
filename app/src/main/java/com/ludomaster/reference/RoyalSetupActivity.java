@@ -17,7 +17,7 @@ import org.json.JSONObject;
 public final class RoyalSetupActivity extends Activity {
     private boolean computer;
     private int count=2;
-    private final boolean[] rules={false,false,false};
+    private final boolean[] rules={false,false,false,false};
     private final ArrayList<EditText> names=new ArrayList<>();
     private LinearLayout players;
     private int shuffleSeconds=300;
@@ -64,8 +64,9 @@ public final class RoyalSetupActivity extends Activity {
         TextView note=text("OPTIONAL RULES",19,0xff172B54);
         note.setPadding(0,dp(18),0,dp(8));root.addView(note);
         String[] labels={"Combat scoring (+5 kill / -5 death)",
-                "Earn and use immunity shields","Dynamic Home Shuffle (swap homes during play)"};
-        for(int i=0;i<3;i++){
+                "Earn and use immunity shields","Dynamic Home Shuffle (swap homes during play)",
+                "Guided Game (show legal moves and landing squares)"};
+        for(int i=0;i<rules.length;i++){
             final int idx=i;
             CheckBox cb=new CheckBox(this);
             cb.setText(labels[i]);cb.setTextColor(0xff172B54);cb.setTextSize(15);
@@ -263,6 +264,7 @@ public final class RoyalSetupActivity extends Activity {
         intent.putExtra("rule_combat",rules[0]);
         intent.putExtra("rule_immunity",rules[1]);
         intent.putExtra("rule_shuffle",rules[2]);
+        intent.putExtra("rule_guided",rules[3]);
         intent.putExtra("shuffle_interval_seconds",shuffleSeconds);
         startActivity(intent);
     }

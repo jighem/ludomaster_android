@@ -29,4 +29,21 @@ public class LudoLandingRulesTest {
         assertTrue(LudoLandingRules.occupiedByFriend(56,false,new int[]{56}));
         assertFalse(LudoLandingRules.occupiedByFriend(56,true,new int[]{56}));
     }
+    @Test public void guidedPrefixesCountAcrossEntranceAndLane() {
+        int[] expected={50,51,52,53,54,55};
+        for(int steps=1;steps<=6;steps++)
+            assertEquals(expected[steps-1],LudoLandingRules.destination(
+                49,0,true,false,0,2,51,true,steps,lane));
+    }
+
+    @Test public void homeExitPreviewUsesCurrentShuffledStart() {
+        for(int start:new int[]{0,13,26,39})
+            assertEquals(start,LudoLandingRules.destination(
+                -1,start,false,false,0,50,50,true,6,lane));
+    }
+
+    @Test public void guidedExactFinishAndOvershoot() {
+        assertEquals(57,LudoLandingRules.destination(55,0,true,true,4,0,50,true,2,lane));
+        assertEquals(-1,LudoLandingRules.destination(55,0,true,true,4,0,50,true,3,lane));
+    }
 }

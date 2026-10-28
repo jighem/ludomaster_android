@@ -360,6 +360,7 @@ public class MainActivity extends AppCompatActivity {
 
         void makeAlive()
         {
+            clearGuidedMoves();
             isAlive = true;
             currBlock = startPosition;
             stepsUntilShuffleEntrance = com.ludomaster.reference.shuffle.HomeShuffleEngine.forwardDistance(
@@ -453,6 +454,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void move(int n) {
+            clearGuidedMoves();
             isClickable = false;
             if(stepSound!=null) {
                 if(isSoundOn) {
@@ -1063,6 +1065,50 @@ public class MainActivity extends AppCompatActivity {
      * transition rules as Piece.move(), without altering the live piece.
      * A pawn may pass through another pawn; only the landing square matters.
      */
+    private boolean guidedGameEnabled;
+    private GuidedMoveDrawable guidedOverlay;
+    private android.view.ViewGroup guidedOverlayHost;
+
+    private void clearGuidedMoves() {
+        if (guidedOverlayHost != null && guidedOverlay != null)
+            guidedOverlayHost.getOverlay().remove(guidedOverlay);
+        guidedOverlay = null;
+        guidedOverlayHost = null;
+    }
+
+    private void showGuidedMoves(List<Piece> pieces, int face) {
+        clearGuidedMoves();
+        if (!guidedGameEnabled || pieces.isEmpty()) return;
+        guidedOverlayHost = (android.view.ViewGroup) pieces.get(0).piece.getParent();
+        guidedOverlay = new GuidedMoveDrawable();
+        guidedOverlay.setBounds(0,0,guidedOverlayHost.getWidth(),guidedOverlayHost.getHeight());
+        for (Piece p : pieces) {
+            if (!otherwiseLegal(p,face) || blockedByOwnPawn(p,face)) continue;
+            p.activeState();
+            int destination = landingSquare(p,face);
+            Piece target = opponentOnSquare(p,destination);
+            boolean teammate = target != null && gametype == 2 &&
+                ((p.colour.equals("red") && target.colour.equals("yellow")) ||
+                 (p.colour.equals("yellow") && target.colour.equals("red")) ||
+                 (p.colour.equals("blue") && target.colour.equals("green")) ||
+                 (p.colour.equals("green") && target.colour.equals("blue")));
+            boolean capture = target != null && !teammate &&
+                (!immunityEnabled || immunityShields.getOrDefault(target.colour,0) == 0);
+            int color = capture ? 0xFFD32F2F : safeSpots.contains(destination) ? 0xFF16833D :
+                p.colour.equals("red") ? 0xFFEF9A9A : p.colour.equals("blue") ? 0xFF90CAF9 :
+                p.colour.equals("green") ? 0xFFA5D6A7 : 0xFFFFE082;
+            // A home six exits onto the start; it does not advance six track squares.
+            int first = p.isAlive ? 1 : face;
+            for (int step=first; step<=face; step++) {
+                int square=landingSquare(p,step);
+                if(square>=0 && square<x.length)
+                    guidedOverlay.add(p.piece.getLeft()+x[square],
+                        p.piece.getTop()+y[square],blockSize,step,color,step==face);
+            }
+        }
+        guidedOverlayHost.getOverlay().add(guidedOverlay);
+    }
+
     private int landingSquare(Piece p, int steps) {
         return LudoLandingRules.destination(
             p.currBlock,p.startPosition,p.isAlive,p.isReadyToEnterWinnerZone,
@@ -1097,7 +1143,7 @@ public class MainActivity extends AppCompatActivity {
         return p.numberOfSteps+face<57;
     }
 
-    /** No preference for any player; face excluded only if all viable pieces collide. */
+    /** No preference for any player; exclude faces with an own-pawn collision. */
     private boolean faceIsOwnCollisionBlocked(int face) {
         for (Piece piece : getPiecesByColor(currentPlayerColor)) {
             if (otherwiseLegal(piece,face) && blockedByOwnPawn(piece,face)) return true;
@@ -1851,6 +1897,10 @@ public class MainActivity extends AppCompatActivity {
 
                 currentPlayer.chances = chances;
 
+                if (guidedGameEnabled && !currentPlayer.isBot && chances > 0) {
+                    showGuidedMoves(pieces,ch);
+                    autoMove = null;
+                }
                 if(autoMove!=null) {
 
                     if(autoMove.isAlive && autoMove.isClickable) {
@@ -2062,6 +2112,7 @@ public class MainActivity extends AppCompatActivity {
         combatScoringEnabled = extras != null && extras.getBoolean("rule_combat", false);
         immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
         homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
+        guidedGameEnabled = extras != null && extras.getBoolean("rule_guided", false);
         shuffleIntervalSeconds = extras == null ? 300 : Math.max(60, Math.min(600, extras.getInt("shuffle_interval_seconds",300)));
 
         nop = extras.getInt("nop");
@@ -2893,6 +2944,7 @@ public class MainActivity extends AppCompatActivity {
     private void applyPendingHomeShuffle() {
         if (!homeShuffleEnabled || homeShuffleEngine == null || shuffleMatchEnding ||
             !homeShuffleEngine.applyAtSafeBoundary(false)) return;
+        clearGuidedMoves();
         for (int colour=0; colour<4; colour++) {
             int slot=homeShuffleEngine.homeSlot(colour);
             int newStart=homeShuffleEngine.startSquare(colour);
@@ -2983,6 +3035,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        clearGuidedMoves();
         shuffleMatchEnding = true;
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
         if (globalHandler != null) globalHandler.removeCallbacks(hideCentralDiceResult);
@@ -3135,6 +3188,7 @@ public class MainActivity extends AppCompatActivity {
 
     void switchPlayers()
     {
+        clearGuidedMoves();
         diceRules.startTurn();
         currentPlayerDice = -1;
         autoMove = null;
