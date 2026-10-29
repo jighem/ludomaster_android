@@ -49,6 +49,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     double pxWidth;
     double pxHeight;
     MediaPlayer m,clickSoundEffect;
+    private final ActivityAudio menuMusic=new ActivityAudio();
+    private final ActivityAudio menuEffects=new ActivityAudio();
     ConstraintLayout topNavBar,coinAndDiamondBG,settingspopupbg,guestprofilecreateoreditlayout,statisticslayout, passnplaylayout,passnplayclassiclayout,p2layout,p3layout,p4layout,pnpteamuplayout,computerlayout,computerclassiclayout,computerrushmode;
     ObjectAnimator rotateAnimator;
     ImageView nointernet;
@@ -168,9 +170,9 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         passnplay.setLayoutParams(params);
 
         if(isMusicOn) {
-            m = MediaPlayer.create(this, R.raw.music);
-            m.setLooping(true);
-            m.start();
+            m = menuMusic.create(this,R.raw.music,true);
+            if(m!=null)m.setLooping(true);
+            menuMusic.play(m);
             stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicon,null));
         } else { stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicoff,null)); }
 
@@ -178,8 +180,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             stgssoundonoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
         } else { stgssoundonoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundoff,null)); }
 
-        clickSoundEffect = MediaPlayer.create(this,R.raw.click);
-        clickSoundEffect.seekTo(0);
+        clickSoundEffect = menuEffects.create(this,R.raw.click,false);
+        if(clickSoundEffect!=null)clickSoundEffect.seekTo(0);
 
         ImageView imageView = findViewById(R.id.imageView15);
         imageView.setImageResource(R.drawable.ludo_masters_splash);
@@ -537,15 +539,17 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 {
                     sharedPreferences.edit().putBoolean("music",false).apply();
                     isMusicOn = false;
-                    m.stop();
-                    m.release();
+                    menuMusic.release(m);
+                    m=null;
                     stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicoff,null));
                 } else {
                     giveClickSound();
                     sharedPreferences.edit().putBoolean("music",true).apply();
                     isMusicOn = true;
-                    m = MediaPlayer.create(HomeActivity.this,R.raw.music);
-                    m.start();
+                    menuMusic.muted(false);
+                    m = menuMusic.create(HomeActivity.this,R.raw.music,true);
+                    if(m!=null)m.setLooping(true);
+                    menuMusic.play(m);
                     stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicon,null));
                 }
             }
@@ -1976,9 +1980,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void giveClickSound() {
-        if(isSoundOn) {
+        menuEffects.muted(!isSoundOn);
+        if(isSoundOn && clickSoundEffect!=null) {
             clickSoundEffect.seekTo(0);
-            clickSoundEffect.start();
+            menuEffects.play(clickSoundEffect);
         }
     }
 
@@ -2270,9 +2275,15 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onPause() {
         super.onPause();
-        if (isMusicOn) {
-            m.pause();
-        }
+        menuMusic.foreground(false);
+        menuEffects.foreground(false);
+    }
+
+    @Override protected void onDestroy() {
+        menuMusic.releaseAll();
+        menuEffects.releaseAll();
+        m=clickSoundEffect=null;
+        super.onDestroy();
     }
 
     /** Clean Ludo Masters entry page; preserve only the underlying offline match setup. */
@@ -2870,10 +2881,18 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
         updateRoyalLoginLabel();
+        isSoundOn=sharedPreferences.getBoolean("sound",true);
+        isMusicOn=sharedPreferences.getBoolean("music",false);
+        menuEffects.muted(!isSoundOn);
+        menuEffects.foreground(true);
+        menuMusic.muted(!isMusicOn);
+        menuMusic.foreground(true);
         if(isMusicOn) {
-            if(!m.isPlaying()) {
-                m.start();
+            if(m==null) {
+                m=menuMusic.create(this,R.raw.music,true);
+                if(m!=null)m.setLooping(true);
             }
-        }
+            if(m!=null && !m.isPlaying())menuMusic.play(m);
+        } else menuMusic.pause(m);
     }
 }

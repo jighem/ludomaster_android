@@ -177,7 +177,8 @@ public class MainActivity extends AppCompatActivity {
         if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
     };
 
-    MediaPlayer gameStartSound,diceRollSound,stepSound,safeSound,deathSound,pantaSound,congratulationSound;
+    MediaPlayer gameStartSound,diceRollSound,stepSound,congratulationSound;
+    private final ActivityAudio gameAudio=new ActivityAudio();
     int sizeOfBox;
 
     float blockSize;
@@ -387,16 +388,7 @@ public class MainActivity extends AppCompatActivity {
             checkAdjustments(currBlock);
             currWinnerBlock=0;
             numberOfSteps = 0;
-            if(isSoundOn) {
-                deathSound = MediaPlayer.create(MainActivity.this, R.raw.death);
-                deathSound.start();
-                deathSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                    @Override
-                    public void onCompletion(MediaPlayer mediaPlayer) {
-                        deathSound.release();
-                    }
-                });
-            }
+            if(isSoundOn)playGameEffect(R.raw.death);
 
 
             Runnable r = new Runnable() {
@@ -457,11 +449,11 @@ public class MainActivity extends AppCompatActivity {
                 if(isSoundOn) {
                     if (!stepSound.isPlaying()) {
                         stepSound.seekTo(120);
-                        stepSound.start();
+                        startGameSound(stepSound);
                     } else if (stepSound.isPlaying()) {
-                        stepSound.pause();
+                        gameAudio.pause(stepSound);
                         stepSound.seekTo(120);
-                        stepSound.start();
+                        startGameSound(stepSound);
                     }
                 }
             }
@@ -549,35 +541,21 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         piece.setElevation(currBlock);
                     }
-                    stepSound.pause();
+                    gameAudio.pause(stepSound);
                     numberOfSteps++;
 
                     boolean isDeadChanceAvailable = false;
 
                     if(safeSpots.contains(currBlock) && isSoundOn)
                     {
-                        safeSound = MediaPlayer.create(MainActivity.this,R.raw.safe);
-                        safeSound.start();
-                        safeSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                            @Override
-                            public void onCompletion(MediaPlayer mediaPlayer) {
-                                safeSound.release();
-                            }
-                        });
+                        playGameEffect(R.raw.safe);
                     } else if(currWinnerBlock>0) {
                         int temp = 0;
                         if(currWinnerBlock>5)
                         {
                             hasCompletedItsPurpose = true;
                             if(isSoundOn) {
-                                pantaSound = MediaPlayer.create(MainActivity.this, R.raw.panta);
-                                pantaSound.start();
-                                pantaSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                                    @Override
-                                    public void onCompletion(MediaPlayer mediaPlayer) {
-                                        pantaSound.release();
-                                    }
-                                });
+                                playGameEffect(R.raw.panta);
                             }
 
                             List<Piece> pieces = getPiecesByColor(this.colour);
@@ -827,9 +805,12 @@ public class MainActivity extends AppCompatActivity {
 
 
         if(isSoundOn) {
-            congratulationSound = MediaPlayer.create(this, R.raw.congratulations);
-            congratulationSound.setLooping(true);
-            congratulationSound.start();
+            gameAudio.release(congratulationSound);
+            congratulationSound = createGameSound(R.raw.congratulations);
+            if(congratulationSound!=null) {
+                congratulationSound.setLooping(true);
+                startGameSound(congratulationSound);
+            }
         }
 
         ImageView imageView = findViewById(R.id.fireworksview);
@@ -1659,8 +1640,7 @@ public class MainActivity extends AppCompatActivity {
             isSoundOn=!isSoundOn;
             sharedPreferences.edit().putBoolean("sound",isSoundOn).apply();
             audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
-            if(!isSoundOn && congratulationSound!=null && congratulationSound.isPlaying())
-                congratulationSound.pause();
+            gameAudio.muted(!isSoundOn);
         });
         audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
         audio.bringToFront();
@@ -2055,12 +2035,12 @@ public class MainActivity extends AppCompatActivity {
             isRolling = true;
             isDiceClickable = false;
             isDiceMovableExtraChance = false;
-            if(isSoundOn) {
+            if(isSoundOn && diceRollSound!=null) {
                 if (diceRollSound.isPlaying()) {
-                    diceRollSound.pause();
+                    gameAudio.pause(diceRollSound);
                 }
                 diceRollSound.seekTo(5);
-                diceRollSound.start();
+                startGameSound(diceRollSound);
             }
             diceAnimationDrawable=createDiceRollAnimationDrawable();
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
@@ -2697,12 +2677,12 @@ public class MainActivity extends AppCompatActivity {
                     isSoundOn = false;
                     sharedPreferences.edit().putBoolean("sound",false).apply();
                     ingamesoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundoff,null));
-                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { congratulationSound.pause(); } }
+                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { gameAudio.pause(congratulationSound); } }
                 } else {
                     isSoundOn = true;
                     sharedPreferences.edit().putBoolean("sound",true).apply();
                     ingamesoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
-                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { congratulationSound.start(); } }
+                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { startGameSound(congratulationSound); } }
                 }
             }
         });
@@ -2883,12 +2863,12 @@ public class MainActivity extends AppCompatActivity {
                     isSoundOn = false;
                     sharedPreferences.edit().putBoolean("sound",false).apply();
                     congratssoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundoff,null));
-                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { congratulationSound.pause(); } }
+                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { gameAudio.pause(congratulationSound); } }
                 } else {
                     isSoundOn = true;
                     sharedPreferences.edit().putBoolean("sound",true).apply();
                     congratssoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
-                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { congratulationSound.start(); } }
+                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { startGameSound(congratulationSound); } }
                 }
             }
         });
@@ -2976,19 +2956,24 @@ public class MainActivity extends AppCompatActivity {
 
             globalHandler.post(blinkAnim);
 
-            gameStartSound = MediaPlayer.create(this,R.raw.gamestartsound);
-            gameStartSound.start();
-            gameStartSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mediaPlayer) {
-                    globalHandler.removeCallbacks(blinkAnim);
-                    gameStartImageView.setVisibility(GONE);
-                    mainDiceImageView.setVisibility(View.VISIBLE);
-                    hintArrow.setVisibility(View.VISIBLE);
-                    switchPlayers();
-                    gameStartSound.release();
-                }
-            });
+            Runnable beginMatch=()->{
+                if(shuffleMatchEnding || isFinishing())return;
+                globalHandler.removeCallbacks(blinkAnim);
+                gameStartImageView.setVisibility(GONE);
+                mainDiceImageView.setVisibility(View.VISIBLE);
+                hintArrow.setVisibility(View.VISIBLE);
+                switchPlayers();
+            };
+            gameStartSound=createGameSound(R.raw.gamestartsound);
+            if(gameStartSound==null)globalHandler.post(beginMatch);
+            else {
+                gameStartSound.setOnCompletionListener(mediaPlayer->{
+                    gameAudio.release(mediaPlayer);
+                    gameStartSound=null;
+                    beginMatch.run();
+                });
+                startGameSound(gameStartSound);
+            }
             mainDiceImageView.setVisibility(GONE);
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
@@ -3236,21 +3221,34 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this,"Home Shuffle! Every colour changed home.",Toast.LENGTH_SHORT).show();
     }
 
+    private MediaPlayer createGameSound(int resource) {
+        return gameAudio.create(this,resource,
+            resource==R.raw.gamestartsound || resource==R.raw.congratulations);
+    }
+    private void startGameSound(MediaPlayer player) {
+        gameAudio.muted(!isSoundOn);
+        gameAudio.play(player);
+    }
+    private void playGameEffect(int resource) {
+        gameAudio.muted(!isSoundOn);
+        gameAudio.effect(this,resource);
+    }
+    private void releaseGameAudio() {
+        gameAudio.releaseAll();
+        gameStartSound=diceRollSound=stepSound=congratulationSound=null;
+    }
+
     private void stopEverything() {
         shuffleMatchEnding = true;
         hideBomberControls();
-        globalHandler.removeCallbacksAndMessages(null);
-        d.diceHandler.removeCallbacksAndMessages(null);
-        if(congratulationSound!=null) {
-            if(congratulationSound.isPlaying()) {
-                congratulationSound.stop();
-            }
-            try { congratulationSound.release(); } catch (Exception e) {}
-        }
+        if(globalHandler!=null)globalHandler.removeCallbacksAndMessages(null);
+        if(d!=null && d.diceHandler!=null)d.diceHandler.removeCallbacksAndMessages(null);
+        releaseGameAudio();
     }
 
     @Override
     protected void onPause() {
+        gameAudio.foreground(false);
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
         super.onPause();
     }
@@ -3261,7 +3259,9 @@ public class MainActivity extends AppCompatActivity {
         hideBomberControls();
         shuffleMatchEnding = true;
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
-        if (globalHandler != null) globalHandler.removeCallbacks(hideCentralDiceResult);
+        if (globalHandler != null) globalHandler.removeCallbacksAndMessages(null);
+        if (d != null && d.diceHandler != null) d.diceHandler.removeCallbacksAndMessages(null);
+        releaseGameAudio();
         super.onDestroy();
     }
 
@@ -3749,12 +3749,9 @@ public class MainActivity extends AppCompatActivity {
         wBlocks64 = new int[] {64, 65, 66, 67, 68, 69};
         wBlocks70 = new int[] {70, 71, 72, 73, 74, 75};
 
-        diceRollSound = MediaPlayer.create(this, R.raw.diceroll);
-        stepSound = MediaPlayer.create(this, R.raw.step);
-//        safeSound = MediaPlayer.create(this, R.raw.safe);
-//        deathSound = MediaPlayer.create(this, R.raw.death);
-//        pantaSound = MediaPlayer.create(this, R.raw.panta);
-//        congratulationSound = MediaPlayer.create(this, R.raw.congratulations);
+        diceRollSound = createGameSound(R.raw.diceroll);
+        stepSound = createGameSound(R.raw.step);
+//        congratulationSound = createGameSound(R.raw.congratulations);
 
         if(isSoundOn) {
             ingamesoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
@@ -3887,6 +3884,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        gameAudio.muted(!isSoundOn);
+        gameAudio.foreground(true);
         if (homeShuffleEnabled && homeShuffleEngine != null && globalHandler != null && !shuffleMatchEnding) {
             globalHandler.removeCallbacks(shuffleTimerTick);
             globalHandler.postDelayed(shuffleTimerTick,1000);
