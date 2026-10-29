@@ -182,7 +182,8 @@ public class MainActivity extends AppCompatActivity {
 
     float blockSize;
 
-    Piece autoMove;
+    private int autoMoveGeneration;
+    private boolean centralBombNoticeVisible;
 
     HashSet<Integer> safeSpots;
 
@@ -1090,6 +1091,8 @@ public class MainActivity extends AppCompatActivity {
         bombArmButton.setAllCaps(false);bombArmButton.setTextSize(12);
         bombArmButton.setTextColor(0xFFFFFFFF);
         bombArmButton.setBackgroundResource(R.drawable.lhj_button_blue);
+        bombArmButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_plant_bomb,0,0,0);
+        bombArmButton.setCompoundDrawablePadding(hudDp(5));
         bomberControls.addView(bombArmButton,new LinearLayout.LayoutParams(-1,hudDp(44)));
         bombStock=new TextView(this);bombStock.setTextColor(0xFF172B54);
         bombStock.setGravity(Gravity.CENTER);bombStock.setTextSize(11);
@@ -1121,9 +1124,14 @@ public class MainActivity extends AppCompatActivity {
         boolean available=anyBombDeparture();
         boolean bot=currentBomberIsBot();
         bombArmButton.setEnabled(available && !bombChoiceLocked && !bot && !shuffleMatchEnding);
-        bombArmButton.setText(bombChoiceLocked ? (bombArmed?"BOMB ARMED • choose a highlighted pawn":"Bomb choice locked for this roll") :
-            bombArmed?"BOMB ARMED • tap to cancel before rolling":
-            available?"PLANT BOMB • arm before rolling":"Bomb unavailable • move to a free unsafe track square");
+        bombArmButton.setText(bombArmed ?
+            (bombChoiceLocked?"Bomb Armed for this Roll":"Cancel Bomb for this Roll") : "Plant Bomb with this Roll");
+        bombArmButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+            bombArmed?0xFFC35A00:0xFF2586F5));
+        bombArmButton.setContentDescription(bombArmButton.getText()+
+            (!available?". No pawn with a bomb is on a free unsafe track square.":""));
+        if(bombArmed && !bombChoiceLocked)showCentralBombNotice();
+        else if(!bombArmed)clearCentralBombNotice();
         bombArmButton.setAlpha(bombArmButton.isEnabled()?1f:.72f);
         StringBuilder stock=new StringBuilder(currentPlayerColor==null?"Bomber Ludo":currentPlayerColor.toUpperCase(java.util.Locale.ROOT));
         stock.append(" • bombs: ");
@@ -1145,6 +1153,7 @@ public class MainActivity extends AppCompatActivity {
     private void beginBombRoll() {
         if(!bomberEnabled)return;
         if(currentBomberIsBot())bombArmed=anyBombDeparture() && botTieBreaker.nextInt(100)<60;
+        if(bombArmed)showCentralBombNotice();
         bombChoiceLocked=true;refreshBomberControls();
     }
     private boolean prepareBombDeparture(Piece pawn) {
@@ -1159,6 +1168,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
     private void hideBomberControls() {
+        clearCentralBombNotice();
         if(bomberControls!=null)bomberControls.setVisibility(GONE);
         if(bombOverlayHost!=null && bombOverlay!=null)bombOverlayHost.getOverlay().remove(bombOverlay);
     }
@@ -1307,6 +1317,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (!prepareBombDeparture(selected)) return;
+        ++autoMoveGeneration;
         if (selected.isAlive && selected.isClickable && !selected.hasCompletedItsPurpose) {
             int rolled = currentPlayerDice;
             currentPlayerDice = -1;
@@ -1319,6 +1330,30 @@ public class MainActivity extends AppCompatActivity {
             for (Piece other : getPiecesByColor(selected.colour)) other.inactiveState();
             selected.makeAlive();
         }
+    }
+
+    /** One legal move, or multiple interchangeable pawns: no player decision needed. */
+    private boolean autoRunObviousMove(List<Piece> legalMoves,int face) {
+        List<AutoMovePolicy.Choice> choices=new ArrayList<>();
+        for(Piece pawn:legalMoves) {
+            String route=pawn.numberOfSteps+":"+pawn.isReadyToEnterWinnerZone+":"+
+                pawn.currWinnerBlock+":"+pawn.stepsUntilShuffleEntrance+":"+pawn.endPosition;
+            choices.add(new AutoMovePolicy.Choice(pawn.currBlock,landingSquare(pawn,face),!pawn.isAlive,
+                bomberEnabled?bomberRules.remaining(pawn.bombId):-1,route));
+        }
+        int index=AutoMovePolicy.automaticIndex(choices);
+        if(index<0)return false;
+        Piece selected=legalMoves.get(index);
+        final int expectedGeneration=autoMoveGeneration;
+        final int expectedTurn=shuffleTurnGeneration;
+        final String color=currentPlayerColor;
+        globalHandler.postDelayed(()->{
+            if(shuffleMatchEnding || expectedGeneration!=autoMoveGeneration ||
+                expectedTurn!=shuffleTurnGeneration || currentPlayerDice!=face ||
+                !color.equals(currentPlayerColor))return;
+            executeSelectedPiece(selected);
+        },selected.isBotPiece?150:550);
+        return true;
     }
 
     private boolean isSquareThreatened(int square, String ownerColor) {
@@ -1508,6 +1543,32 @@ public class MainActivity extends AppCompatActivity {
         boardLayer.addView(centralDiceResultView,params);
     }
 
+    private void clearCentralBombNotice() {
+        if(!centralBombNoticeVisible)return;
+        centralBombNoticeVisible=false;
+        if(centralDiceResultView!=null)centralDiceResultView.setVisibility(GONE);
+    }
+
+    private void showCentralBombNotice() {
+        if(centralDiceResultView==null)return;
+        centralBombNoticeVisible=true;
+        globalHandler.removeCallbacks(hideCentralDiceResult);
+        setCentralMessageSize(142,70,13);
+        centralDiceResultView.setText("BOMB ARMED\nPlants with this roll");
+        centralDiceResultView.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF9D4700));
+        centralDiceResultView.setVisibility(View.VISIBLE);
+        centralDiceResultView.bringToFront();
+    }
+
+    private void setCentralMessageSize(int width,int height,int textSize) {
+        android.view.ViewGroup.LayoutParams params=centralDiceResultView.getLayoutParams();
+        params.width=hudDp(width);params.height=hudDp(height);
+        centralDiceResultView.setLayoutParams(params);
+        centralDiceResultView.setTextSize(textSize);
+        centralDiceResultView.setX(ludoBoard.getX()+(ludoBoard.getWidth()-hudDp(width))/2f);
+        centralDiceResultView.setY(ludoBoard.getY()+(ludoBoard.getHeight()-hudDp(height))/2f);
+    }
+
     private void showCentralDiceResult(int result) {
         if (centralDiceResultView == null) return;
         globalHandler.removeCallbacks(hideCentralDiceResult);
@@ -1515,6 +1576,8 @@ public class MainActivity extends AppCompatActivity {
         if ("red".equals(currentPlayerColor)) color = 0xfff04452;
         else if ("green".equals(currentPlayerColor)) color = 0xff23bf75;
         else if ("yellow".equals(currentPlayerColor)) color = 0xffffc342;
+        centralBombNoticeVisible=false;
+        setCentralMessageSize(62,62,32);
         centralDiceResultView.setText(String.valueOf(result));
         centralDiceResultView.setBackgroundTintList(
                 android.content.res.ColorStateList.valueOf(color));
@@ -1987,6 +2050,7 @@ public class MainActivity extends AppCompatActivity {
 
         void roll() {
             if (isRolling || shuffleMatchEnding || players == null || players.isEmpty()) return;
+            ++autoMoveGeneration;
             beginBombRoll();
             isRolling = true;
             isDiceClickable = false;
@@ -2045,51 +2109,30 @@ public class MainActivity extends AppCompatActivity {
                 Player currentPlayer = players.get(x);
                 //Toast.makeText(MainActivity.this, currentPlayer.color+"", Toast.LENGTH_SHORT).show();
 
-                 int chances = 0;
-                 List<Piece> movablePieces = new ArrayList<>();
-                 // An automatic choice must not leak across different dice rolls.
-                 autoMove = null;
-
-                for(Piece p : pieces)
-                {
-                    if(p.check(ch))
-                    {
-                        if(chances==0) autoMove = p;
-                        else autoMove = null;
-                        if(currentPlayer.isBot) { movablePieces.add(p); }
-                        ++chances;
-                    }
+                List<Piece> movablePieces=new ArrayList<>();
+                for(Piece p:pieces) {
+                    if(p.check(ch) && otherwiseLegal(p,ch) && !blockedByOwnPawn(p,ch))movablePieces.add(p);
+                    else p.inactiveState();
                 }
-
                 if(bomberEnabled && bombArmed) {
-                    int plantable=0;
-                    for(Piece p:pieces)if(otherwiseLegal(p,ch) && !blockedByOwnPawn(p,ch) && canLeaveBomb(p))plantable++;
-                    if(plantable==0) {
+                    boolean plantable=false;
+                    for(Piece p:movablePieces)if(canLeaveBomb(p))plantable=true;
+                    if(!plantable) {
                         bombArmed=false;
                         Toast.makeText(MainActivity.this,"No movable pawn can plant this roll. No bomb spent.",Toast.LENGTH_SHORT).show();
                     } else {
-                        chances=plantable;
                         movablePieces.removeIf(p->!canLeaveBomb(p));
-                        autoMove=null;
-                        for(Piece p:pieces) {
-                            if(p.isClickable && !canLeaveBomb(p))p.inactiveState();
-                            if(otherwiseLegal(p,ch) && !blockedByOwnPawn(p,ch) && canLeaveBomb(p)) {
-                                if(plantable==1)autoMove=p;
-                            }
-                        }
+                        for(Piece p:pieces)if(!movablePieces.contains(p))p.inactiveState();
                     }
                     refreshBomberControls();
                 }
+                int chances=movablePieces.size();
                 currentPlayer.chances = chances;
 
-                if (guidedGameEnabled && !currentPlayer.isBot && chances > 0) {
-                    showGuidedMoves(pieces,ch);
-                    autoMove = null;
-                }
-                if(autoMove!=null) {
-                    Piece selected=autoMove;
-                    autoMove=null;
-                    executeSelectedPiece(selected);
+                if (guidedGameEnabled && !currentPlayer.isBot && chances > 0)
+                    showGuidedMoves(movablePieces,ch);
+                if(autoRunObviousMove(movablePieces,ch)) {
+                    // Briefly display the rolled number and optional guide, then run.
                 } else if(currentPlayer.isBot && chances>0) {
                     int selectedIndex = chooseStrategicBotMove(movablePieces,ch);
                     if (selectedIndex >= 0) {
@@ -3371,7 +3414,7 @@ public class MainActivity extends AppCompatActivity {
         clearGuidedMoves();
         diceRules.startTurn();
         currentPlayerDice = -1;
-        autoMove = null;
+        ++autoMoveGeneration;
         ++shuffleTurnGeneration;
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();

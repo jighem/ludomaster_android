@@ -29,11 +29,15 @@ final class GuidedMoveDrawable extends Drawable {
     @Override public void draw(Canvas canvas) {
         // Draw destinations first, so all step labels remain readable on shared paths.
         for(Mark m:marks) if(m.destination) {
-            paint.setStyle(Paint.Style.FILL);paint.setColor((m.color & 0xFFFFFF)|0x55000000);
-            canvas.drawRect(m.x+2,m.y+2,m.x+m.size-2,m.y+m.size-2,paint);
-            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(Math.max(2,m.size*.06f));
-            paint.setColor(m.color);
-            canvas.drawRect(m.x+2,m.y+2,m.x+m.size-2,m.y+m.size-2,paint);
+            float cx=m.x+m.size*.5f,cy=m.y+m.size*.5f,radius=m.size*.37f;
+            paint.setStyle(Paint.Style.STROKE);
+            // Contrasting rims keep even pale pawn colours visible on any square.
+            paint.setStrokeWidth(m.size*.16f);paint.setColor(0xFF172B54);
+            canvas.drawCircle(cx,cy,radius,paint);
+            paint.setStrokeWidth(m.size*.115f);paint.setColor(0xFFFFFFFF);
+            canvas.drawCircle(cx,cy,radius,paint);
+            paint.setStrokeWidth(m.size*.075f);paint.setColor(m.color);
+            canvas.drawCircle(cx,cy,radius,paint);
         }
         java.util.Map<String,Integer> labels=new java.util.HashMap<>();
         java.util.Set<String> drawn=new java.util.HashSet<>();
