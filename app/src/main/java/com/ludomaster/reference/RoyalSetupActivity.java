@@ -17,6 +17,13 @@ import org.json.JSONObject;
 public final class RoyalSetupActivity extends Activity {
     private boolean computer;
     private int count=2;
+    private MatchVariant variant=MatchVariant.CLASSIC;
+    private LinearLayout countPage,typePage,setupPage;
+    private ScrollView setupScroll;
+    private TextView variantTitle;
+    private LinearLayout shuffleOptions;
+    private int page;
+    private boolean leaguePrompted;
     private final boolean[] rules={false,false,false};
     private final ArrayList<EditText> names=new ArrayList<>();
     private LinearLayout players;
@@ -33,47 +40,77 @@ public final class RoyalSetupActivity extends Activity {
         computer=getIntent().getBooleanExtra("computer",false);
         ScrollView scroll=new ScrollView(this);
         scroll.setFillViewport(true);
+        setupScroll=scroll;
         LinearLayout root=new LinearLayout(this);
         root.setPadding(dp(26),dp(42),dp(26),dp(28));
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setBackgroundResource(R.drawable.ludo_masters_game_background);
+        root.setBackgroundResource(R.drawable.lhj_menu_sky);
         scroll.addView(root);
         ImageView shield=new ImageView(this);
-        shield.setImageResource(R.drawable.lm_shield);
+        shield.setImageResource(R.drawable.lhj_emblem_approved);
         root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
-        TextView heading=text(computer?"COMPUTER MATCH":"PASS N PLAY",27,0xffffd46a);
+        TextView heading=text(computer?"COMPUTER MATCH":"PASS & PLAY",27,0xff172B54);
         root.addView(heading);
-        countLabel=text("PLAYERS: 2",18,Color.WHITE);
-        countLabel.setPadding(0,dp(14),0,dp(6));root.addView(countLabel);
-        LinearLayout nums=new LinearLayout(this);root.addView(nums);
+        countPage=new LinearLayout(this);countPage.setOrientation(1);
+        typePage=new LinearLayout(this);typePage.setOrientation(1);
+        setupPage=new LinearLayout(this);setupPage.setOrientation(1);
+        root.addView(countPage,new LinearLayout.LayoutParams(-1,-2));
+        root.addView(typePage,new LinearLayout.LayoutParams(-1,-2));
+        root.addView(setupPage,new LinearLayout.LayoutParams(-1,-2));
+        countLabel=text("PLAYERS: 2",18,0xff172B54);
+        countLabel.setPadding(0,dp(14),0,dp(6));countPage.addView(countLabel);
+        LinearLayout nums=new LinearLayout(this);countPage.addView(nums);
         for(int n=2;n<=4;n++){
             final int selected=n;
             Button btn=button(n+"P");
             nums.addView(btn,new LinearLayout.LayoutParams(0,dp(58),1));
             btn.setOnClickListener(v->{count=selected;updatePlayers();});
         }
+        Button next=button("CHOOSE GAME TYPE");
+        countPage.addView(next,new LinearLayout.LayoutParams(-1,dp(58)));
+        next.setOnClickListener(v->showPage(1));
+        Button countBack=button("BACK");countPage.addView(countBack,new LinearLayout.LayoutParams(-1,dp(52)));
+        countBack.setOnClickListener(v->finish());
+        typePage.addView(text("CHOOSE GAME TYPE",22,0xff172B54));
+        String[] descriptions={"The familiar race to bring all four pawns home.",
+            "Homes, starts and finishing lanes swap on a timer.",
+            "One bomb per pawn (four per player). Arm before rolling and leave one behind when moving. Any colour can trigger it. Hold a pawn to check its number and bombs."};
+        for(MatchVariant choice:MatchVariant.values()) {
+            Button option=button(choice.title);
+            LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,dp(58));margin.topMargin=dp(14);
+            typePage.addView(option,margin);
+            typePage.addView(text(descriptions[choice.ordinal()],14,0xff172B54));
+            option.setOnClickListener(v->{variant=choice;showPage(2);});
+        }
+        Button typeBack=button("BACK TO PLAYER COUNT");
+        typePage.addView(typeBack,new LinearLayout.LayoutParams(-1,dp(52)));
+        typeBack.setOnClickListener(v->showPage(0));
+        variantTitle=text("",22,0xff172B54);setupPage.addView(variantTitle);
         leagueButton=button("SELECT LEAGUE PLAYERS (LOGIN REQUIRED)");
-        root.addView(leagueButton,new LinearLayout.LayoutParams(-1,dp(55)));
+        setupPage.addView(leagueButton,new LinearLayout.LayoutParams(-1,dp(55)));
         leagueButton.setOnClickListener(v->chooseLeague());
         Button addPlayer=button("+ ADD PLAYER TO LEAGUE");
-        root.addView(addPlayer,new LinearLayout.LayoutParams(-1,dp(49)));
+        setupPage.addView(addPlayer,new LinearLayout.LayoutParams(-1,dp(49)));
         addPlayer.setOnClickListener(v->LeaguePlayerCreator.show(this,selectedLeagueId,()->refreshRoster()));
         players=new LinearLayout(this);players.setOrientation(1);
-        root.addView(players,new LinearLayout.LayoutParams(-1,-2));
-        TextView note=text("OPTIONAL RULES",19,0xffffd46a);
-        note.setPadding(0,dp(18),0,dp(8));root.addView(note);
+        setupPage.addView(players,new LinearLayout.LayoutParams(-1,-2));
+        TextView note=text("OPTIONAL RULES",19,0xff172B54);
+        note.setPadding(0,dp(18),0,dp(8));setupPage.addView(note);
         String[] labels={"Combat scoring (+5 kill / -5 death)",
-                "Earn and use immunity shields","Dynamic Home Shuffle (swap homes during play)"};
-        for(int i=0;i<3;i++){
+                "Earn and use immunity shields",
+                "Guided Game (show legal moves and landing squares)"};
+        for(int i=0;i<rules.length;i++){
             final int idx=i;
             CheckBox cb=new CheckBox(this);
-            cb.setText(labels[i]);cb.setTextColor(Color.WHITE);cb.setTextSize(15);
-            cb.setButtonTintList(ColorStateList.valueOf(0xffffd46a));
-            root.addView(cb);
+            cb.setText(labels[i]);cb.setTextColor(0xff172B54);cb.setTextSize(15);
+            cb.setButtonTintList(ColorStateList.valueOf(0xff2586F5));
+            setupPage.addView(cb);
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
-        root.addView(text("HOME SHUFFLE INTERVAL",14,0xffffd46a));
+        shuffleOptions=new LinearLayout(this);shuffleOptions.setOrientation(1);
+        setupPage.addView(shuffleOptions,new LinearLayout.LayoutParams(-1,-2));
+        shuffleOptions.addView(text("HOME SHUFFLE INTERVAL",14,0xff172B54));
         Spinner shuffleInterval=new Spinner(this);
         String[] intervals={"1 minute","2 minutes","3 minutes","5 minutes","10 minutes"};
         int[] values={60,120,180,300,600};
@@ -84,23 +121,39 @@ public final class RoyalSetupActivity extends Activity {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent,android.view.View view,int position,long id){shuffleSeconds=values[position];}
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
         });
-        root.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
-        root.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,Color.WHITE));
+        shuffleOptions.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
+        shuffleOptions.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,0xff172B54));
         Button play=button("START MATCH");
-        root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
+        setupPage.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
         Button saved=button("SAVED MATCHES / RETRY UPLOAD");
-        root.addView(saved,new LinearLayout.LayoutParams(-1,dp(52)));
+        setupPage.addView(saved,new LinearLayout.LayoutParams(-1,dp(52)));
         saved.setOnClickListener(v->MatchUploader.showSavedMatches(this));
         Button back=button("BACK");
-        root.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
-        root.addView(text("Powered by ludohojaye.com",13,0xffffd46a));
-        back.setOnClickListener(v->finish());
+        setupPage.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
+        setupPage.addView(text("Powered by ludohojaye.com",13,0xff172B54));
+        back.setOnClickListener(v->showPage(1));
         updatePlayers();
         setContentView(scroll);
         // A signed-in player must pick the league before selecting its roster.
         // Offline guests can play without an account or league.
-        if (SecureLogin.token(this) != null) scroll.post(this::chooseLeague);
+        showPage(0);
+    }
+    private void showPage(int selected) {
+        page=selected;
+        countPage.setVisibility(page==0?android.view.View.VISIBLE:android.view.View.GONE);
+        typePage.setVisibility(page==1?android.view.View.VISIBLE:android.view.View.GONE);
+        setupPage.setVisibility(page==2?android.view.View.VISIBLE:android.view.View.GONE);
+        variantTitle.setText(variant.title+" • "+count+" players");
+        shuffleOptions.setVisibility(variant==MatchVariant.HOME_SHUFFLE?
+            android.view.View.VISIBLE:android.view.View.GONE);
+        setupScroll.post(()->setupScroll.smoothScrollTo(0,0));
+        if(page==2 && !leaguePrompted && SecureLogin.token(this)!=null) {
+            leaguePrompted=true;setupScroll.post(this::chooseLeague);
+        }
+    }
+    @Override public void onBackPressed() {
+        if(page>0)showPage(page-1);else super.onBackPressed();
     }
     private TextView text(String label,int size,int color) {
         TextView t=new TextView(this);t.setText(label);t.setTextSize(size);t.setTextColor(color);
@@ -108,24 +161,44 @@ public final class RoyalSetupActivity extends Activity {
     }
     private Button button(String name){
         Button btn=new Button(this);btn.setText(name);btn.setTextColor(Color.WHITE);
-        btn.setBackgroundTintList(ColorStateList.valueOf(0xff0757bf));return btn;
+        btn.setAllCaps(false);
+        btn.setTypeface(null,android.graphics.Typeface.BOLD);
+        btn.setBackgroundResource(R.drawable.lhj_button_blue);
+        btn.setElevation(dp(3));
+        return btn;
     }
     private void updatePlayers(){
         countLabel.setText("PLAYERS: "+count);
         players.removeAllViews();names.clear();playerIds.clear();
         for(int i=0;i<count;i++){
+            LinearLayout playerCard=new LinearLayout(this);
+            playerCard.setOrientation(LinearLayout.VERTICAL);
+            playerCard.setPadding(dp(14),dp(12),dp(14),dp(12));
+            playerCard.setBackgroundResource(R.drawable.lhj_card_white);
+            playerCard.setElevation(dp(3));
+            LinearLayout.LayoutParams cardParams=new LinearLayout.LayoutParams(-1,-2);
+            cardParams.topMargin=dp(12);
+            players.addView(playerCard,cardParams);
+            TextView seatTitle=text("PLAYER "+(i+1)+(computer && i>0?"  -  COMPUTER":""),
+                    14,0xff172B54);
+            seatTitle.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);
+            playerCard.addView(seatTitle,new LinearLayout.LayoutParams(-1,dp(30)));
             EditText field=new EditText(this);
-            field.setSingleLine(true);field.setTextColor(Color.WHITE);
-            field.setHintTextColor(0xffb6cbea);
+            field.setSingleLine(true);field.setTextColor(0xff172B54);
+            field.setHintTextColor(0xff64748B);
             field.setHint(computer?(i==0?"Your name":"Computer "+i):"Player "+(i+1));
             field.setText(computer?(i==0?"You":"Computer "+i):"Player "+(i+1));
-            players.addView(field,new LinearLayout.LayoutParams(-1,dp(52)));
+            field.setBackgroundResource(R.drawable.lhj_button_white);
+            field.setPadding(dp(12),0,dp(12),0);
+            playerCard.addView(field,new LinearLayout.LayoutParams(-1,dp(52)));
             names.add(field);
             playerIds.add(0);
             if(SecureLogin.token(this)!=null && (!computer || i==0)) {
                 final int seat=i;
-                Button choose=button("CHOOSE REGISTERED PLAYER "+(i+1));
-                players.addView(choose,new LinearLayout.LayoutParams(-1,dp(45)));
+                Button choose=button("Choose registered player");
+                LinearLayout.LayoutParams pickParams=new LinearLayout.LayoutParams(-1,dp(48));
+                pickParams.topMargin=dp(10);
+                playerCard.addView(choose,pickParams);
                 choose.setOnClickListener(v->choosePlayer(seat));
             }
         }
@@ -136,8 +209,7 @@ public final class RoyalSetupActivity extends Activity {
                 if(data.length()==0){Toast.makeText(RoyalSetupActivity.this,"No accessible leagues",Toast.LENGTH_LONG).show();return;}
                 String[] titles=new String[data.length()];
                 for(int i=0;i<data.length();i++)titles[i]=data.optJSONObject(i).optString("name","League "+(i+1));
-                new AlertDialog.Builder(RoyalSetupActivity.this).setTitle("Choose league")
-                  .setItems(titles,(dialog,index)->{
+                LhjDialog.choose(RoyalSetupActivity.this,"Choose league",titles,(dialog,index)->{
                      JSONObject league=data.optJSONObject(index);
                      selectedLeagueId=league.optInt("id",0);
                      selectedLeagueName=league.optString("name","");
@@ -151,7 +223,7 @@ public final class RoyalSetupActivity extends Activity {
                             @Override public void loaded(JSONArray result){roster=result;Toast.makeText(RoyalSetupActivity.this,"Registered players loaded",Toast.LENGTH_SHORT).show();}
                             @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
                          });
-                  }).show();
+                  });
             }
             @Override public void failed(String error){Toast.makeText(RoyalSetupActivity.this,error,Toast.LENGTH_LONG).show();}
         });
@@ -184,20 +256,18 @@ public final class RoyalSetupActivity extends Activity {
         if(eligible.isEmpty()){Toast.makeText(this,"No available registered players in this league",Toast.LENGTH_LONG).show();return;}
         String[] labels=new String[eligible.size()];
         for(int i=0;i<eligible.size();i++)labels[i]=eligible.get(i).optString("full_name","Player");
-        new AlertDialog.Builder(this).setTitle("Select player for seat "+(seat+1))
-            .setItems(labels,(dialog,index)->{
+        LhjDialog.choose(this,"Select player for seat "+(seat+1),labels,(dialog,index)->{
                 JSONObject selected=eligible.get(index);
                 playerIds.set(seat,selected.optInt("id"));
                 names.get(seat).setText(selected.optString("full_name"));
-            }).setNegativeButton("Cancel",null).show();
+            });
     }
     private String name(int i){return names.get(i).getText().toString().trim();}
     private void startMatch(){
         if(SecureLogin.token(this)!=null && selectedLeagueId<=0){
-            new AlertDialog.Builder(this).setTitle("Choose league first")
-                .setMessage("Select the Ludohojaye league for this match before starting.")
-                .setPositiveButton("Select League",(dialog,which)->chooseLeague())
-                .setNegativeButton("Cancel",null).show();
+            LhjDialog.confirm(this,"Choose league first",
+                "Select the Ludo Ho Jaye league for this match before starting.",
+                "Select League",this::chooseLeague);
             return;
         }
         for(int i=0;i<count;i++)if(name(i).isEmpty()){
@@ -245,7 +315,9 @@ public final class RoyalSetupActivity extends Activity {
         }
         intent.putExtra("rule_combat",rules[0]);
         intent.putExtra("rule_immunity",rules[1]);
-        intent.putExtra("rule_shuffle",rules[2]);
+        intent.putExtra("match_variant",variant.id);
+        intent.putExtra("rule_shuffle",variant==MatchVariant.HOME_SHUFFLE);
+        intent.putExtra("rule_guided",rules[2]);
         intent.putExtra("shuffle_interval_seconds",shuffleSeconds);
         startActivity(intent);
     }

@@ -103,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean offlineResultSaved;
     private LinearLayout statsHud;
     private final java.util.Map<String,TextView> statsCells = new java.util.HashMap<>();
+    private final java.util.Map<String,ImageView> statsAvatarViews = new java.util.HashMap<>();
+    private final java.util.Map<Integer,ImageView> seatDiceViews = new java.util.HashMap<>();
 
 
     DisplayMetrics displayMetrics;
@@ -142,6 +144,7 @@ public class MainActivity extends AppCompatActivity {
     float pos1[][],pos2[][],pos3[][],pos4[][];
 
     float pieceWidth,pieceHeight;
+    float boardTokenScale = 1f;
 
     Drawable redCircle,greenCircle,blueCircle,yellowCircle;
 
@@ -164,13 +167,24 @@ public class MainActivity extends AppCompatActivity {
 
     static boolean isDiceMovableExtraChance = false;
     Dice d;
+    private final DiceRules diceRules = new DiceRules(new java.security.SecureRandom());
+    private final BoardAwareDiceEngine boardAwareDiceEngine = new BoardAwareDiceEngine(60);
+    private final java.util.Random botTieBreaker = new java.security.SecureRandom();
+    private BoardAwareDiceEngine.Mode diceMode = BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
+    private final java.util.Map<String,Integer> homeRollMisses = new java.util.HashMap<>();
+    private TextView centralDiceResultView;
+    private final Runnable hideCentralDiceResult = () -> {
+        if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
+    };
 
-    MediaPlayer gameStartSound,diceRollSound,stepSound,safeSound,deathSound,pantaSound,congratulationSound;
+    MediaPlayer gameStartSound,diceRollSound,stepSound,congratulationSound;
+    private final ActivityAudio gameAudio=new ActivityAudio();
     int sizeOfBox;
 
     float blockSize;
 
-    Piece autoMove;
+    private int autoMoveGeneration;
+    private boolean centralBombNoticeVisible;
 
     HashSet<Integer> safeSpots;
 
@@ -184,7 +198,8 @@ public class MainActivity extends AppCompatActivity {
 
     // ingame menu button and items
     ConstraintLayout ingamemenuitemslayout;
-    ImageView ingamemenubtn,menuremoveplayersbtn,menuexitbtn;
+    ImageView ingamemenubtn;
+    TextView menuremoveplayersbtn, menuexitbtn;
 
     // ingameexitgamelayout
     ConstraintLayout quitgamelayout;
@@ -234,6 +249,8 @@ public class MainActivity extends AppCompatActivity {
     {
         // managed by constructor
         String colour;
+        final String bombId=UUID.randomUUID().toString();
+        boolean returningHome;
         ConstraintLayout piece;
         ImageView readyToPick;
         int startPosition;
@@ -277,6 +294,10 @@ public class MainActivity extends AppCompatActivity {
             this.defX = defX;
             this.defY = defY;
             this.isBotPiece = isBotPiece;
+            this.piece.setPivotX(pieceWidth / 2f);
+            this.piece.setPivotY(pieceHeight / 2f);
+            this.piece.setScaleX(boardTokenScale);
+            this.piece.setScaleY(boardTokenScale);
             this.piece.setTranslationX(defX);
             this.piece.setTranslationY(defY);
             this.readyToPick.setVisibility(View.INVISIBLE);
@@ -284,6 +305,12 @@ public class MainActivity extends AppCompatActivity {
             this.endPosition = startPosition!=0?startPosition-2:50;
             if(!isBotPiece) {
                 this.piece.setOnClickListener(view -> chooseStackedPieceOrMove(this));
+                if(bomberEnabled)this.piece.setOnLongClickListener(view->{
+                    int index=getPiecesByColor(colour).indexOf(this)+1;
+                    Toast.makeText(MainActivity.this,colour+" pawn "+index+": "+
+                        bomberRules.remaining(bombId)+" bombs remaining",Toast.LENGTH_SHORT).show();
+                    return true;
+                });
             }
             if(!normalPiece) {
                 pieceIcon.setScaleX(0.8f);pieceIcon.setScaleY(0.8f);
@@ -315,26 +342,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void onClickForBot() {
-            if (isAlive && isClickable && currentPlayerColor.equals(colour)) {
-                diceValue = currentPlayerDice;
-                currentPlayerDice = -1;
-                for (Piece p : getPiecesByColor(colour)) {
-                    p.inactiveState();
-                }
-                checkAdjustments(currBlock);
-                move(diceValue);
-                //Toast.makeText(MainActivity.this, x+"", Toast.LENGTH_SHORT).show();
-            } else if (!isAlive && currentPlayerColor.equals(colour) && currentPlayerDice == 6) {
-                currentPlayerDice = -1;
-                for (Piece p : getPiecesByColor(colour)) {
-                    p.inactiveState();
-                }
-                makeAlive();
-            }
+            executeSelectedPiece(this);
         }
 
         void makeAlive()
         {
+            if(returningHome)return;
+            bombArmed=false;
+            clearGuidedMoves();
             isAlive = true;
             currBlock = startPosition;
             stepsUntilShuffleEntrance = com.ludomaster.reference.shuffle.HomeShuffleEngine.forwardDistance(
@@ -342,6 +357,7 @@ public class MainActivity extends AppCompatActivity {
             piece.animate().translationX(x[startPosition]+pushXForPieces).translationY(y[startPosition]-pushYForPieces).setDuration(400).start(); // 16 75
             globalHandler.postDelayed(() -> {
                 isDiceMovableExtraChance = true;
+                readyForBombChoice();
                 if(!isBotPiece) { hintArrow.setVisibility(View.VISIBLE); }
                 checkAdjustments(currBlock);
                 if(currBlock>=24 && currBlock<=51) {
@@ -352,60 +368,49 @@ public class MainActivity extends AppCompatActivity {
                     piece.setElevation(currBlock);
                 }
             },400);
-            globalHandler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    if(isBotPiece) {
-                        d.roll();
-                    }
-                }
+            final String botColour = colour;
+            final int expectedTurn = shuffleTurnGeneration;
+            globalHandler.postDelayed(() -> {
+                if (isBotPiece && !shuffleMatchEnding && d != null &&
+                    expectedTurn == shuffleTurnGeneration &&
+                    botColour.equals(currentPlayerColor)) d.roll();
             },550);
         }
 
-        void die()
+        void die() { die(null); }
+
+        void die(Runnable whenHome)
         {
+            returningHome=true;
             isAlive = false;
             isClickable = false;
             isReadyToEnterWinnerZone = false;
             checkAdjustments(currBlock);
             currWinnerBlock=0;
             numberOfSteps = 0;
-            if (homeShuffleEnabled && homeShuffleEngine != null) {
-                // Captured pawns must return to their colour's current home;
-                // do not reverse-walk through an obsolete start square.
-                currBlock = -1;
-                stepsUntilShuffleEntrance = 50;
-                piece.animate().cancel();
-                piece.animate().translationX(defX).translationY(defY).setDuration(350).start();
-                return;
-            }
-            if(isSoundOn) {
-                deathSound = MediaPlayer.create(MainActivity.this, R.raw.death);
-                deathSound.start();
-                deathSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                    @Override
-                    public void onCompletion(MediaPlayer mediaPlayer) {
-                        deathSound.release();
-                    }
-                });
-            }
+            if(isSoundOn)playGameEffect(R.raw.death);
 
 
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
-                    if(currBlock!=startPosition)
+                    if(shuffleMatchEnding || isFinishing())return;
+                    if(currBlock >= 0 && currBlock < 52 && currBlock!=startPosition)
                     {
                         if(currBlock==0) currBlock=51; else --currBlock;
                         piece.setTranslationX(x[currBlock]+pushXForPieces);
                         piece.setTranslationY(y[currBlock]-pushYForPieces);
                         globalHandler.postDelayed(this,20);
                     } else {
-                        if(piece.getScaleX()<1.0f) {
-                            piece.setScaleX(1.0f);
-                            piece.setScaleY(1.0f);
-                        }
+                        currBlock = -1;
+                        stepsUntilShuffleEntrance = 50;
+                        piece.setScaleX(boardTokenScale);
+                        piece.setScaleY(boardTokenScale);
                         piece.animate().translationX(defX).translationY(defY).setDuration(400).start();
+                        globalHandler.postDelayed(()->{
+                            returningHome=false;
+                            if(!shuffleMatchEnding && whenHome!=null)whenHome.run();
+                        },400);
                         globalHandler.removeCallbacks(this);
                     }
                 }
@@ -422,13 +427,9 @@ public class MainActivity extends AppCompatActivity {
             piece.setClickable(true);
             rotateAnimator.start();
             readyToPick.setVisibility(View.VISIBLE);
-            if(piece.getScaleX()<1.0f) {
-                piece.setScaleX(0.95f);
-                piece.setScaleY(0.95f);
-            } else {
-                piece.setScaleX(1.0f);
-                piece.setScaleY(1.0f);
-            }
+            piece.setScaleX(boardTokenScale);
+            piece.setScaleY(boardTokenScale);
+            if (currBlock >= 0) layoutTokenSquare(currBlock);
         }
 
         void inactiveState()
@@ -442,16 +443,17 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void move(int n) {
+            clearGuidedMoves();
             isClickable = false;
             if(stepSound!=null) {
                 if(isSoundOn) {
                     if (!stepSound.isPlaying()) {
                         stepSound.seekTo(120);
-                        stepSound.start();
+                        startGameSound(stepSound);
                     } else if (stepSound.isPlaying()) {
-                        stepSound.pause();
+                        gameAudio.pause(stepSound);
                         stepSound.seekTo(120);
-                        stepSound.start();
+                        startGameSound(stepSound);
                     }
                 }
             }
@@ -539,35 +541,21 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         piece.setElevation(currBlock);
                     }
-                    stepSound.pause();
+                    gameAudio.pause(stepSound);
                     numberOfSteps++;
 
                     boolean isDeadChanceAvailable = false;
 
                     if(safeSpots.contains(currBlock) && isSoundOn)
                     {
-                        safeSound = MediaPlayer.create(MainActivity.this,R.raw.safe);
-                        safeSound.start();
-                        safeSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                            @Override
-                            public void onCompletion(MediaPlayer mediaPlayer) {
-                                safeSound.release();
-                            }
-                        });
+                        playGameEffect(R.raw.safe);
                     } else if(currWinnerBlock>0) {
                         int temp = 0;
                         if(currWinnerBlock>5)
                         {
                             hasCompletedItsPurpose = true;
                             if(isSoundOn) {
-                                pantaSound = MediaPlayer.create(MainActivity.this, R.raw.panta);
-                                pantaSound.start();
-                                pantaSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                                    @Override
-                                    public void onCompletion(MediaPlayer mediaPlayer) {
-                                        pantaSound.release();
-                                    }
-                                });
+                                playGameEffect(R.raw.panta);
                             }
 
                             List<Piece> pieces = getPiecesByColor(this.colour);
@@ -711,7 +699,7 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         // Delay turn settlement while the defender chooses whether
                         // to spend a shield. Captures are never settled in advance.
-                        MainActivity.this.resolveCapture(this, currBlock,
+                        MainActivity.this.resolveLanding(this, currBlock,
                             captured -> MainActivity.this.finishPieceMove(this, captured));
                         return;
                     }
@@ -723,6 +711,11 @@ public class MainActivity extends AppCompatActivity {
 
 
         public boolean check(int diceValue) {
+            if (returningHome) { inactiveState();return false; }
+            if (blockedByOwnPawn(this,diceValue)) {
+                inactiveState();
+                return false;
+            }
             if (homeShuffleEnabled && homeShuffleEngine != null) {
                 int remaining = isReadyToEnterWinnerZone ?
                     (6 - currWinnerBlock) : (stepsUntilShuffleEntrance + 6);
@@ -812,9 +805,12 @@ public class MainActivity extends AppCompatActivity {
 
 
         if(isSoundOn) {
-            congratulationSound = MediaPlayer.create(this, R.raw.congratulations);
-            congratulationSound.setLooping(true);
-            congratulationSound.start();
+            gameAudio.release(congratulationSound);
+            congratulationSound = createGameSound(R.raw.congratulations);
+            if(congratulationSound!=null) {
+                congratulationSound.setLooping(true);
+                startGameSound(congratulationSound);
+            }
         }
 
         ImageView imageView = findViewById(R.id.fireworksview);
@@ -989,71 +985,20 @@ public class MainActivity extends AppCompatActivity {
     private Drawable getStylishIconDrawableByColor(String colour) {
         switch(colour){
             case "red":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.redpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_red,null);
             case "blue":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.bluepiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_blue,null);
             case "green":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.greenpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_green,null);
             case "yellow":
-                return ResourcesCompat.getDrawable(getResources(),R.drawable.yellowpiecestylish,null);
+                return ResourcesCompat.getDrawable(getResources(),R.drawable.lhj_token_yellow,null);
         }
         return null;
     }
 
     void checkPantaAdjustments(String color,int targetBox) {
-        int pantaBox=targetBox;
-        boolean horizontal = (pantaBox >= 0 && pantaBox <= 4) || (pantaBox >= 18 && pantaBox <= 30) || (pantaBox >= 44 && pantaBox <= 51) || (pantaBox >= 52 && pantaBox <= 57) || (pantaBox >= 64 && pantaBox <= 69);
-        boolean isWon = false;
-        List<Piece> pairs = getPiecesByColor(color);
-        for(Piece p : pairs) { if(p.hasCompletedItsPurpose) { isWon = true; } else {isWon = false; break;} }
-        if(isWon) {
-            if(horizontal) {
-                float elevation = pairs.get(0).piece.getElevation();
-                float extra = 4 * displayMetrics.density, yextra = 17 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox];
-                float scale = 100f / ((4) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * 4 + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < 4; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setElevation(elevation++);
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i) - (extra * scale * (4 / 2)) + space);
-                    if(normalPiece) { piece.setTranslationY(yt - pieceHeight / 2); } else { piece.setTranslationY(yt - (pieceHeight/2) / 2); }
-                }
-            } else {
-                float elevation = pairs.get(0).piece.getElevation();
-                float extra = 4 * displayMetrics.density, yextra = 8 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox]-pushYForPieces;
-                float scale = 100f / ((4) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * 4 + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < 4; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setElevation(elevation++);
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt);
-                    if(normalPiece) {piece.setTranslationY(yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i)); }
-                    else { piece.setTranslationY((yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i))-(pieceWidth * scale * 0.30f)); }
-                }
-            }
-        }
+        // Completed tokens use the same per-square layout as other tokens.
+        layoutTokenSquare(targetBox);
     }
 
     /**
@@ -1061,17 +1006,25 @@ public class MainActivity extends AppCompatActivity {
      * selectable pawn explicitly instead of relying on z-order or tiny hitboxes.
      */
     private void chooseStackedPieceOrMove(Piece tapped) {
-        if (!currentPlayerColor.equals(tapped.colour) || currentPlayerDice < 1) return;
-        if (tapped.isAlive && tapped.isClickable) {
-            executeSelectedPiece(tapped); // Same-colour pieces are interchangeable here.
-        } else {
-            for(Piece candidate:getPiecesByColor(tapped.colour)) {
-                if(candidate.currBlock==tapped.currBlock && candidate.isAlive && candidate.isClickable) {
-                    executeSelectedPiece(candidate); return;
-                }
-            }
-            executeSelectedPiece(tapped);
+        if (currentPlayerDice < 1) return;
+        if (tapped.currBlock < 0) {
+            if (tapped.colour.equals(currentPlayerColor) && !tapped.isAlive && currentPlayerDice == 6)
+                executeSelectedPiece(tapped);
+            return;
         }
+        // Resolve legal active-player pawns at this square even if another
+        // colour's token is visually above them in a shared safe-square stack.
+        List<Piece> selectable = new ArrayList<>();
+        for (Piece candidate : getPiecesByColor(currentPlayerColor)) {
+            if (candidate.currBlock == tapped.currBlock && candidate.isAlive &&
+                    candidate.isClickable && otherwiseLegal(candidate,currentPlayerDice) &&
+                    !blockedByOwnPawn(candidate,currentPlayerDice)) selectable.add(candidate);
+        }
+        if (selectable.isEmpty()) {
+            if (tapped.colour.equals(currentPlayerColor)) executeSelectedPiece(tapped);
+            return;
+        }
+        executeSelectedPiece(selectable.get(0));
     }
 
     /** Prioritise all movable current-player tokens over other colours after a dice roll. */
@@ -1086,8 +1039,266 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private MatchVariant matchVariant=MatchVariant.CLASSIC;
+    private boolean bomberEnabled,bombArmed,bombChoiceLocked;
+    private final BomberRules bomberRules=new BomberRules();
+    private LinearLayout bomberControls;
+    private android.widget.Button bombArmButton;
+    private TextView bombStock;
+    private BombBoardDrawable bombOverlay;
+    private android.view.ViewGroup bombOverlayHost;
+
+    private boolean currentBomberIsBot() {
+        if(players!=null)for(Player player:players)
+            if(player.color.equals(currentPlayerColor))return player.isBot;
+        return false;
+    }
+    private boolean canLeaveBomb(Piece pawn) {
+        return !pawn.returningHome && bomberRules.canPlant(pawn.bombId,pawn.currBlock,
+            pawn.isAlive,pawn.hasCompletedItsPurpose);
+    }
+    private boolean anyBombDeparture() {
+        if(currentPlayerColor==null)return false;
+        for(Piece pawn:getPiecesByColor(currentPlayerColor))if(canLeaveBomb(pawn))return true;
+        return false;
+    }
+    private void initialiseBomber() {
+        if(!bomberEnabled)return;
+        ConstraintLayout root=findViewById(R.id.activitybg);
+        bomberControls=new LinearLayout(this);
+        bomberControls.setOrientation(LinearLayout.VERTICAL);
+        bomberControls.setPadding(hudDp(8),0,hudDp(8),0);
+        bombArmButton=new android.widget.Button(this);
+        bombArmButton.setAllCaps(false);bombArmButton.setTextSize(12);
+        bombArmButton.setTextColor(0xFFFFFFFF);
+        bombArmButton.setBackgroundResource(R.drawable.lhj_button_blue);
+        bombArmButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_plant_bomb,0,0,0);
+        bombArmButton.setCompoundDrawablePadding(hudDp(5));
+        bomberControls.addView(bombArmButton,new LinearLayout.LayoutParams(-1,hudDp(44)));
+        bombStock=new TextView(this);bombStock.setTextColor(0xFF172B54);
+        bombStock.setGravity(Gravity.CENTER);bombStock.setTextSize(11);
+        bomberControls.addView(bombStock,new LinearLayout.LayoutParams(-1,-2));
+        ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(0,-2);
+        params.startToEnd=R.id.ingamemenubtn;
+        params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.bottomMargin=hudDp(18);
+        root.addView(bomberControls,params);
+        bombArmButton.setOnClickListener(v->{
+            if(bombChoiceLocked || currentBomberIsBot() || shuffleMatchEnding)return;
+            if(!anyBombDeparture())return;
+            bombArmed=!bombArmed;refreshBomberControls();
+        });
+        Piece anchor=rp.isEmpty()?(gp.isEmpty()?(bp.isEmpty()?yp.get(0):bp.get(0)):gp.get(0)):rp.get(0);
+        bombOverlayHost=(android.view.ViewGroup)anchor.piece.getParent();
+        bombOverlayHost.post(()->{
+            if(shuffleMatchEnding || isFinishing())return;
+            bombOverlay=new BombBoardDrawable(x,y,blockSize,anchor.piece.getLeft(),anchor.piece.getTop());
+            bombOverlay.setBounds(0,0,bombOverlayHost.getWidth(),bombOverlayHost.getHeight());
+            bombOverlayHost.getOverlay().add(bombOverlay);
+            refreshBomberControls();
+        });
+        refreshBomberControls();
+    }
+    private void refreshBomberControls() {
+        if(!bomberEnabled || bombArmButton==null)return;
+        boolean available=anyBombDeparture();
+        boolean bot=currentBomberIsBot();
+        bombArmButton.setEnabled(available && !bombChoiceLocked && !bot && !shuffleMatchEnding);
+        bombArmButton.setText(bombArmed ?
+            (bombChoiceLocked?"Bomb Armed for this Roll":"Cancel Bomb for this Roll") : "Plant Bomb with this Roll");
+        bombArmButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+            bombArmed?0xFFC35A00:0xFF2586F5));
+        bombArmButton.setContentDescription(bombArmButton.getText()+
+            (!available?". No pawn with a bomb is on a free unsafe track square.":""));
+        if(bombArmed && !bombChoiceLocked)showCentralBombNotice();
+        else if(!bombArmed)clearCentralBombNotice();
+        bombArmButton.setAlpha(bombArmButton.isEnabled()?1f:.72f);
+        StringBuilder stock=new StringBuilder(currentPlayerColor==null?"Bomber Ludo":currentPlayerColor.toUpperCase(java.util.Locale.ROOT));
+        stock.append(" • bombs: ");
+        if(currentPlayerColor!=null) {
+            int index=0;
+            for(Piece pawn:getPiecesByColor(currentPlayerColor)) {
+                if(index>0)stock.append(" / ");
+                stock.append("P").append(index+1).append(":").append(bomberRules.remaining(pawn.bombId));
+                pawn.piece.setContentDescription(pawn.colour+" pawn "+(++index)+", "+
+                    bomberRules.remaining(pawn.bombId)+" bombs left");
+            }
+        }
+        bombStock.setText(stock.toString());
+        if(bombOverlay!=null)bombOverlay.update(bomberRules.bombs());
+    }
+    private void readyForBombChoice() {
+        bombArmed=false;bombChoiceLocked=false;refreshBomberControls();
+    }
+    private void beginBombRoll() {
+        if(!bomberEnabled)return;
+        if(currentBomberIsBot())bombArmed=anyBombDeparture() && botTieBreaker.nextInt(100)<60;
+        if(bombArmed)showCentralBombNotice();
+        bombChoiceLocked=true;refreshBomberControls();
+    }
+    private boolean prepareBombDeparture(Piece pawn) {
+        if(pawn.returningHome || (pawn.isAlive && !pawn.isClickable))return false;
+        if(!bomberEnabled || !bombArmed)return true;
+        if(!bomberRules.plant(pawn.bombId,pawn.colour,pawn.currBlock,pawn.isAlive,pawn.hasCompletedItsPurpose)) {
+            Toast.makeText(this,"Bomb armed: choose a pawn with bombs on a free unsafe track square.",Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        bombArmed=false;
+        refreshBomberControls();
+        return true;
+    }
+    private void hideBomberControls() {
+        clearCentralBombNotice();
+        if(bomberControls!=null)bomberControls.setVisibility(GONE);
+        if(bombOverlayHost!=null && bombOverlay!=null)bombOverlayHost.getOverlay().remove(bombOverlay);
+    }
+    private void animateBombBlast(int square,Runnable complete) {
+        if(bombOverlay==null){complete.run();return;}
+        ValueAnimator blast=ValueAnimator.ofFloat(0f,1f);blast.setDuration(320);
+        blast.addUpdateListener(a->bombOverlay.explosion(square,(Float)a.getAnimatedValue()));
+        blast.addListener(new AnimatorListenerAdapter(){
+            @Override public void onAnimationEnd(Animator animation) {
+                bombOverlay.explosion(-1,0);
+                if(!shuffleMatchEnding && !isFinishing())complete.run();
+            }
+        });
+        blast.start();
+    }
+    private void resolveLanding(Piece pawn,int square,java.util.function.Consumer<Boolean> continuation) {
+        BomberRules.Bomb bomb=bomberEnabled?bomberRules.detonate(square):null;
+        if(bomb==null){resolveCapture(pawn,square,continuation);return;}
+        refreshBomberControls();
+        animateBombBlast(square,()->{
+            Runnable killed=()->{
+                String killer=BomberRules.creditedKiller(bomb,pawn.colour);
+                incrementCount(deathCounts,pawn.colour);
+                if(killer!=null) {
+                    incrementCount(killCounts,killer);
+                    if(immunityEnabled)incrementCount(immunityShields,killer);
+                }
+                Toast.makeText(this,"BOOM! "+pawn.colour+" pawn returns home"+
+                    (combatScoringEnabled?" (−5 death)":""),Toast.LENGTH_SHORT).show();
+                refreshStatsHud();
+                pawn.die(()->finishPieceMove(pawn,false));
+            };
+            Runnable protectedPawn=()->{
+                immunityShields.put(pawn.colour,getCount(immunityShields,pawn.colour)-1);
+                refreshStatsHud();
+                Toast.makeText(this,"Shield absorbed the bomb",Toast.LENGTH_SHORT).show();
+                resolveCapture(pawn,square,continuation);
+            };
+            if(immunityEnabled && getCount(immunityShields,pawn.colour)>0) {
+                if(pawn.isBotPiece)protectedPawn.run();
+                else new AlertDialog.Builder(this).setTitle("BOMB • Use immunity shield?")
+                    .setMessage("Spend one shield to protect this pawn? The bomb is consumed either way.")
+                    .setPositiveButton("Use Shield",(dialog,which)->protectedPawn.run())
+                    .setNegativeButton("Accept Explosion",(dialog,which)->killed.run())
+                    .setCancelable(false).show();
+            } else killed.run();
+        });
+    }
+
+    private boolean guidedGameEnabled;
+    private GuidedMoveDrawable guidedOverlay;
+    private android.view.ViewGroup guidedOverlayHost;
+
+    private void clearGuidedMoves() {
+        if (guidedOverlayHost != null && guidedOverlay != null)
+            guidedOverlayHost.getOverlay().remove(guidedOverlay);
+        guidedOverlay = null;
+        guidedOverlayHost = null;
+    }
+
+    private void showGuidedMoves(List<Piece> pieces, int face) {
+        clearGuidedMoves();
+        if (!guidedGameEnabled || pieces.isEmpty()) return;
+        guidedOverlayHost = (android.view.ViewGroup) pieces.get(0).piece.getParent();
+        guidedOverlay = new GuidedMoveDrawable();
+        guidedOverlay.setBounds(0,0,guidedOverlayHost.getWidth(),guidedOverlayHost.getHeight());
+        for (Piece p : pieces) {
+            if (!otherwiseLegal(p,face) || blockedByOwnPawn(p,face)) continue;
+            p.activeState();
+            int destination = landingSquare(p,face);
+            Piece target = opponentOnSquare(p,destination);
+            boolean teammate = target != null && gametype == 2 &&
+                ((p.colour.equals("red") && target.colour.equals("yellow")) ||
+                 (p.colour.equals("yellow") && target.colour.equals("red")) ||
+                 (p.colour.equals("blue") && target.colour.equals("green")) ||
+                 (p.colour.equals("green") && target.colour.equals("blue")));
+            boolean capture = target != null && !teammate &&
+                (!immunityEnabled || immunityShields.getOrDefault(target.colour,0) == 0);
+            boolean bombDanger=bomberEnabled && bomberRules.hasBomb(destination);
+            if(bombArmed && !canLeaveBomb(p)) { p.inactiveState();continue; }
+            int color = bombDanger ? (immunityEnabled && getCount(immunityShields,p.colour)>0 ?
+                0xFFF08A00 : 0xFFD32F2F) : capture ? 0xFFD32F2F : safeSpots.contains(destination) ? 0xFF16833D :
+                p.colour.equals("red") ? 0xFFEF9A9A : p.colour.equals("blue") ? 0xFF90CAF9 :
+                p.colour.equals("green") ? 0xFFA5D6A7 : 0xFFFFE082;
+            // A home six exits onto the start; it does not advance six track squares.
+            int first = p.isAlive ? 1 : face;
+            for (int step=first; step<=face; step++) {
+                int square=landingSquare(p,step);
+                if(square>=0 && square<x.length)
+                    guidedOverlay.add(p.piece.getLeft()+x[square],
+                        p.piece.getTop()+y[square],blockSize,step,color,step==face);
+            }
+        }
+        guidedOverlayHost.getOverlay().add(guidedOverlay);
+    }
+
+    /** Read-only prediction shared by legality, bots, guided paths and bomb danger. */
+    private int landingSquare(Piece p, int steps) {
+        return LudoLandingRules.destination(
+            p.currBlock,p.startPosition,p.isAlive,p.isReadyToEnterWinnerZone,
+            p.currWinnerBlock,p.stepsUntilShuffleEntrance,p.endPosition,
+            homeShuffleEnabled && homeShuffleEngine!=null,steps,
+            getWinnerBlocks(p.endPosition));
+    }
+
+    /** Same colour may stack only on designated safe track squares. */
+    private boolean blockedByOwnPawn(Piece moving, int face) {
+        if (!moving.isAlive) return false; // All starts are safe squares.
+        int destination=landingSquare(moving,face);
+        if (destination<0 || safeSpots.contains(destination)) return false;
+        java.util.ArrayList<Integer> occupied=new java.util.ArrayList<>();
+        for(Piece other:getPiecesByColor(moving.colour)) {
+            if(other!=moving && other.isAlive && !other.hasCompletedItsPurpose)
+                occupied.add(other.currBlock);
+        }
+        int[] squares=new int[occupied.size()];
+        for(int i=0;i<squares.length;i++)squares[i]=occupied.get(i);
+        return LudoLandingRules.occupiedByFriend(destination,false,squares);
+    }
+
+    private boolean otherwiseLegal(Piece p,int face) {
+        if(face<1 || face>6 || p.returningHome || p.hasCompletedItsPurpose || p.isThisPlayerWon)return false;
+        if(!p.isAlive)return face==6;
+        if(homeShuffleEnabled && homeShuffleEngine!=null) {
+            int remaining=p.isReadyToEnterWinnerZone?
+                (6-p.currWinnerBlock):(p.stepsUntilShuffleEntrance+6);
+            return face<=remaining;
+        }
+        return p.numberOfSteps+face<57;
+    }
+
+    /** No preference for any player; exclude faces with an own-pawn collision. */
+    private boolean faceIsOwnCollisionBlocked(int face) {
+        for (Piece piece : getPiecesByColor(currentPlayerColor)) {
+            if (otherwiseLegal(piece,face) && blockedByOwnPawn(piece,face)) return true;
+        }
+        return false;
+    }
+
     private void executeSelectedPiece(Piece selected) {
         if (!currentPlayerColor.equals(selected.colour) || currentPlayerDice < 1) return;
+        if (!otherwiseLegal(selected,currentPlayerDice)
+                || blockedByOwnPawn(selected,currentPlayerDice)) {
+            Toast.makeText(this,"Choose a different pawn: landing blocked",
+                Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!prepareBombDeparture(selected)) return;
+        ++autoMoveGeneration;
         if (selected.isAlive && selected.isClickable && !selected.hasCompletedItsPurpose) {
             int rolled = currentPlayerDice;
             currentPlayerDice = -1;
@@ -1102,94 +1313,260 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void checkAdjustments(int targetBox) {
-        int xi = currentPlayerIndex;
-        if(currentWinnerPlayerIndex!=-1) {
-            xi = currentWinnerPlayerIndex;
-            currentWinnerPlayerIndex = -1;
+    /** One legal move, or multiple interchangeable pawns: no player decision needed. */
+    private boolean autoRunObviousMove(List<Piece> legalMoves,int face) {
+        List<AutoMovePolicy.Choice> choices=new ArrayList<>();
+        for(Piece pawn:legalMoves) {
+            String route=pawn.numberOfSteps+":"+pawn.isReadyToEnterWinnerZone+":"+
+                pawn.currWinnerBlock+":"+pawn.stepsUntilShuffleEntrance+":"+pawn.endPosition;
+            choices.add(new AutoMovePolicy.Choice(pawn.currBlock,landingSquare(pawn,face),!pawn.isAlive,
+                bomberEnabled?bomberRules.remaining(pawn.bombId):-1,route));
         }
-        List<Piece> pairs = new ArrayList<>();
-        boolean horizontal = (targetBox >= 0 && targetBox <= 4) || (targetBox >= 18 && targetBox <= 30) || (targetBox >= 44 && targetBox <= 51) || (targetBox >= 52 && targetBox <= 57) || (targetBox >= 64 && targetBox <= 69);
-        for(int i = 0; i<players.size(); i++)
-        {
-            if(xi>players.size()-1) { continue; }
-            String colour = players.get(xi).getColor();
-            List<Piece> pieces = getPiecesByColor(colour);
-            if(horizontal)
-                {
-                    for (int j = 3; j >= 0; j--) {
-                        Piece p = pieces.get(j);
-                        if (p.currBlock == targetBox && targetBox != -1 && p.isAlive) {
-                            pairs.add(p);
-                        }
-                    }
-                } else {
-                    for(Piece p : pieces) {
-                        if (p.currBlock == targetBox && targetBox != -1 && p.isAlive) {
-                            pairs.add(p);
-                        }
-                    }
-                }
+        int index=AutoMovePolicy.automaticIndex(choices);
+        if(index<0)return false;
+        Piece selected=legalMoves.get(index);
+        final int expectedGeneration=autoMoveGeneration;
+        final int expectedTurn=shuffleTurnGeneration;
+        final String color=currentPlayerColor;
+        globalHandler.postDelayed(()->{
+            if(shuffleMatchEnding || expectedGeneration!=autoMoveGeneration ||
+                expectedTurn!=shuffleTurnGeneration || currentPlayerDice!=face ||
+                !color.equals(currentPlayerColor))return;
+            executeSelectedPiece(selected);
+        },selected.isBotPiece?150:550);
+        return true;
+    }
 
-            if(xi>=players.size()-1) { xi = 0; } else { xi++; }
+    private boolean isSquareThreatened(int square, String ownerColor) {
+        if (square < 0 || square >= 52 || safeSpots.contains(square) || players == null) return false;
+        for (Player player : players) {
+            if (ownerColor.equals(player.color)) continue;
+            for (Piece enemy : getPiecesByColor(player.color)) {
+                if (!enemy.isAlive || enemy.hasCompletedItsPurpose ||
+                        enemy.currBlock < 0 || enemy.currBlock >= 52 || safeSpots.contains(enemy.currBlock))
+                    continue;
+                int distance = (square - enemy.currBlock + 52) % 52;
+                if (distance >= 1 && distance <= 6) return true;
+            }
         }
-        int n = pairs.size();
-        if(n>1) {
-            if(horizontal) {
-                float extra = 4 * displayMetrics.density, yextra = 17 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox];
-                float scale = 100f / ((n) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * n + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < n; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i) - (extra * scale * (n / 2)) + space);
-                    if(normalPiece) { piece.setTranslationY(yt - pieceHeight / 2); } else { piece.setTranslationY(yt - (pieceHeight/2) / 2); }
-                }
-            } else {
-                float elevation = pairs.get(0).piece.getElevation();
-                float extra = 4 * displayMetrics.density, yextra = 8 * displayMetrics.density;
-                float xt = x[targetBox] + pushXForPieces, yt = y[targetBox]-pushYForPieces;
-                float scale = 100f / ((n) * 30 + 75);
-                float gap = 100f - scale;
-                //Toast.makeText(this, scale + "", Toast.LENGTH_SHORT).show();
-                float space = blockSize - (pieceWidth * scale * 0.35f * n + pieceWidth * scale * 0.65f) / 2;
-                if (space <= 0) {
-                    space = 0;
-                }
-                space = 0;
-                //scale = 0.70f;
-                for (int i = 0; i < n; i++) {
-                    Piece p = pairs.get(i);
-                    ConstraintLayout piece = p.piece;
-                    piece.setElevation(elevation++);
-                    piece.setScaleX(scale);
-                    piece.setScaleY(scale);
-                    piece.setTranslationX(xt);
-                    if(normalPiece) {piece.setTranslationY(yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i)); }
-                    else { piece.setTranslationY((yt - ((blockSize - (pieceWidth * scale)) / 2) + ((pieceWidth * scale * 0.30f) * i))-(pieceWidth * scale * 0.30f)); }
+        return false;
+    }
+
+    private Piece opponentOnSquare(Piece moving, int destination) {
+        if (destination < 0 || destination >= 52 || safeSpots.contains(destination) || players == null)
+            return null;
+        for (Player player : players) {
+            if (moving.colour.equals(player.color)) continue;
+            for (Piece enemy : getPiecesByColor(player.color)) {
+                if (enemy.isAlive && !enemy.hasCompletedItsPurpose && enemy.currBlock == destination)
+                    return enemy;
+            }
+        }
+        return null;
+    }
+
+    private int finishingProgress(Piece piece, int destination) {
+        int[] lane = getWinnerBlocks(piece.endPosition);
+        for (int i=0;i<lane.length;i++) if (lane[i] == destination) return i + 1;
+        return 0;
+    }
+
+    private StrategicBot.Move assessBotMove(Piece piece, int face) {
+        boolean legal = otherwiseLegal(piece,face) && !blockedByOwnPawn(piece,face);
+        if (!legal) return new StrategicBot.Move(false,false,false,false,false,false,false,false,0);
+        int destination = landingSquare(piece,face);
+        Piece target = opponentOnSquare(piece,destination);
+        boolean safe = destination >= 0 && safeSpots.contains(destination);
+        boolean capture = target != null;
+        boolean shielded = capture && immunityShields.getOrDefault(target.colour,0) > 0;
+        boolean escaped = piece.isAlive && isSquareThreatened(piece.currBlock,piece.colour) &&
+                (safe || !isSquareThreatened(destination,piece.colour));
+        int laneProgress = finishingProgress(piece,destination);
+        int[] lane = getWinnerBlocks(piece.endPosition);
+        boolean finish = lane.length > 0 && destination == lane[lane.length-1];
+        int progress = laneProgress > 0 ? laneProgress * 3 : piece.numberOfSteps / 2;
+        return new StrategicBot.Move(true,capture,shielded,finish,escaped,safe,
+                !piece.isAlive,isSquareThreatened(destination,piece.colour),progress);
+    }
+
+    private double tacticalScoreForFace(int face) {
+        double best = 0d;
+        for (Piece piece : getPiecesByColor(currentPlayerColor)) {
+            if (!otherwiseLegal(piece,face) || blockedByOwnPawn(piece,face)) continue;
+            int destination = landingSquare(piece,face);
+            if(bomberEnabled && bomberRules.hasBomb(destination) &&
+                (!immunityEnabled || getCount(immunityShields,piece.colour)==0))continue;
+            Piece target = opponentOnSquare(piece,destination);
+            boolean safe = destination >= 0 && safeSpots.contains(destination);
+            boolean escaped = piece.isAlive && isSquareThreatened(piece.currBlock,piece.colour) &&
+                    (safe || !isSquareThreatened(destination,piece.colour));
+            int laneProgress = finishingProgress(piece,destination);
+            int[] lane = getWinnerBlocks(piece.endPosition);
+            boolean finish = lane.length > 0 && destination == lane[lane.length-1];
+            boolean shielded = target != null && immunityShields.getOrDefault(target.colour,0) > 0;
+            double score = BoardAwareDiceEngine.opportunityScore(target != null,shielded,escaped,safe,
+                    !piece.isAlive,laneProgress,finish);
+            best = Math.max(best,score);
+        }
+        return best;
+    }
+
+    private double diceWeightForFace(int face) {
+        if (diceMode == BoardAwareDiceEngine.Mode.FAIR_RANDOM) return 1d;
+        double weight = boardAwareDiceEngine.weight(diceMode,tacticalScoreForFace(face));
+        boolean allHome = true;
+        for (Piece piece : getPiecesByColor(currentPlayerColor))
+            if (piece.isAlive || piece.hasCompletedItsPurpose) allHome = false;
+        if (face == 6 && allHome)
+            weight += Math.min(4,homeRollMisses.getOrDefault(currentPlayerColor,0));
+        else if (face == 6 && diceRules.consecutiveSixes() > 0) weight *= 0.35d;
+        return weight;
+    }
+
+    private int chooseStrategicBotMove(List<Piece> candidates, int face) {
+        List<Piece> preferred=new ArrayList<>();
+        for(Piece candidate:candidates) {
+            boolean bombDanger=bomberEnabled && bomberRules.hasBomb(landingSquare(candidate,face)) &&
+                (!immunityEnabled || getCount(immunityShields,candidate.colour)==0);
+            if(!bombDanger && (!bombArmed || canLeaveBomb(candidate)))preferred.add(candidate);
+        }
+        if(preferred.isEmpty()) {
+            for(Piece candidate:candidates)if(!bombArmed || canLeaveBomb(candidate))preferred.add(candidate);
+        }
+        if(preferred.isEmpty())return -1;
+        List<StrategicBot.Move> assessed = new ArrayList<>();
+        for (Piece candidate : preferred) assessed.add(assessBotMove(candidate,face));
+        int chosen=StrategicBot.selectWeightedIndex(assessed,botTieBreaker);
+        return chosen<0?-1:candidates.indexOf(preferred.get(chosen));
+    }
+
+    private boolean isHorizontalTrackSquare(int targetBox) {
+        return (targetBox >= 0 && targetBox <= 4) || (targetBox >= 18 && targetBox <= 30) ||
+                (targetBox >= 44 && targetBox <= 57) || (targetBox >= 64 && targetBox <= 69);
+    }
+
+    /** Re-layout every visible owner on a square, including completed lane pawns. */
+    private void layoutTokenSquare(int targetBox) {
+        if (targetBox < 0 || targetBox >= x.length || players == null || pieceWidth <= 0f) return;
+        List<Piece> occupants = new ArrayList<>();
+        for (Player player : players) {
+            for (Piece piece : getPiecesByColor(player.color)) {
+                if (piece.currBlock == targetBox && (piece.isAlive || piece.hasCompletedItsPurpose))
+                    occupants.add(piece);
+            }
+        }
+        int count = occupants.size();
+        boolean horizontal = isHorizontalTrackSquare(targetBox);
+        float baseX = x[targetBox] + pushXForPieces;
+        float baseY = y[targetBox] - pushYForPieces;
+        float scale = boardTokenScale * TokenLayoutEngine.stackScale(count);
+        for (int i=0;i<count;i++) {
+            Piece piece = occupants.get(i);
+            TokenLayoutEngine.Offset offset = TokenLayoutEngine.offset(i,count,horizontal,blockSize);
+            piece.piece.setPivotX(pieceWidth / 2f);
+            piece.piece.setPivotY(pieceHeight / 2f);
+            piece.piece.setScaleX(scale);
+            piece.piece.setScaleY(scale);
+            piece.piece.setTranslationX(baseX + offset.x);
+            piece.piece.setTranslationY(baseY + offset.y);
+            piece.piece.setElevation(hudDp(10) + i);
+        }
+    }
+
+    private void checkAdjustments(int targetBox) {
+        layoutTokenSquare(targetBox);
+    }
+
+    /** Restore home pawns and rebuild track/lane groups after a home reassignment. */
+    private void refreshAllTokenLayouts() {
+        if (players == null) return;
+        java.util.Set<Integer> occupiedSquares = new java.util.HashSet<>();
+        for (Player player : players) {
+            for (Piece piece : getPiecesByColor(player.color)) {
+                if (piece.piece == null) continue;
+                piece.piece.setPivotX(pieceWidth / 2f);
+                piece.piece.setPivotY(pieceHeight / 2f);
+                if (piece.currBlock >= 0 && (piece.isAlive || piece.hasCompletedItsPurpose)) {
+                    occupiedSquares.add(piece.currBlock);
+                } else if (!piece.isAlive && !piece.hasCompletedItsPurpose) {
+                    piece.piece.setScaleX(boardTokenScale);
+                    piece.piece.setScaleY(boardTokenScale);
+                    piece.piece.setTranslationX(piece.defX);
+                    piece.piece.setTranslationY(piece.defY);
                 }
             }
-        } else if(pairs.size()==1) {
-            Piece p = pairs.get(0);
-            p.piece.setScaleX(1.0f);
-            p.piece.setScaleY(1.0f);
-            p.piece.setTranslationX(x[targetBox]+pushXForPieces);
-            p.piece.setTranslationY(y[targetBox]-pushYForPieces);
         }
+        for (Integer square : occupiedSquares) layoutTokenSquare(square);
     }
 
     private int hudDp(float amount) {
         return Math.round(amount * getResources().getDisplayMetrics().density);
+    }
+
+    private void addCentralDiceResultView() {
+        RelativeLayout boardLayer = findViewById(R.id.relativeLayout);
+        if (boardLayer == null || centralDiceResultView != null) return;
+        centralDiceResultView = new TextView(this);
+        centralDiceResultView.setTextSize(32);
+        centralDiceResultView.setTextColor(Color.WHITE);
+        centralDiceResultView.setTypeface(null,Typeface.BOLD);
+        centralDiceResultView.setGravity(Gravity.CENTER);
+        centralDiceResultView.setElevation(hudDp(12));
+        centralDiceResultView.setClickable(false);
+        centralDiceResultView.setFocusable(false);
+        centralDiceResultView.setVisibility(View.GONE);
+        GradientDrawable background = new GradientDrawable();
+        background.setShape(GradientDrawable.RECTANGLE);
+        background.setCornerRadius(hudDp(14));
+        centralDiceResultView.setBackground(background);
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(hudDp(62),hudDp(62));
+
+        boardLayer.addView(centralDiceResultView,params);
+    }
+
+    private void clearCentralBombNotice() {
+        if(!centralBombNoticeVisible)return;
+        centralBombNoticeVisible=false;
+        if(centralDiceResultView!=null)centralDiceResultView.setVisibility(GONE);
+    }
+
+    private void showCentralBombNotice() {
+        if(centralDiceResultView==null)return;
+        centralBombNoticeVisible=true;
+        globalHandler.removeCallbacks(hideCentralDiceResult);
+        setCentralMessageSize(142,70,13);
+        centralDiceResultView.setText("BOMB ARMED\nPlants with this roll");
+        centralDiceResultView.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF9D4700));
+        centralDiceResultView.setVisibility(View.VISIBLE);
+        centralDiceResultView.bringToFront();
+    }
+
+    private void setCentralMessageSize(int width,int height,int textSize) {
+        android.view.ViewGroup.LayoutParams params=centralDiceResultView.getLayoutParams();
+        params.width=hudDp(width);params.height=hudDp(height);
+        centralDiceResultView.setLayoutParams(params);
+        centralDiceResultView.setTextSize(textSize);
+        centralDiceResultView.setX(ludoBoard.getX()+(ludoBoard.getWidth()-hudDp(width))/2f);
+        centralDiceResultView.setY(ludoBoard.getY()+(ludoBoard.getHeight()-hudDp(height))/2f);
+    }
+
+    private void showCentralDiceResult(int result) {
+        if (centralDiceResultView == null) return;
+        globalHandler.removeCallbacks(hideCentralDiceResult);
+        int color = 0xff248efd;
+        if ("red".equals(currentPlayerColor)) color = 0xfff04452;
+        else if ("green".equals(currentPlayerColor)) color = 0xff23bf75;
+        else if ("yellow".equals(currentPlayerColor)) color = 0xffffc342;
+        centralBombNoticeVisible=false;
+        setCentralMessageSize(62,62,32);
+        centralDiceResultView.setText(String.valueOf(result));
+        centralDiceResultView.setBackgroundTintList(
+                android.content.res.ColorStateList.valueOf(color));
+        centralDiceResultView.setX(ludoBoard.getX() + (ludoBoard.getWidth()-hudDp(62))/2f);
+        centralDiceResultView.setY(ludoBoard.getY() + (ludoBoard.getHeight()-hudDp(62))/2f);
+        centralDiceResultView.setVisibility(View.VISIBLE);
+        centralDiceResultView.bringToFront();
+        globalHandler.postDelayed(hideCentralDiceResult,1500);
     }
 
     /** Always-visible, compact stats strip above the original board, without altering its tiles. */
@@ -1201,7 +1578,7 @@ public class MainActivity extends AppCompatActivity {
         statsHud.setPadding(hudDp(4), hudDp(4), hudDp(4), hudDp(4));
         statsHud.setClipChildren(false);
         ConstraintLayout.LayoutParams hudParams = new ConstraintLayout.LayoutParams(
-            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(79));
+            ConstraintLayout.LayoutParams.MATCH_CONSTRAINT, hudDp(106));
         hudParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
         hudParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
         hudParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
@@ -1211,13 +1588,14 @@ public class MainActivity extends AppCompatActivity {
         for (String color : new String[]{"red","green","yellow","blue"}) {
             TextView cell = new TextView(this);
             cell.setTextSize(11);
-            cell.setTextColor(Color.WHITE);
+            cell.setTextColor(0xff172B54);
             cell.setGravity(Gravity.CENTER);
             cell.setMaxLines(4);
             cell.setPadding(hudDp(2),hudDp(3),hudDp(2),hudDp(3));
             GradientDrawable background = new GradientDrawable();
-            background.setColor(Color.rgb(20,31,55));
-            background.setCornerRadius(hudDp(9));
+            background.setColors(new int[]{0xffFFFFFF,0xffEBF5FF});
+            background.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+            background.setCornerRadius(hudDp(16));
             int accent;
             switch (color) {
                 case "red": accent=0xffe84248; break;
@@ -1226,11 +1604,20 @@ public class MainActivity extends AppCompatActivity {
                 default: accent=0xff428aff;
             }
             background.setStroke(hudDp(2),accent);
-            cell.setBackground(background);
+            LinearLayout badge=new LinearLayout(this);
+            badge.setOrientation(LinearLayout.VERTICAL);
+            badge.setGravity(Gravity.CENTER);
+            badge.setBackground(background);
+            ImageView avatar=new ImageView(this);
+            avatar.setImageResource(R.drawable.lhj_avatar_human);
+            avatar.setContentDescription("Player avatar");
+            badge.addView(avatar,new LinearLayout.LayoutParams(hudDp(34),hudDp(34)));
+            badge.addView(cell,new LinearLayout.LayoutParams(-1,0,1f));
             LinearLayout.LayoutParams cellParams=new LinearLayout.LayoutParams(0,-1,1f);
             cellParams.setMargins(hudDp(2),0,hudDp(2),0);
-            statsHud.addView(cell,cellParams);
+            statsHud.addView(badge,cellParams);
             statsCells.put(color,cell);
+            statsAvatarViews.put(color,avatar);
         }
         statsHud.bringToFront();
         addLiveAudioButton(root);
@@ -1241,8 +1628,9 @@ public class MainActivity extends AppCompatActivity {
         android.widget.Button audio=new android.widget.Button(this);
         audio.setText("SOUND");
         audio.setTextSize(10);
-        audio.setTextColor(Color.WHITE);
-        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff18559c));
+        audio.setTextColor(0xff172B54);
+        audio.setAllCaps(false);
+        audio.setBackgroundResource(R.drawable.lhj_button_white);
         ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(hudDp(108),hudDp(45));
         params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
         params.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
@@ -1252,8 +1640,7 @@ public class MainActivity extends AppCompatActivity {
             isSoundOn=!isSoundOn;
             sharedPreferences.edit().putBoolean("sound",isSoundOn).apply();
             audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
-            if(!isSoundOn && congratulationSound!=null && congratulationSound.isPlaying())
-                congratulationSound.pause();
+            gameAudio.muted(!isSoundOn);
         });
         audio.setText(isSoundOn?"SOUND ON":"SOUND OFF");
         audio.bringToFront();
@@ -1267,10 +1654,14 @@ public class MainActivity extends AppCompatActivity {
             if (cell == null) continue;
             String name=offlinePlayerNames.get(color);
             if (name==null) {
-                cell.setVisibility(View.GONE);
+                ((View)cell.getParent()).setVisibility(View.GONE);
                 continue;
             }
-            cell.setVisibility(View.VISIBLE);
+            ((View)cell.getParent()).setVisibility(View.VISIBLE);
+            ImageView avatar=statsAvatarViews.get(color);
+            if(avatar!=null)avatar.setImageResource(
+                name.toLowerCase(java.util.Locale.ROOT).startsWith("computer")
+                    ?R.drawable.lhj_avatar_robot:R.drawable.lhj_avatar_human);
             if(name.length()>10) name=name.substring(0,9)+"…";
             int kills=getCount(killCounts,color);
             int deaths=getCount(deathCounts,color);
@@ -1303,12 +1694,10 @@ public class MainActivity extends AppCompatActivity {
         incrementCount(deathCounts, defender.colour);
         if (immunityEnabled) incrementCount(immunityShields, attacker.colour);
         refreshStatsHud();
-        if (combatScoringEnabled || immunityEnabled) {
-            String summary = attacker.colour + " captured " + defender.colour;
-            if (combatScoringEnabled) summary += " (+5 / -5)";
-            if (immunityEnabled) summary += " - shield earned";
-            Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
-        }
+        String summary = "Great capture! " + attacker.colour + " takes " + defender.colour;
+        if (combatScoringEnabled) summary += "  +5 points";
+        if (immunityEnabled) summary += "  +1 shield";
+        Toast.makeText(this, summary, Toast.LENGTH_SHORT).show();
         continuation.accept(true);
     }
 
@@ -1358,8 +1747,17 @@ public class MainActivity extends AppCompatActivity {
         },10);
         if (piece.diceValue == 6 || piece.currWinnerBlock > 5 || (captured && !piece.isThisPlayerWon)) {
             isDiceMovableExtraChance = true;
+            readyForBombChoice();
             if (!piece.isBotPiece) hintArrow.setVisibility(View.VISIBLE);
-            else globalHandler.postDelayed(() -> d.roll(), 150);
+            else {
+                final String expectedColour = piece.colour;
+                final int expectedTurn = shuffleTurnGeneration;
+                globalHandler.postDelayed(() -> {
+                    if (!shuffleMatchEnding && d != null &&
+                        expectedTurn == shuffleTurnGeneration &&
+                        expectedColour.equals(currentPlayerColor)) d.roll();
+                }, 150);
+            }
         } else {
             switchPlayers();
             d.isDiceClickable = true;
@@ -1376,11 +1774,14 @@ public class MainActivity extends AppCompatActivity {
             result.put("startedAtEpochMs", offlineMatchStartedAt);
             result.put("endedAtEpochMs", System.currentTimeMillis());
             result.put("gameType", gametype);
+            result.put("matchVariant",matchVariant.id);
             result.put("syncStatus", "pending_player_mapping");
             JSONObject rules = new JSONObject();
             rules.put("combatScoring", combatScoringEnabled);
             rules.put("immunity", immunityEnabled);
             rules.put("dynamicHomeShuffle", homeShuffleEnabled);
+            rules.put("bomber",bomberEnabled);
+            rules.put("guided",guidedGameEnabled);
             rules.put("shuffleIntervalSeconds", shuffleIntervalSeconds);
             result.put("rules", rules);
             result.put("leagueId", selectedLeagueId > 0 ? selectedLeagueId : JSONObject.NULL);
@@ -1448,6 +1849,48 @@ public class MainActivity extends AppCompatActivity {
         return result.toString();
     }
 
+    private Drawable diceFaceDrawable(int face) {
+        int resourceId;
+        switch (face) {
+            case 2: resourceId = R.drawable.dice2; break;
+            case 3: resourceId = R.drawable.dice3; break;
+            case 4: resourceId = R.drawable.dice4; break;
+            case 5: resourceId = R.drawable.dice5; break;
+            case 6: resourceId = R.drawable.dice6; break;
+            default: resourceId = R.drawable.dice1;
+        }
+        android.graphics.Bitmap source = android.graphics.BitmapFactory.decodeResource(getResources(),resourceId);
+        int left=source.getWidth(),top=source.getHeight(),right=-1,bottom=-1;
+        for(int y=0;y<source.getHeight();y++) for(int x=0;x<source.getWidth();x++) {
+            if(android.graphics.Color.alpha(source.getPixel(x,y))>10) {
+                left=Math.min(left,x); right=Math.max(right,x);
+                top=Math.min(top,y); bottom=Math.max(bottom,y);
+            }
+        }
+        android.graphics.Bitmap centered=android.graphics.Bitmap.createBitmap(
+            source.getWidth(),source.getHeight(),android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas canvas=new android.graphics.Canvas(centered);
+        float dx=right>=left?(source.getWidth()-1-left-right)/2f:0f;
+        float dy=bottom>=top?(source.getHeight()-1-top-bottom)/2f:0f;
+        canvas.drawBitmap(source,dx,dy,null);
+        source.recycle();
+        return new android.graphics.drawable.BitmapDrawable(getResources(),centered);
+    }
+
+    private void setDiceFace(ImageView view,int face) {
+        if (view != null) view.setImageDrawable(diceFaceDrawable(face));
+    }
+
+    private AnimationDrawable createDiceRollAnimationDrawable() {
+        int[] frames = {R.drawable.dice0001,R.drawable.dice0002,R.drawable.dice0003,
+                R.drawable.dice0004,R.drawable.dice0005,R.drawable.dice0006,
+                R.drawable.dice0007,R.drawable.dice0008};
+        AnimationDrawable animation = new AnimationDrawable();
+        for (int frame : frames)
+            animation.addFrame(ResourcesCompat.getDrawable(getResources(),frame,getTheme()),50);
+        return animation;
+    }
+
     class Dice
     {
         ImageView diceImgView,tLeftImgColor,tRightImgColor,bLeftImgColor,bRightImgColor;
@@ -1466,14 +1909,6 @@ public class MainActivity extends AppCompatActivity {
             this.diceImgView = diceImgView;
             this.numberOfPlayers = nop;
             diceAnimationDrawable = new AnimationDrawable();
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0001,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0002,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0003,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0004,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0005,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0006,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0007,null),50);
-            diceAnimationDrawable.addFrame(ResourcesCompat.getDrawable(getResources(),R.drawable.dice0008,null),50);
 
             tLeftLayout = findViewById(R.id.tleftdicebg);
             tRightLayout = findViewById(R.id.trightdicebg);
@@ -1486,6 +1921,7 @@ public class MainActivity extends AppCompatActivity {
             bRightImgColor = findViewById(R.id.brightpieceimage);
 
             mainColor = color;
+            setDiceFace(diceImgView,1);
 
             diceHandler = new Handler();
             isRolling = false;
@@ -1593,49 +2029,58 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void roll() {
+            if (isRolling || shuffleMatchEnding || players == null || players.isEmpty()) return;
+            ++autoMoveGeneration;
+            beginBombRoll();
             isRolling = true;
             isDiceClickable = false;
             isDiceMovableExtraChance = false;
-            if(isSoundOn) {
+            if(isSoundOn && diceRollSound!=null) {
                 if (diceRollSound.isPlaying()) {
-                    diceRollSound.pause();
+                    gameAudio.pause(diceRollSound);
                 }
                 diceRollSound.seekTo(5);
-                diceRollSound.start();
+                startGameSound(diceRollSound);
             }
+            diceAnimationDrawable=createDiceRollAnimationDrawable();
             mainDiceImageView.setImageDrawable(diceAnimationDrawable);
             diceAnimationDrawable.setOneShot(true);
             diceAnimationDrawable.start();
             diceHandler.postDelayed(() -> {
-                int ch = (int) Math.ceil(Math.random()*6);
-                String number = editText.getText().toString();
-                try {
-                    int n = Integer.parseInt(number);
-                    ch = n;
-                } catch (Exception e) {}
-                switch (ch) {
-                    case 1:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice1, null));
-                        break;
-                    case 2:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice2, null));
-                        break;
-                    case 3:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice3, null));
-                        break;
-                    case 4:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice4, null));
-                        break;
-                    case 5:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice5, null));
-                        break;
-                    case 6:
-                        mainDiceImageView.setImageDrawable(ResourcesCompat.getDrawable(getResources(), R.drawable.dice6, null));
-                        break;
+                final boolean thirdRollLimited = diceRules.nextRollExcludesSix();
+                int ch = diceRules.roll(face -> !faceIsOwnCollisionBlocked(face),MainActivity.this::diceWeightForFace);
+                if(ch==0) {
+                    isRolling=false;
+                    setDiceFace(mainDiceImageView,1);
+                    Toast.makeText(MainActivity.this,
+                        "No free landing square. Turn passed!",Toast.LENGTH_SHORT).show();
+                    switchPlayers();
+                    isDiceClickable=true;
+                    return;
                 }
+                if (thirdRollLimited) {
+                    Toast.makeText(MainActivity.this,
+                        "Hot streak! Third roll: 1 to 5", Toast.LENGTH_SHORT).show();
+                } else if (ch == 6) {
+                    Toast.makeText(MainActivity.this, "SIX! Roll again after your move!",
+                        Toast.LENGTH_SHORT).show();
+                }
+                boolean allHome = true;
+                for (Piece piece : getPiecesByColor(currentPlayerColor))
+                    if (piece.isAlive || piece.hasCompletedItsPurpose) allHome = false;
+                homeRollMisses.put(currentPlayerColor,allHome && ch != 6
+                    ? homeRollMisses.getOrDefault(currentPlayerColor,0)+1 : 0);
+                setDiceFace(mainDiceImageView,ch);
                 isRolling = false;
+                // Reward the result visually, never alter the random outcome.
+                mainDiceImageView.animate().cancel();
+                mainDiceImageView.setScaleX(0.89f);
+                mainDiceImageView.setScaleY(0.89f);
+                mainDiceImageView.animate().scaleX(1f).scaleY(1f)
+                    .setDuration(210).setInterpolator(new OvershootInterpolator(1.15f)).start();
 
                 currentPlayerDice = ch;
+                showCentralDiceResult(ch);
                 // Ensure active pieces are promoted when their roll is available.
 
                 List<Piece> pieces = getPiecesByColor(currentPlayerColor);
@@ -1644,194 +2089,60 @@ public class MainActivity extends AppCompatActivity {
                 Player currentPlayer = players.get(x);
                 //Toast.makeText(MainActivity.this, currentPlayer.color+"", Toast.LENGTH_SHORT).show();
 
-                 int chances = 0;
-                 int autoMoveBlock = -1;
-
-                 List<Piece> movablePieces = new ArrayList<>();
-
-                for(Piece p : pieces)
-                {
-                    if(p.check(ch))
-                    {
-                        if(chances==0) {
-                            autoMoveBlock = p.currBlock;
-                            autoMove = p;
-                        }
-                        else if(autoMoveBlock!=-1 && autoMoveBlock==p.currBlock) {
-
-                        }
-                        else {
-                            autoMove = null;
-                        }
-                        if(currentPlayer.isBot) { movablePieces.add(p); }
-                        ++chances;
-                    }
+                List<Piece> movablePieces=new ArrayList<>();
+                for(Piece p:pieces) {
+                    if(p.check(ch) && otherwiseLegal(p,ch) && !blockedByOwnPawn(p,ch))movablePieces.add(p);
+                    else p.inactiveState();
                 }
-
+                if(bomberEnabled && bombArmed) {
+                    boolean plantable=false;
+                    for(Piece p:movablePieces)if(canLeaveBomb(p))plantable=true;
+                    if(!plantable) {
+                        bombArmed=false;
+                        Toast.makeText(MainActivity.this,"No movable pawn can plant this roll. No bomb spent.",Toast.LENGTH_SHORT).show();
+                    } else {
+                        movablePieces.removeIf(p->!canLeaveBomb(p));
+                        for(Piece p:pieces)if(!movablePieces.contains(p))p.inactiveState();
+                    }
+                    refreshBomberControls();
+                }
+                int chances=movablePieces.size();
                 currentPlayer.chances = chances;
 
-                if(autoMove!=null) {
-
-                    if(autoMove.isAlive && autoMove.isClickable) {
-                        autoMove.diceValue = currentPlayerDice;
-                        currentPlayerDice = -1;
-                        for(Piece p : pieces) { p.inactiveState(); }
-                        checkAdjustments(autoMove.currBlock);
-                        autoMove.move(ch);
-                        autoMove=null;
-                        //Toast.makeText(MainActivity.this, x+"", Toast.LENGTH_SHORT).show();
-                    }
-                    else if(!autoMove.isAlive && currentPlayerDice==6) {
-                        currentPlayerDice = -1;
-                        for(Piece p : pieces) { p.inactiveState(); }
-                        autoMove.makeAlive();
-                    }
+                if (guidedGameEnabled && !currentPlayer.isBot && chances > 0)
+                    showGuidedMoves(movablePieces,ch);
+                if(autoRunObviousMove(movablePieces,ch)) {
+                    // Briefly display the rolled number and optional guide, then run.
                 } else if(currentPlayer.isBot && chances>0) {
-                    Piece bestMovablePiece = movablePieces.get(0);
-                    int bestKillingTargetSteps = 0;
-                    int safetomovepoints = 15;
-                    int pantapriority=0;
-                    int maxprioritytoputinsafeplace = 0;
-                    int safePoints = 0;
-                    int y = currentPlayerIndex;
-
-                    // choosing one with max steps blindly for faster panta minimum priority
-                    int maxsteps = 0;
-                    for(Piece p : movablePieces) {
-                        if(p.isAlive && p.numberOfSteps>=maxsteps && !p.hasCompletedItsPurpose) {
-                            maxsteps = p.numberOfSteps;
-                            bestMovablePiece = p;
-                        }
+                    int selectedIndex = chooseStrategicBotMove(movablePieces,ch);
+                    if (selectedIndex >= 0) {
+                        movablePieces.get(selectedIndex).onClickForBot();
+                    } else {
+                        // Defensive fallback: the move validator remains authoritative.
+                        switchPlayers();
+                        isDiceClickable = true;
                     }
-
-                    // making pieces alive minimum+0.5 priority
-                    if(ch==6) {
-                    for(Piece p : pieces) {
-                        if(!p.isAlive) {
-                            bestMovablePiece = p;
-                            break;
-                        }
-                    } }
-
-
-                    // panta chesing purpose min+1 priority
-                    for(Piece p : movablePieces) {
-                        if(p.isReadyToEnterWinnerZone) {
-                            int thispantapriority = p.currWinnerBlock+ch;
-                            if(thispantapriority>pantapriority) {
-                                pantapriority = thispantapriority;
-                                bestMovablePiece = p;
-                            }
-                        }
-                    }
-
-                    // moving to safe spots medium
-                    for(Piece p : movablePieces) {
-                        if(safeSpots.contains(p.currBlock+ch) && p.isAlive)
-                        {
-                            if(p.numberOfSteps>maxprioritytoputinsafeplace) {
-                                maxprioritytoputinsafeplace = p.numberOfSteps;
-                                bestMovablePiece = p;
-                            }
-                        }
-                    }
-
-
-                    // not going ahead for risky moves & running away from dangerous places max-1 priority
-                    y = x;
-                    for (int i = 0; i < players.size(); i++) {
-                        String colour = players.get(y).getColor();
-                        if (!colour.equals(currentPlayerColor)) {
-                            List<Piece> enemypieces = getPiecesByColor(colour);
-                            Toast.makeText(MainActivity.this, colour, Toast.LENGTH_SHORT).show();
-                            for (Piece tp : enemypieces) {
-                                if (tp.isAlive) {
-                                    for (Piece mp : movablePieces) {
-                                        if (mp.isAlive) {
-                                            int dangerdiff = mp.currBlock - tp.currBlock;
-                                            int safetypoints = 10;
-                                            if (safeSpots.contains(mp.currBlock)) {
-                                                safetypoints = 15;
-                                            }
-                                            /*if (mp.currBlock == tp.currBlock && safeSpots.contains(mp.currBlock)) {
-                                                if(bestMovablePiece.numberOfSteps<=mp.numberOfSteps) { safetypoints = 15; } else { safetypoints = 9; }
-                                            } else*/ if (mp.currBlock >= 0 && mp.currBlock <= 10 && (tp.currBlock >= 51 - (10 - mp.currBlock))) {
-                                                if (tp.currBlock >= 51 - (10 - mp.currBlock)) {
-                                                    safetypoints -= 10 - mp.currBlock;
-                                                }
-                                            } else if (tp.currBlock >= 0 && (tp.currBlock >= mp.currBlock - 10 && tp.currBlock < mp.currBlock)) {
-                                                safetypoints -= mp.currBlock - tp.currBlock;
-                                            } else if (dangerdiff > 10) {
-                                                if (safeSpots.contains(mp.currBlock)) {
-                                                    if (mp.numberOfSteps < bestMovablePiece.numberOfSteps) {
-                                                        safetypoints = 9;
-                                                    } else {
-                                                        safetypoints = 15;
-                                                    }
-                                                }
-                                            } else if (dangerdiff <= -10) {
-                                                if (dangerdiff + ch <= 0) {
-                                                    if (safeSpots.contains(mp.currBlock) && safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 15;
-                                                    } else if (!safeSpots.contains(mp.currBlock) && !safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 5;
-                                                    } else if (!safeSpots.contains(mp.currBlock) && safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 15;
-                                                    } else if (safeSpots.contains(mp.currBlock) && !safeSpots.contains(tp.currBlock)) {
-                                                        safetypoints = 9;
-                                                    }
-                                                }
-                                            }
-                                        if (safetypoints < safetomovepoints) {
-                                            bestMovablePiece = mp;
-                                            safetomovepoints = safetypoints;
-                                        }
-                                    }
-                                }
-                                }
-                            }
-                            if (y >= (players.size() - 1)) {
-                                y = 0;
-                            } else {
-                                y++;
-                            }
-                        }
-                    }
-
-                    // killing the best piece max priority
-                    y = x;
-                    for (int i = 0; i < players.size(); i++) {
-                        String color = players.get(y).getColor();
-                        if (!color.equals(currentPlayerColor)) {
-                            List<Piece> enemypieces = getPiecesByColor(color);
-                            for (Piece tp : enemypieces) {
-                                if (tp.isAlive && !safeSpots.contains(tp.currBlock)) {
-                                    for (Piece mp : movablePieces) {
-                                        if (tp.currBlock == (mp.currBlock+ch)) {
-                                            if (tp.numberOfSteps > bestKillingTargetSteps) {
-                                                bestKillingTargetSteps = tp.numberOfSteps;
-                                                bestMovablePiece = mp;  // should not be commented at deployment stage
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (y >= (players.size() - 1)) {
-                            y = 0;
-                        } else {
-                            y++;
-                        }
-                    }
-                    //Toast.makeText(MainActivity.this, bestMovablePiece.colour+","+bestMovablePiece.startPosition, Toast.LENGTH_SHORT).show();
-                    bestMovablePiece.onClickForBot();
                 } else if (chances == 0) {
-                        diceHandler.postDelayed(() -> {
+                    // A six still grants its extra roll when no pawn can move.
+                    // The third roll remains restricted to 1..5 by DiceRules.
+                    final boolean extraRoll = ch == 6;
+                    final String originalColour = currentPlayerColor;
+                    final int expectedGeneration = shuffleTurnGeneration;
+                    diceHandler.postDelayed(() -> {
+                        if (shuffleMatchEnding || !originalColour.equals(currentPlayerColor)
+                            || expectedGeneration != shuffleTurnGeneration) return;
+                        if (extraRoll) {
+                            isDiceMovableExtraChance = true;
+                            readyForBombChoice();
+                            if (currentPlayer.isBot) roll();
+                            else hintArrow.setVisibility(View.VISIBLE);
+                        } else {
                             switchPlayers();
                             isDiceClickable = true;
-                        }, 500);
-                    }
-            }, 350);
+                        }
+                    }, 500);
+                }
+            }, 420);
             }
     }
 
@@ -1839,25 +2150,25 @@ public class MainActivity extends AppCompatActivity {
         switch (color) {
             case "red":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.redpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_red, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "green":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.greenpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_green, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "blue":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.bluepiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_blue, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
             case "yellow":
                 if (normalPiece) {
-                    return ResourcesCompat.getDrawable(getResources(), R.drawable.yellowpiece, null);
+                    return ResourcesCompat.getDrawable(getResources(), R.drawable.lhj_token_yellow, null);
                 } else {
                     return getStylishIconDrawableByColor(color);
                 }
@@ -1968,11 +2279,14 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
         initStatsHud();
+        addCentralDiceResultView();
 
         globalHandler = new Handler();
         offlineMatchStartedAt = System.currentTimeMillis();
         offlineMatchId = UUID.randomUUID().toString();
         selectedLeagueId = getIntent().getIntExtra("league_id",0);
+        // Competitive and casual games share the documented balanced dice mode.
+        diceMode = BoardAwareDiceEngine.Mode.BALANCED_AGGRESSIVE;
         selectedLeagueName = getIntent().getStringExtra("league_name");
         int[] mappedIds = getIntent().getIntArrayExtra("league_player_ids");
         String[] mappedNames = getIntent().getStringArrayExtra("league_player_names");
@@ -1994,7 +2308,11 @@ public class MainActivity extends AppCompatActivity {
         Bundle extras = getIntent().getExtras();
         combatScoringEnabled = extras != null && extras.getBoolean("rule_combat", false);
         immunityEnabled = extras != null && extras.getBoolean("rule_immunity", false);
-        homeShuffleEnabled = extras != null && extras.getBoolean("rule_shuffle", false);
+        matchVariant=MatchVariant.from(extras==null?null:extras.getString("match_variant"),
+            extras!=null && extras.getBoolean("rule_shuffle",false));
+        homeShuffleEnabled=matchVariant==MatchVariant.HOME_SHUFFLE;
+        bomberEnabled=matchVariant==MatchVariant.BOMBER;
+        guidedGameEnabled = extras != null && extras.getBoolean("rule_guided", false);
         shuffleIntervalSeconds = extras == null ? 300 : Math.max(60, Math.min(600, extras.getInt("shuffle_interval_seconds",300)));
 
         nop = extras.getInt("nop");
@@ -2034,9 +2352,10 @@ public class MainActivity extends AppCompatActivity {
         float total = onePercentWidth * 40;
         float homeCircleWidth = (float) ((total * 0.64) * 0.25);
         float pieceBlockSize = (float) (pxWidth * 0.065);
-        float lifty = (float) (24.5 * displayMetrics.density);
+        float lifty = (41 * displayMetrics.density - homeCircleWidth) / 2f + 5f;
         pieceWidth = 34 * displayMetrics.density;
         pieceHeight = 41 * displayMetrics.density;
+        boardTokenScale = TokenLayoutEngine.boardScale(blockSize, pieceWidth, pieceHeight);
         float pushx;
         if (homeCircleWidth >= pieceWidth) {
             pushx = (float) ((homeCircleWidth - pieceWidth) / 2);
@@ -2048,7 +2367,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             pushXForPieces = (float) -((pieceWidth - pieceBlockSize) / 2);
         }
-        pushYForPieces = lifty;
+        pushYForPieces = (pieceHeight - blockSize) / 2f + 5f;
         if (!normalPiece) {
             pushx /= 1.5;
             lifty /= 3;
@@ -2081,7 +2400,7 @@ public class MainActivity extends AppCompatActivity {
             playername1.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
             ((ConstraintLayout.LayoutParams)playername1.getLayoutParams()).topMargin = (int) (30 * displayMetrics.density);
 
-            playername2.setRotation(180);
+            playername2.setRotation(0);
             ((ConstraintLayout.LayoutParams)playername2.getLayoutParams()).topMargin =  (int) (30 * displayMetrics.density);
 
             playername4.getLayoutParams().width = (int) (total);
@@ -2358,12 +2677,12 @@ public class MainActivity extends AppCompatActivity {
                     isSoundOn = false;
                     sharedPreferences.edit().putBoolean("sound",false).apply();
                     ingamesoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundoff,null));
-                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { congratulationSound.pause(); } }
+                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { gameAudio.pause(congratulationSound); } }
                 } else {
                     isSoundOn = true;
                     sharedPreferences.edit().putBoolean("sound",true).apply();
                     ingamesoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
-                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { congratulationSound.start(); } }
+                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { startGameSound(congratulationSound); } }
                 }
             }
         });
@@ -2544,12 +2863,12 @@ public class MainActivity extends AppCompatActivity {
                     isSoundOn = false;
                     sharedPreferences.edit().putBoolean("sound",false).apply();
                     congratssoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundoff,null));
-                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { congratulationSound.pause(); } }
+                    if(congratulationSound!=null) { if(congratulationSound.isPlaying()) { gameAudio.pause(congratulationSound); } }
                 } else {
                     isSoundOn = true;
                     sharedPreferences.edit().putBoolean("sound",true).apply();
                     congratssoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
-                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { congratulationSound.start(); } }
+                    if(congratulationSound!=null) { if(!congratulationSound.isPlaying()) { startGameSound(congratulationSound); } }
                 }
             }
         });
@@ -2637,23 +2956,40 @@ public class MainActivity extends AppCompatActivity {
 
             globalHandler.post(blinkAnim);
 
-            gameStartSound = MediaPlayer.create(this,R.raw.gamestartsound);
-            gameStartSound.start();
-            gameStartSound.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mediaPlayer) {
-                    globalHandler.removeCallbacks(blinkAnim);
-                    gameStartImageView.setVisibility(GONE);
-                    mainDiceImageView.setVisibility(View.VISIBLE);
-                    hintArrow.setVisibility(View.VISIBLE);
-                    switchPlayers();
-                    gameStartSound.release();
-                }
-            });
+            Runnable beginMatch=()->{
+                if(shuffleMatchEnding || isFinishing())return;
+                globalHandler.removeCallbacks(blinkAnim);
+                gameStartImageView.setVisibility(GONE);
+                mainDiceImageView.setVisibility(View.VISIBLE);
+                hintArrow.setVisibility(View.VISIBLE);
+                switchPlayers();
+            };
+            gameStartSound=createGameSound(R.raw.gamestartsound);
+            if(gameStartSound==null)globalHandler.post(beginMatch);
+            else {
+                gameStartSound.setOnCompletionListener(mediaPlayer->{
+                    gameAudio.release(mediaPlayer);
+                    gameStartSound=null;
+                    beginMatch.run();
+                });
+                startGameSound(gameStartSound);
+            }
             mainDiceImageView.setVisibility(GONE);
             hintArrow.setVisibility(GONE);
             d = new Dice(mainDiceImageView, nop, color);
+            initializeSeatDiceViews();
             initialiseHomeShuffle();
+            initialiseBomber();
+            // Generate the same 15x15 home finish for standard and shuffle games.
+            // The game's original tile positions and input controls are unchanged.
+            android.graphics.Bitmap baseBoard=android.graphics.BitmapFactory.decodeResource(
+                getResources(),R.drawable.ludofinalboard3);
+            if(baseBoard!=null) {
+                android.graphics.Bitmap premiumBoard=
+                    com.ludomaster.reference.shuffle.LhjPremiumBoardRenderer.enhance(baseBoard);
+                baseBoard.recycle();
+                ludoBoard.setImageBitmap(premiumBoard);
+            }
             if (homeShuffleEnabled) { refreshShuffleDicePanels(); addShuffleCountdown(); }
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(((int)(pxWidth*0.4)),((int)(pxWidth*0.4)));
         redHomeBlink.setLayoutParams(lp);
@@ -2746,12 +3082,51 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** In Shuffle mode any seat may become occupied, including originally unused seats. */
+
+    /** Non-clickable player-specific dice, never replacing the active roll control. */
+    private void initializeSeatDiceViews() {
+        if(!seatDiceViews.isEmpty())return;
+        int[] pads={R.id.tleftdicebg,R.id.trightdicebg,
+                    R.id.bleftdicebg,R.id.brightdicebg};
+        for(int i=0;i<4;i++){
+            ConstraintLayout pad=findViewById(pads[i]);
+            ImageView die=new ImageView(this);
+            die.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            die.setClickable(false);
+            die.setFocusable(false);
+            ConstraintLayout.LayoutParams p=new ConstraintLayout.LayoutParams(hudDp(63),hudDp(63));
+            p.topToTop=ConstraintLayout.LayoutParams.PARENT_ID;
+            p.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
+            if(i%2==0) {
+                p.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
+                p.setMarginEnd(hudDp(11));
+            } else {
+                p.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+                p.setMarginStart(hudDp(9));
+            }
+            pad.addView(die,p);
+            seatDiceViews.put(i+1,die);
+        }
+        refreshSeatDiceViews();
+    }
+
+    private void refreshSeatDiceViews() {
+        for(ImageView die:seatDiceViews.values())die.setVisibility(View.GONE);
+        for(Player player:players){
+            ImageView die=seatDiceViews.get(player.position);
+            if(die==null)continue;
+            setDiceFace(die,1);
+            die.setContentDescription(player.name+" "+player.color+" dice");
+            die.setVisibility(View.GONE);
+        }
+    }
+
     private void refreshShuffleDicePanels() {
         if (!homeShuffleEnabled || d == null) return;
-        d.tLeftLayout.setVisibility(View.VISIBLE);
-        d.tRightLayout.setVisibility(View.VISIBLE);
-        d.bLeftLayout.setVisibility(View.VISIBLE);
-        d.bRightLayout.setVisibility(View.VISIBLE);
+        d.tLeftLayout.setVisibility(View.GONE);
+        d.tRightLayout.setVisibility(View.GONE);
+        d.bLeftLayout.setVisibility(View.GONE);
+        d.bRightLayout.setVisibility(View.GONE);
         d.tLeftImgColor.setVisibility(View.INVISIBLE);
         d.tRightImgColor.setVisibility(View.INVISIBLE);
         d.bLeftImgColor.setVisibility(View.INVISIBLE);
@@ -2760,20 +3135,22 @@ public class MainActivity extends AppCompatActivity {
             ImageView icon;
             // All dice icons are bound to the same seat map as pawn home yards.
             switch (player.position) {
-                case 1: icon = d.bLeftImgColor; break;
-                case 2: icon = d.tLeftImgColor; break;
-                case 3: icon = d.tRightImgColor; break;
-                case 4: icon = d.bRightImgColor; break;
+                case 1: icon = d.tLeftImgColor; d.tLeftLayout.setVisibility(View.VISIBLE); break;
+                case 2: icon = d.tRightImgColor; d.tRightLayout.setVisibility(View.VISIBLE); break;
+                case 3: icon = d.bLeftImgColor; d.bLeftLayout.setVisibility(View.VISIBLE); break;
+                case 4: icon = d.bRightImgColor; d.bRightLayout.setVisibility(View.VISIBLE); break;
                 default: continue;
             }
             icon.setImageDrawable(getPieceDrawableByColor(player.color));
             icon.setVisibility(View.VISIBLE);
         }
+        refreshSeatDiceViews();
     }
 
     private void applyPendingHomeShuffle() {
         if (!homeShuffleEnabled || homeShuffleEngine == null || shuffleMatchEnding ||
             !homeShuffleEngine.applyAtSafeBoundary(false)) return;
+        clearGuidedMoves();
         for (int colour=0; colour<4; colour++) {
             int slot=homeShuffleEngine.homeSlot(colour);
             int newStart=homeShuffleEngine.startSquare(colour);
@@ -2809,6 +3186,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
+        globalHandler.postDelayed(this::refreshAllTokenLayouts, 360);
         final int[] ownership = homeShuffleEngine.assignment();
         final float rotation = ludoBoard.getRotation();
         final int repaintVersion = ++shuffleRepaintVersion;
@@ -2843,28 +3221,47 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this,"Home Shuffle! Every colour changed home.",Toast.LENGTH_SHORT).show();
     }
 
+    private MediaPlayer createGameSound(int resource) {
+        return gameAudio.create(this,resource,
+            resource==R.raw.gamestartsound || resource==R.raw.congratulations);
+    }
+    private void startGameSound(MediaPlayer player) {
+        gameAudio.muted(!isSoundOn);
+        gameAudio.play(player);
+    }
+    private void playGameEffect(int resource) {
+        gameAudio.muted(!isSoundOn);
+        gameAudio.effect(this,resource);
+    }
+    private void releaseGameAudio() {
+        gameAudio.releaseAll();
+        gameStartSound=diceRollSound=stepSound=congratulationSound=null;
+    }
+
     private void stopEverything() {
         shuffleMatchEnding = true;
-        globalHandler.removeCallbacksAndMessages(null);
-        d.diceHandler.removeCallbacksAndMessages(null);
-        if(congratulationSound!=null) {
-            if(congratulationSound.isPlaying()) {
-                congratulationSound.stop();
-            }
-            try { congratulationSound.release(); } catch (Exception e) {}
-        }
+        hideBomberControls();
+        if(globalHandler!=null)globalHandler.removeCallbacksAndMessages(null);
+        if(d!=null && d.diceHandler!=null)d.diceHandler.removeCallbacksAndMessages(null);
+        releaseGameAudio();
     }
 
     @Override
     protected void onPause() {
+        gameAudio.foreground(false);
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
         super.onPause();
     }
 
     @Override
     protected void onDestroy() {
+        clearGuidedMoves();
+        hideBomberControls();
         shuffleMatchEnding = true;
         if (globalHandler != null) globalHandler.removeCallbacks(shuffleTimerTick);
+        if (globalHandler != null) globalHandler.removeCallbacksAndMessages(null);
+        if (d != null && d.diceHandler != null) d.diceHandler.removeCallbacksAndMessages(null);
+        releaseGameAudio();
         super.onDestroy();
     }
 
@@ -3014,10 +3411,18 @@ public class MainActivity extends AppCompatActivity {
 
     void switchPlayers()
     {
+        clearGuidedMoves();
+        diceRules.startTurn();
+        currentPlayerDice = -1;
+        ++autoMoveGeneration;
         ++shuffleTurnGeneration;
         Player currentPlayer = players.get(currentPlayerIndex);
         currentPlayerPosition = currentPlayer.getPosition();
         currentPlayerColor = currentPlayer.getColor();
+        readyForBombChoice();
+        refreshSeatDiceViews();
+        if(mainDiceImageView != null)
+            setDiceFace(mainDiceImageView,1);
         currentPlayerSelectedIndex = currentPlayer.getIndex();
         currentPlayerName = currentPlayer.name;
         //Toast.makeText(this, currentPlayerColor+"", Toast.LENGTH_SHORT).show();
@@ -3163,6 +3568,7 @@ public class MainActivity extends AppCompatActivity {
         pxWidth = displayMetrics.widthPixels;
         pxHeight = displayMetrics.heightPixels-getStatusBarHeight();
         ludoBoard = findViewById(R.id.imageView);
+        // Keep original board markings unobstructed until exact-fit 3D board artwork is ready.
         red1activecircle = findViewById(R.id.red1activecircle);
         red2activecircle = findViewById(R.id.red2activecircle);
         red3activecircle = findViewById(R.id.red3activecircle);
@@ -3193,8 +3599,17 @@ public class MainActivity extends AppCompatActivity {
         playername2 = findViewById(R.id.pname2);
         playername3 = findViewById(R.id.pname3);
         playername4 = findViewById(R.id.pname4);
+        // Player names are displayed upright in the HUD badges. Hide the
+        // legacy in-yard labels to avoid upside-down names and dice overlaps,
+        // while retaining the TextView references used by seat assignment.
+        playername1.setVisibility(View.INVISIBLE);
+        playername2.setVisibility(View.INVISIBLE);
+        playername3.setVisibility(View.INVISIBLE);
+        playername4.setVisibility(View.INVISIBLE);
 
         mainDiceImageView = findViewById(R.id.maindiceimageview);
+        mainDiceImageView.getLayoutParams().width = hudDp(63);
+        mainDiceImageView.getLayoutParams().height = hudDp(63);
         hintArrow = findViewById(R.id.hintarrowleft);
 
         shieldIndex1 = findViewById(R.id.lm_shieldindex1);
@@ -3334,12 +3749,9 @@ public class MainActivity extends AppCompatActivity {
         wBlocks64 = new int[] {64, 65, 66, 67, 68, 69};
         wBlocks70 = new int[] {70, 71, 72, 73, 74, 75};
 
-        diceRollSound = MediaPlayer.create(this, R.raw.diceroll);
-        stepSound = MediaPlayer.create(this, R.raw.step);
-//        safeSound = MediaPlayer.create(this, R.raw.safe);
-//        deathSound = MediaPlayer.create(this, R.raw.death);
-//        pantaSound = MediaPlayer.create(this, R.raw.panta);
-//        congratulationSound = MediaPlayer.create(this, R.raw.congratulations);
+        diceRollSound = createGameSound(R.raw.diceroll);
+        stepSound = createGameSound(R.raw.step);
+//        congratulationSound = createGameSound(R.raw.congratulations);
 
         if(isSoundOn) {
             ingamesoundbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
@@ -3472,6 +3884,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        gameAudio.muted(!isSoundOn);
+        gameAudio.foreground(true);
         if (homeShuffleEnabled && homeShuffleEngine != null && globalHandler != null && !shuffleMatchEnding) {
             globalHandler.removeCallbacks(shuffleTimerTick);
             globalHandler.postDelayed(shuffleTimerTick,1000);
@@ -3485,9 +3899,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = ConstraintLayout.LayoutParams.UNSET;
-        lps.setMarginStart(-((int)displayMetrics.density));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = R.id.tleftdicebg;
+        lps.topToTop = R.id.tleftdicebg;
         lps.bottomToBottom = R.id.tleftdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.endToStart = ConstraintLayout.LayoutParams.UNSET;
@@ -3502,9 +3926,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = R.id.trightdicebg;
-        lps.setMarginStart(-((int)(2*displayMetrics.density)));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.topToTop = R.id.trightdicebg;
         lps.bottomToBottom = R.id.trightdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -3519,9 +3953,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = R.id.brightdicebg;
-        lps.setMarginStart(-((int)(2*displayMetrics.density)));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.topToTop = R.id.brightdicebg;
         lps.bottomToBottom = R.id.brightdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
@@ -3536,9 +3980,19 @@ public class MainActivity extends AppCompatActivity {
     {
         ConstraintLayout.LayoutParams lps = (ConstraintLayout.LayoutParams) mainDiceImageView.getLayoutParams();
         lps.startToStart = ConstraintLayout.LayoutParams.UNSET;
-        lps.setMarginStart(-((int)displayMetrics.density));
+        lps.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        lps.endToStart = ConstraintLayout.LayoutParams.UNSET;
         lps.endToEnd = R.id.bleftdicebg;
+        lps.topToTop = R.id.bleftdicebg;
         lps.bottomToBottom = R.id.bleftdicebg;
+        lps.topToBottom = ConstraintLayout.LayoutParams.UNSET;
+        lps.bottomToTop = ConstraintLayout.LayoutParams.UNSET;
+        // The pink dice tray occupies the inner half of the legacy 115dp pad.
+        // Offset from the outside edge to center a 42dp die in that tray.
+        lps.setMarginStart(0);
+        lps.setMarginEnd(0);
+        lps.topMargin = 0;
+        lps.bottomMargin = 0;
         mainDiceImageView.setLayoutParams(lps);
         ConstraintLayout.LayoutParams arrowLps = (ConstraintLayout.LayoutParams) hintArrow.getLayoutParams();
         arrowLps.endToStart = ConstraintLayout.LayoutParams.UNSET;

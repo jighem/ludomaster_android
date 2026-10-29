@@ -49,6 +49,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     double pxWidth;
     double pxHeight;
     MediaPlayer m,clickSoundEffect;
+    private final ActivityAudio menuMusic=new ActivityAudio();
+    private final ActivityAudio menuEffects=new ActivityAudio();
     ConstraintLayout topNavBar,coinAndDiamondBG,settingspopupbg,guestprofilecreateoreditlayout,statisticslayout, passnplaylayout,passnplayclassiclayout,p2layout,p3layout,p4layout,pnpteamuplayout,computerlayout,computerclassiclayout,computerrushmode;
     ObjectAnimator rotateAnimator;
     ImageView nointernet;
@@ -168,9 +170,9 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         passnplay.setLayoutParams(params);
 
         if(isMusicOn) {
-            m = MediaPlayer.create(this, R.raw.music);
-            m.setLooping(true);
-            m.start();
+            m = menuMusic.create(this,R.raw.music,true);
+            if(m!=null)m.setLooping(true);
+            menuMusic.play(m);
             stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicon,null));
         } else { stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicoff,null)); }
 
@@ -178,8 +180,8 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
             stgssoundonoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundon,null));
         } else { stgssoundonoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.soundoff,null)); }
 
-        clickSoundEffect = MediaPlayer.create(this,R.raw.click);
-        clickSoundEffect.seekTo(0);
+        clickSoundEffect = menuEffects.create(this,R.raw.click,false);
+        if(clickSoundEffect!=null)clickSoundEffect.seekTo(0);
 
         ImageView imageView = findViewById(R.id.imageView15);
         imageView.setImageResource(R.drawable.ludo_masters_splash);
@@ -537,15 +539,17 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
                 {
                     sharedPreferences.edit().putBoolean("music",false).apply();
                     isMusicOn = false;
-                    m.stop();
-                    m.release();
+                    menuMusic.release(m);
+                    m=null;
                     stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicoff,null));
                 } else {
                     giveClickSound();
                     sharedPreferences.edit().putBoolean("music",true).apply();
                     isMusicOn = true;
-                    m = MediaPlayer.create(HomeActivity.this,R.raw.music);
-                    m.start();
+                    menuMusic.muted(false);
+                    m = menuMusic.create(HomeActivity.this,R.raw.music,true);
+                    if(m!=null)m.setLooping(true);
+                    menuMusic.play(m);
                     stgsmusiconoffbtn.setImageDrawable(ResourcesCompat.getDrawable(getResources(),R.drawable.musicon,null));
                 }
             }
@@ -1976,9 +1980,10 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void giveClickSound() {
-        if(isSoundOn) {
+        menuEffects.muted(!isSoundOn);
+        if(isSoundOn && clickSoundEffect!=null) {
             clickSoundEffect.seekTo(0);
-            clickSoundEffect.start();
+            menuEffects.play(clickSoundEffect);
         }
     }
 
@@ -2270,9 +2275,15 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onPause() {
         super.onPause();
-        if (isMusicOn) {
-            m.pause();
-        }
+        menuMusic.foreground(false);
+        menuEffects.foreground(false);
+    }
+
+    @Override protected void onDestroy() {
+        menuMusic.releaseAll();
+        menuEffects.releaseAll();
+        m=clickSoundEffect=null;
+        super.onDestroy();
     }
 
     /** Clean Ludo Masters entry page; preserve only the underlying offline match setup. */
@@ -2282,67 +2293,125 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
         startActivity(intent);
     }
 
+    private int lhjDp(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
+    }
+
+    private android.graphics.drawable.GradientDrawable lhjRounded(int color, int border) {
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(lhjDp(22));
+        if (border != 0) d.setStroke(lhjDp(2), border);
+        return d;
+    }
+
+    private android.widget.Button lhjMenuButton(String label, int color) {
+        android.widget.Button button = new android.widget.Button(this);
+        button.setText(label);
+        button.setTextColor(android.graphics.Color.WHITE);
+        button.setTextSize(20);
+        button.setAllCaps(false);
+        button.setTypeface(null, android.graphics.Typeface.BOLD);
+        button.setBackgroundResource(color == 0xFF25A95E ? R.drawable.lhj_button_green : R.drawable.lhj_button_blue);
+        button.setElevation(lhjDp(5));
+        button.setMinHeight(0);
+        button.setMinimumHeight(0);
+        return button;
+    }
+
     private void installModernLanding() {
         androidx.constraintlayout.widget.ConstraintLayout root = findViewById(R.id.root);
         if (root == null) return;
         android.widget.FrameLayout landing = new android.widget.FrameLayout(this);
-        landing.setBackgroundResource(R.drawable.ludo_masters_game_background);
-        android.widget.ImageView artwork = new android.widget.ImageView(this);
-        int menuArt = getResources().getIdentifier("lm_royal_menu","drawable",getPackageName());
-        if (menuArt != 0) artwork.setImageResource(menuArt);
-        else artwork.setImageResource(R.drawable.ludo_masters_splash);
-        artwork.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
-        landing.addView(artwork,new android.widget.FrameLayout.LayoutParams(-1,-1));
-        if(menuArt != 0) {
-            // Exact interactive hit boxes for user-provided 941 x 1672 menu art.
-            addRoyalHotspot(landing, .14f,.54f,.72f,.13f, () -> {
-                startRoyalMatchSetup(true);
-            });
-            addRoyalHotspot(landing, .14f,.69f,.72f,.13f, () -> {
-                startRoyalMatchSetup(false);
-            });
-        } else {
-            // Fully functional fallback until original assets have been imported.
-            android.widget.LinearLayout controls = new android.widget.LinearLayout(this);
-            controls.setOrientation(1);
-            controls.setGravity(android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
-            controls.setPadding(24,24,24,110);
-            android.widget.Button computerBtn = new android.widget.Button(this);
-            computerBtn.setText("COMPUTER");
-            controls.addView(computerBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
-            computerBtn.setOnClickListener(v -> {startRoyalMatchSetup(true);});
-            android.widget.Button passBtn = new android.widget.Button(this);
-            passBtn.setText("PASS N PLAY");
-            controls.addView(passBtn,new android.widget.LinearLayout.LayoutParams(-1,72));
-            passBtn.setOnClickListener(v -> {startRoyalMatchSetup(false);});
-            landing.addView(controls,new android.widget.FrameLayout.LayoutParams(-1,-1));
-        }
-        android.widget.Button login = new android.widget.Button(this);
-        login.setText("LOGIN / PROFILE");
-        login.setTextColor(0xff17234a);
-        login.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xffffd36e));
-        android.widget.FrameLayout.LayoutParams loginParams = new android.widget.FrameLayout.LayoutParams(-2,52,android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL);
-        loginParams.bottomMargin = 22;
-        landing.addView(login, loginParams);
-        royalLoginButton=login;
-        login.setOnClickListener(v -> startActivity(new Intent(this,WebLoginActivity.class)));
+        landing.setBackgroundResource(R.drawable.lhj_home_pattern);
+
+        android.widget.LinearLayout shell = new android.widget.LinearLayout(this);
+        shell.setOrientation(android.widget.LinearLayout.VERTICAL);
+        shell.setPadding(lhjDp(20), lhjDp(20), lhjDp(20), lhjDp(24));
+        landing.addView(shell, new android.widget.FrameLayout.LayoutParams(-1, -1));
+
+        android.widget.LinearLayout header = new android.widget.LinearLayout(this);
+        header.setGravity(android.view.Gravity.END | android.view.Gravity.CENTER_VERTICAL);
+        shell.addView(header, new android.widget.LinearLayout.LayoutParams(-1, lhjDp(55)));
+
         android.widget.Button audio = new android.widget.Button(this);
-        audio.setText("🔊 SOUND / MUSIC");
-        audio.setTextColor(0xffffffff);
-        audio.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xff25519e));
-        android.widget.FrameLayout.LayoutParams audioParams = new android.widget.FrameLayout.LayoutParams(-2,50,android.view.Gravity.TOP | android.view.Gravity.END);
-        audioParams.topMargin = 64;audioParams.rightMargin=16;
-        landing.addView(audio,audioParams);
-        royalAudioButton=audio;
+        audio.setText("Sound / Music");
+        audio.setAllCaps(false);
+        audio.setTextColor(0xFF172B54);
+        audio.setTextSize(13);
+        audio.setBackgroundResource(R.drawable.lhj_button_white);
+        header.addView(audio, new android.widget.LinearLayout.LayoutParams(lhjDp(165), lhjDp(50)));
+        royalAudioButton = audio;
         audio.setOnClickListener(v -> AudioSettings.show(this));
 
-        root.addView(landing,new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1,-1));
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        shell.addView(scroll, new android.widget.LinearLayout.LayoutParams(-1, 0, 1f));
+        android.widget.LinearLayout body = new android.widget.LinearLayout(this);
+        body.setOrientation(android.widget.LinearLayout.VERTICAL);
+        body.setGravity(android.view.Gravity.CENTER);
+        body.setPadding(lhjDp(8), lhjDp(12), lhjDp(8), lhjDp(15));
+        scroll.addView(body, new android.widget.ScrollView.LayoutParams(-1, -1));
+
+        android.widget.ImageView emblem = new android.widget.ImageView(this);
+        emblem.setImageResource(R.drawable.lhj_emblem_approved);
+        emblem.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        emblem.setContentDescription("Ludo Ho Jaye logo");
+        body.addView(emblem, new android.widget.LinearLayout.LayoutParams(lhjDp(164), lhjDp(164)));
+
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText("Ludo Ho Jaye!!!");
+        title.setTextColor(0xFF172B54);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setTextSize(33);
+        title.setGravity(android.view.Gravity.CENTER);
+        android.widget.LinearLayout.LayoutParams tp = new android.widget.LinearLayout.LayoutParams(-1, -2);
+        tp.topMargin = lhjDp(8);
+        body.addView(title, tp);
+
+        android.widget.TextView tagline = new android.widget.TextView(this);
+        tagline.setText("Dosti Bhi, Takkar Bhi!");
+        tagline.setTextColor(0xFF1265CB);
+        tagline.setTypeface(null, android.graphics.Typeface.BOLD);
+        tagline.setTextSize(16);
+        tagline.setGravity(android.view.Gravity.CENTER);
+        body.addView(tagline, new android.widget.LinearLayout.LayoutParams(-1, -2));
+
+        android.widget.Button computerBtn = lhjMenuButton("COMPUTER", 0xFF25A95E);
+        android.widget.LinearLayout.LayoutParams cp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(74));
+        cp.topMargin = lhjDp(28);
+        body.addView(computerBtn, cp);
+        computerBtn.setOnClickListener(v -> startRoyalMatchSetup(true));
+        computerBtn.setContentDescription("Start Ludo against computer players");
+
+        android.widget.Button passBtn = lhjMenuButton("PASS & PLAY", 0xFF2586F5);
+        android.widget.LinearLayout.LayoutParams pp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(74));
+        pp.topMargin = lhjDp(16);
+        body.addView(passBtn, pp);
+        passBtn.setOnClickListener(v -> startRoyalMatchSetup(false));
+        passBtn.setContentDescription("Play Ludo locally with friends");
+
+        android.widget.Button login = new android.widget.Button(this);
+        login.setTextColor(0xFF172B54);
+        login.setTextSize(14);
+        login.setTypeface(null, android.graphics.Typeface.BOLD);
+        login.setAllCaps(false);
+        login.setBackgroundResource(R.drawable.lhj_button_white);
+        android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(-1, lhjDp(56));
+        lp.topMargin = lhjDp(10);
+        shell.addView(login, lp);
+        royalLoginButton = login;
+        login.setOnClickListener(v -> startActivity(new Intent(this,
+            SecureLogin.token(this)==null ? WebLoginActivity.class : LhjProfileActivity.class)));
+
+        root.addView(landing, new androidx.constraintlayout.widget.ConstraintLayout.LayoutParams(-1, -1));
         landing.setElevation(1000f);
         landing.bringToFront();
-        this.royalLanding=landing;
+        royalLanding = landing;
         updateRoyalLoginLabel();
-        if(!loginChoiceShown && SecureLogin.token(this)==null) {
-            loginChoiceShown=true;
+        if (!loginChoiceShown && SecureLogin.token(this) == null) {
+            loginChoiceShown = true;
             landing.post(this::showLoginChoice);
         }
     }
@@ -2361,7 +2430,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     private void showLoginChoice() {
         if(isFinishing() || SecureLogin.token(this)!=null) return;
         new AlertDialog.Builder(this)
-            .setTitle("Welcome to Ludo Masters")
+            .setTitle("Welcome to Ludo Ho Jaye")
             .setMessage("Sign in with your ludohojaye.com account to select leagues and registered players. Or continue offline as a guest.")
             .setPositiveButton("LOGIN TO LUDOHOJAYE",(dialog,which) -> startActivity(new Intent(this,WebLoginActivity.class)))
             .setNegativeButton("PLAY AS GUEST",(dialog,which) -> {})
@@ -2383,7 +2452,7 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     private void launchOfflineMatch(Intent intent) {
         boolean[] selected = new boolean[] {false, false, false};
         new AlertDialog.Builder(this)
-            .setTitle("Ludo Masters - Optional Rules")
+            .setTitle("Ludo Ho Jaye - Optional Rules")
             .setMultiChoiceItems(new String[]{
                 "Combat points (+5 capture, -5 death)",
                 "Immunity: earn and spend shields",
@@ -2812,10 +2881,18 @@ public class HomeActivity extends AppCompatActivity implements View.OnClickListe
     protected void onResume() {
         super.onResume();
         updateRoyalLoginLabel();
+        isSoundOn=sharedPreferences.getBoolean("sound",true);
+        isMusicOn=sharedPreferences.getBoolean("music",false);
+        menuEffects.muted(!isSoundOn);
+        menuEffects.foreground(true);
+        menuMusic.muted(!isMusicOn);
+        menuMusic.foreground(true);
         if(isMusicOn) {
-            if(!m.isPlaying()) {
-                m.start();
+            if(m==null) {
+                m=menuMusic.create(this,R.raw.music,true);
+                if(m!=null)m.setLooping(true);
             }
-        }
+            if(m!=null && !m.isPlaying())menuMusic.play(m);
+        } else menuMusic.pause(m);
     }
 }

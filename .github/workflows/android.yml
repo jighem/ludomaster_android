@@ -3,6 +3,10 @@ on:
   pull_request:
   push:
     branches: [main]
+# Only the latest validation of a PR or branch should consume a runner.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest

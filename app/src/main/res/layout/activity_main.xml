@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
 
     android:layout_height="match_parent"
-    android:background="@drawable/ludo_masters_game_background"
+    android:background="@drawable/lhj_menu_sky"
     tools:context=".MainActivity">
 
     <ImageView
@@ -14,9 +14,9 @@
         android:layout_width="64dp"
         android:layout_height="64dp"
         android:layout_marginTop="6dp"
-        android:contentDescription="@string/lm_shield_description"
+        android:contentDescription="@string/lhj_emblem_description"
         android:scaleType="fitCenter"
-        android:src="@drawable/lm_shield"
+        android:src="@drawable/lhj_emblem_approved"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -178,7 +178,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -215,7 +215,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -252,7 +252,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -289,7 +289,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/redpiece" />
+                app:srcCompat="@drawable/lhj_token_red" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -326,7 +326,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -363,7 +363,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -400,7 +400,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -437,7 +437,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/greenpiece" />
+                app:srcCompat="@drawable/lhj_token_green" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -474,7 +474,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -511,7 +511,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -548,7 +548,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -585,7 +585,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/bluepiece" />
+                app:srcCompat="@drawable/lhj_token_blue" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -624,7 +624,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -662,7 +662,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -700,7 +700,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -738,7 +738,7 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:srcCompat="@drawable/yellowpiece" />
+                app:srcCompat="@drawable/lhj_token_yellow" />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -763,7 +763,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/yellowpiece" />
+            app:srcCompat="@drawable/lhj_token_yellow" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -785,7 +785,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/greenpiece" />
+            app:srcCompat="@drawable/lhj_token_green" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -808,7 +808,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/bluepiece" />
+            app:srcCompat="@drawable/lhj_token_blue" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -830,7 +830,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/redpiece" />
+            app:srcCompat="@drawable/lhj_token_red" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageView
@@ -856,6 +856,7 @@
 
     <TextView
         android:id="@+id/pname1"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
@@ -877,6 +878,7 @@
 
     <TextView
         android:id="@+id/pname2"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="28dp"
@@ -898,6 +900,7 @@
 
     <TextView
         android:id="@+id/pname3"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="1dp"
@@ -919,6 +922,7 @@
 
     <TextView
         android:id="@+id/pname4"
+        android:visibility="invisible"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginBottom="1dp"
@@ -949,7 +953,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/relativeLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber1"
@@ -977,7 +981,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber2"
@@ -1005,7 +1009,7 @@
         app:layout_constraintEnd_toEndOf="@+id/relativeLayout"
         app:layout_constraintTop_toTopOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber3"
@@ -1032,7 +1036,7 @@
         app:layout_constraintBottom_toBottomOf="@+id/relativeLayout"
         app:layout_constraintEnd_toEndOf="@+id/relativeLayout"
         app:layout_constraintWidth_percent="0.4"
-        app:srcCompat="@drawable/lm_shield" />
+        app:srcCompat="@drawable/lhj_emblem_approved" />
 
     <ImageView
         android:id="@+id/winnerindexnumber4"
@@ -1061,8 +1065,9 @@
 
     <ImageView
         android:id="@+id/maindiceimageview"
-        android:layout_width="74dp"
-        android:layout_height="85dp"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:scaleType="fitCenter"
         android:layout_marginBottom="5dp"
         app:layout_constraintBottom_toBottomOf="@+id/bleftdicebg"
         app:layout_constraintEnd_toEndOf="@+id/bleftdicebg"
@@ -1080,34 +1085,45 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/ingamemenuitemslayout"
-        android:layout_width="90dp"
-        android:layout_height="100dp"
-        android:layout_marginBottom="-3dp"
-        android:background="@drawable/ingamemenubg"
+        android:layout_width="232dp"
+        android:layout_height="154dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/lhj_game_menu_panel"
+        android:elevation="12dp"
+        android:padding="12dp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/ingamemenubtn"
         app:layout_constraintStart_toStartOf="parent">
 
-        <ImageView
+        <TextView
             android:id="@+id/rmpitemmenu"
-            android:layout_width="85dp"
-            android:layout_height="45dp"
-            android:visibility="visible"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:srcCompat="@drawable/removeplayersbgmenuitem" />
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:background="@drawable/lhj_game_menu_action"
+            android:gravity="center"
+            android:text="Manage Players"
+            android:textColor="#172B54"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toTopOf="parent"/>
 
-        <ImageView
+        <TextView
             android:id="@+id/exititemmenu"
-            android:layout_width="85dp"
-            android:layout_height="45dp"
-            android:layout_marginBottom="10dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/rmpitemmenu"
-            app:srcCompat="@drawable/exitbgmenuitem" />
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/lhj_game_menu_exit"
+            android:gravity="center"
+            android:text="Exit Match"
+            android:textColor="#A62330"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toBottomOf="@+id/rmpitemmenu"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -1209,7 +1225,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp1"
@@ -1219,7 +1235,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield1"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/bluepiece" />
+                        app:srcCompat="@drawable/lhj_token_blue" />
 
                     <ImageView
                         android:id="@+id/winorlose1"
@@ -1267,7 +1283,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp2"
@@ -1277,7 +1293,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield2"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/redpiece" />
+                        app:srcCompat="@drawable/lhj_token_red" />
 
                     <ImageView
                         android:id="@+id/winorlose2"
@@ -1325,7 +1341,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp3"
@@ -1335,7 +1351,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield3"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/greenpiece" />
+                        app:srcCompat="@drawable/lhj_token_green" />
 
                     <ImageView
                         android:id="@+id/winorlose3"
@@ -1384,7 +1400,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/lm_shield" />
+                        app:srcCompat="@drawable/lhj_emblem_approved" />
 
                     <ImageView
                         android:id="@+id/winnerlistp4"
@@ -1394,7 +1410,7 @@
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintStart_toEndOf="@+id/winnerlisshield4"
                         app:layout_constraintTop_toTopOf="parent"
-                        app:srcCompat="@drawable/yellowpiece" />
+                        app:srcCompat="@drawable/lhj_token_yellow" />
 
                     <ImageView
                         android:id="@+id/winorlose4"
@@ -1459,7 +1475,7 @@
                     android:layout_marginTop="5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView132"
-                    app:srcCompat="@drawable/bluepiece" />
+                    app:srcCompat="@drawable/lhj_token_blue" />
 
                 <ImageView
                     android:id="@+id/imageView138"
@@ -1468,7 +1484,7 @@
                     android:layout_marginStart="30dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView137"
-                    app:srcCompat="@drawable/redpiece" />
+                    app:srcCompat="@drawable/lhj_token_red" />
 
                 <ImageView
                     android:id="@+id/imageView140"
@@ -1478,7 +1494,7 @@
                     android:layout_marginTop="5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView138"
-                    app:srcCompat="@drawable/yellowpiece" />
+                    app:srcCompat="@drawable/lhj_token_yellow" />
 
                 <ImageView
                     android:id="@+id/imageView135"
@@ -1488,7 +1504,7 @@
                     android:layout_marginTop="5dp"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/imageView133"
-                    app:srcCompat="@drawable/greenpiece" />
+                    app:srcCompat="@drawable/lhj_token_green" />
 
                 <TextView
                     android:id="@+id/team1name1"
@@ -1827,7 +1843,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/bluepiece" />
+                    app:srcCompat="@drawable/lhj_token_blue" />
 
                 <TextView
                     android:id="@+id/rmp1name"
@@ -1876,7 +1892,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/redpiece" />
+                    app:srcCompat="@drawable/lhj_token_red" />
 
                 <TextView
                     android:id="@+id/rmp2name"
@@ -1925,7 +1941,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/greenpiece" />
+                    app:srcCompat="@drawable/lhj_token_green" />
 
                 <TextView
                     android:id="@+id/rmp3name"
@@ -1976,7 +1992,7 @@
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/yellowpiece" />
+                    app:srcCompat="@drawable/lhj_token_yellow" />
 
                 <TextView
                     android:id="@+id/rmp4name"
@@ -2077,7 +2093,7 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:srcCompat="@drawable/redpiece" />
+                    app:srcCompat="@drawable/lhj_token_red" />
 
                 <ImageView
                     android:id="@+id/confirmrmpnobtn"
