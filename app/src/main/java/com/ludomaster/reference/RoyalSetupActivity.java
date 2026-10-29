@@ -17,7 +17,14 @@ import org.json.JSONObject;
 public final class RoyalSetupActivity extends Activity {
     private boolean computer;
     private int count=2;
-    private final boolean[] rules={false,false,false,false};
+    private MatchVariant variant=MatchVariant.CLASSIC;
+    private LinearLayout countPage,typePage,setupPage;
+    private ScrollView setupScroll;
+    private TextView variantTitle;
+    private LinearLayout shuffleOptions;
+    private int page;
+    private boolean leaguePrompted;
+    private final boolean[] rules={false,false,false};
     private final ArrayList<EditText> names=new ArrayList<>();
     private LinearLayout players;
     private int shuffleSeconds=300;
@@ -33,6 +40,7 @@ public final class RoyalSetupActivity extends Activity {
         computer=getIntent().getBooleanExtra("computer",false);
         ScrollView scroll=new ScrollView(this);
         scroll.setFillViewport(true);
+        setupScroll=scroll;
         LinearLayout root=new LinearLayout(this);
         root.setPadding(dp(26),dp(42),dp(26),dp(28));
         root.setOrientation(LinearLayout.VERTICAL);
@@ -44,37 +52,65 @@ public final class RoyalSetupActivity extends Activity {
         root.addView(shield,new LinearLayout.LayoutParams(dp(100),dp(110)));
         TextView heading=text(computer?"COMPUTER MATCH":"PASS & PLAY",27,0xff172B54);
         root.addView(heading);
+        countPage=new LinearLayout(this);countPage.setOrientation(1);
+        typePage=new LinearLayout(this);typePage.setOrientation(1);
+        setupPage=new LinearLayout(this);setupPage.setOrientation(1);
+        root.addView(countPage,new LinearLayout.LayoutParams(-1,-2));
+        root.addView(typePage,new LinearLayout.LayoutParams(-1,-2));
+        root.addView(setupPage,new LinearLayout.LayoutParams(-1,-2));
         countLabel=text("PLAYERS: 2",18,0xff172B54);
-        countLabel.setPadding(0,dp(14),0,dp(6));root.addView(countLabel);
-        LinearLayout nums=new LinearLayout(this);root.addView(nums);
+        countLabel.setPadding(0,dp(14),0,dp(6));countPage.addView(countLabel);
+        LinearLayout nums=new LinearLayout(this);countPage.addView(nums);
         for(int n=2;n<=4;n++){
             final int selected=n;
             Button btn=button(n+"P");
             nums.addView(btn,new LinearLayout.LayoutParams(0,dp(58),1));
             btn.setOnClickListener(v->{count=selected;updatePlayers();});
         }
+        Button next=button("CHOOSE GAME TYPE");
+        countPage.addView(next,new LinearLayout.LayoutParams(-1,dp(58)));
+        next.setOnClickListener(v->showPage(1));
+        Button countBack=button("BACK");countPage.addView(countBack,new LinearLayout.LayoutParams(-1,dp(52)));
+        countBack.setOnClickListener(v->finish());
+        typePage.addView(text("CHOOSE GAME TYPE",22,0xff172B54));
+        String[] descriptions={"The familiar race to bring all four pawns home.",
+            "Homes, starts and finishing lanes swap on a timer.",
+            "Four bombs per pawn. Arm before rolling and leave one behind when moving. Any colour can trigger it."};
+        for(MatchVariant choice:MatchVariant.values()) {
+            Button option=button(choice.title);
+            LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,dp(58));margin.topMargin=dp(14);
+            typePage.addView(option,margin);
+            typePage.addView(text(descriptions[choice.ordinal()],14,0xff172B54));
+            option.setOnClickListener(v->{variant=choice;showPage(2);});
+        }
+        Button typeBack=button("BACK TO PLAYER COUNT");
+        typePage.addView(typeBack,new LinearLayout.LayoutParams(-1,dp(52)));
+        typeBack.setOnClickListener(v->showPage(0));
+        variantTitle=text("",22,0xff172B54);setupPage.addView(variantTitle);
         leagueButton=button("SELECT LEAGUE PLAYERS (LOGIN REQUIRED)");
-        root.addView(leagueButton,new LinearLayout.LayoutParams(-1,dp(55)));
+        setupPage.addView(leagueButton,new LinearLayout.LayoutParams(-1,dp(55)));
         leagueButton.setOnClickListener(v->chooseLeague());
         Button addPlayer=button("+ ADD PLAYER TO LEAGUE");
-        root.addView(addPlayer,new LinearLayout.LayoutParams(-1,dp(49)));
+        setupPage.addView(addPlayer,new LinearLayout.LayoutParams(-1,dp(49)));
         addPlayer.setOnClickListener(v->LeaguePlayerCreator.show(this,selectedLeagueId,()->refreshRoster()));
         players=new LinearLayout(this);players.setOrientation(1);
-        root.addView(players,new LinearLayout.LayoutParams(-1,-2));
+        setupPage.addView(players,new LinearLayout.LayoutParams(-1,-2));
         TextView note=text("OPTIONAL RULES",19,0xff172B54);
-        note.setPadding(0,dp(18),0,dp(8));root.addView(note);
+        note.setPadding(0,dp(18),0,dp(8));setupPage.addView(note);
         String[] labels={"Combat scoring (+5 kill / -5 death)",
-                "Earn and use immunity shields","Dynamic Home Shuffle (swap homes during play)",
+                "Earn and use immunity shields",
                 "Guided Game (show legal moves and landing squares)"};
         for(int i=0;i<rules.length;i++){
             final int idx=i;
             CheckBox cb=new CheckBox(this);
             cb.setText(labels[i]);cb.setTextColor(0xff172B54);cb.setTextSize(15);
             cb.setButtonTintList(ColorStateList.valueOf(0xff2586F5));
-            root.addView(cb);
+            setupPage.addView(cb);
             cb.setOnCheckedChangeListener((button,checked)->rules[idx]=checked);
         }
-        root.addView(text("HOME SHUFFLE INTERVAL",14,0xff172B54));
+        shuffleOptions=new LinearLayout(this);shuffleOptions.setOrientation(1);
+        setupPage.addView(shuffleOptions,new LinearLayout.LayoutParams(-1,-2));
+        shuffleOptions.addView(text("HOME SHUFFLE INTERVAL",14,0xff172B54));
         Spinner shuffleInterval=new Spinner(this);
         String[] intervals={"1 minute","2 minutes","3 minutes","5 minutes","10 minutes"};
         int[] values={60,120,180,300,600};
@@ -85,23 +121,39 @@ public final class RoyalSetupActivity extends Activity {
             @Override public void onItemSelected(android.widget.AdapterView<?> parent,android.view.View view,int position,long id){shuffleSeconds=values[position];}
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent){}
         });
-        root.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
-        root.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,0xff172B54));
+        shuffleOptions.addView(shuffleInterval,new LinearLayout.LayoutParams(-1,dp(52)));
+        shuffleOptions.addView(text("Each colour changes its home at a safe move boundary. Main-track pawns stay in place.",12,0xff172B54));
         Button play=button("START MATCH");
-        root.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
+        setupPage.addView(play,new LinearLayout.LayoutParams(-1,dp(64)));
         play.setOnClickListener(v->startMatch());
         Button saved=button("SAVED MATCHES / RETRY UPLOAD");
-        root.addView(saved,new LinearLayout.LayoutParams(-1,dp(52)));
+        setupPage.addView(saved,new LinearLayout.LayoutParams(-1,dp(52)));
         saved.setOnClickListener(v->MatchUploader.showSavedMatches(this));
         Button back=button("BACK");
-        root.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
-        root.addView(text("Powered by ludohojaye.com",13,0xff172B54));
-        back.setOnClickListener(v->finish());
+        setupPage.addView(back,new LinearLayout.LayoutParams(-1,dp(54)));
+        setupPage.addView(text("Powered by ludohojaye.com",13,0xff172B54));
+        back.setOnClickListener(v->showPage(1));
         updatePlayers();
         setContentView(scroll);
         // A signed-in player must pick the league before selecting its roster.
         // Offline guests can play without an account or league.
-        if (SecureLogin.token(this) != null) scroll.post(this::chooseLeague);
+        showPage(0);
+    }
+    private void showPage(int selected) {
+        page=selected;
+        countPage.setVisibility(page==0?android.view.View.VISIBLE:android.view.View.GONE);
+        typePage.setVisibility(page==1?android.view.View.VISIBLE:android.view.View.GONE);
+        setupPage.setVisibility(page==2?android.view.View.VISIBLE:android.view.View.GONE);
+        variantTitle.setText(variant.title+" • "+count+" players");
+        shuffleOptions.setVisibility(variant==MatchVariant.HOME_SHUFFLE?
+            android.view.View.VISIBLE:android.view.View.GONE);
+        setupScroll.post(()->setupScroll.smoothScrollTo(0,0));
+        if(page==2 && !leaguePrompted && SecureLogin.token(this)!=null) {
+            leaguePrompted=true;setupScroll.post(this::chooseLeague);
+        }
+    }
+    @Override public void onBackPressed() {
+        if(page>0)showPage(page-1);else super.onBackPressed();
     }
     private TextView text(String label,int size,int color) {
         TextView t=new TextView(this);t.setText(label);t.setTextSize(size);t.setTextColor(color);
@@ -263,8 +315,9 @@ public final class RoyalSetupActivity extends Activity {
         }
         intent.putExtra("rule_combat",rules[0]);
         intent.putExtra("rule_immunity",rules[1]);
-        intent.putExtra("rule_shuffle",rules[2]);
-        intent.putExtra("rule_guided",rules[3]);
+        intent.putExtra("match_variant",variant.id);
+        intent.putExtra("rule_shuffle",variant==MatchVariant.HOME_SHUFFLE);
+        intent.putExtra("rule_guided",rules[2]);
         intent.putExtra("shuffle_interval_seconds",shuffleSeconds);
         startActivity(intent);
     }
