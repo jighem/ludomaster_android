@@ -1095,9 +1095,10 @@ public class MainActivity extends AppCompatActivity {
         bombStock.setGravity(Gravity.CENTER);bombStock.setTextSize(11);
         bomberControls.addView(bombStock,new LinearLayout.LayoutParams(-1,-2));
         ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(0,-2);
-        params.startToStart=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.startToEnd=R.id.ingamemenubtn;
         params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
-        params.topToBottom=R.id.relativeLayout;params.topMargin=hudDp(72);
+        params.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
+        params.bottomMargin=hudDp(18);
         root.addView(bomberControls,params);
         bombArmButton.setOnClickListener(v->{
             if(bombChoiceLocked || currentBomberIsBot() || shuffleMatchEnding)return;
@@ -1125,7 +1126,7 @@ public class MainActivity extends AppCompatActivity {
             available?"PLANT BOMB • arm before rolling":"Bomb unavailable • move to a free unsafe track square");
         bombArmButton.setAlpha(bombArmButton.isEnabled()?1f:.72f);
         StringBuilder stock=new StringBuilder(currentPlayerColor==null?"Bomber Ludo":currentPlayerColor.toUpperCase(java.util.Locale.ROOT));
-        stock.append(" • bombs left (hold pawn for its number): ");
+        stock.append(" • bombs: ");
         if(currentPlayerColor!=null) {
             int index=0;
             for(Piece pawn:getPiecesByColor(currentPlayerColor)) {
