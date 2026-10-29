@@ -175,6 +175,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView centralDiceResultView;
     private final Runnable hideCentralDiceResult = () -> {
         if (centralDiceResultView != null) centralDiceResultView.setVisibility(View.GONE);
+        refreshBomberControls();
     };
 
     MediaPlayer gameStartSound,diceRollSound,stepSound,congratulationSound;
@@ -184,7 +185,6 @@ public class MainActivity extends AppCompatActivity {
     float blockSize;
 
     private int autoMoveGeneration;
-    private boolean centralBombNoticeVisible;
 
     HashSet<Integer> safeSpots;
 
@@ -278,6 +278,7 @@ public class MainActivity extends AppCompatActivity {
         int[] winnerBlocks;
 
         ImageView pieceIcon,pieceStandIcon;
+        BombInventoryDotDrawable bombMarker;
         boolean isThisPlayerWon = false;
 
 
@@ -324,6 +325,15 @@ public class MainActivity extends AppCompatActivity {
                 params.rightToRight = pieceIcon.getId();
                 this.readyToPick.setLayoutParams(params);
                 readyToPick.setScaleX(1.2f);readyToPick.setScaleY(1.2f);
+            }
+
+            if(bomberEnabled) {
+                bombMarker=new BombInventoryDotDrawable(pieceIcon);
+                pieceIcon.getOverlay().add(bombMarker);
+                pieceIcon.addOnLayoutChangeListener((view,left,top,right,bottom,oldLeft,oldTop,oldRight,oldBottom)->{
+                    bombMarker.setBounds(0,0,right-left,bottom-top);
+                    bombMarker.invalidateSelf();
+                });
             }
 
             /*piece.setOnLongClickListener(new View.OnLongClickListener() {
@@ -1042,9 +1052,7 @@ public class MainActivity extends AppCompatActivity {
     private MatchVariant matchVariant=MatchVariant.CLASSIC;
     private boolean bomberEnabled,bombArmed,bombChoiceLocked;
     private final BomberRules bomberRules=new BomberRules();
-    private LinearLayout bomberControls;
-    private android.widget.Button bombArmButton;
-    private TextView bombStock;
+    private BombControlView bombCenterControl;
     private BombBoardDrawable bombOverlay;
     private android.view.ViewGroup bombOverlayHost;
 
@@ -1064,31 +1072,16 @@ public class MainActivity extends AppCompatActivity {
     }
     private void initialiseBomber() {
         if(!bomberEnabled)return;
-        ConstraintLayout root=findViewById(R.id.activitybg);
-        bomberControls=new LinearLayout(this);
-        bomberControls.setOrientation(LinearLayout.VERTICAL);
-        bomberControls.setPadding(hudDp(8),0,hudDp(8),0);
-        bombArmButton=new android.widget.Button(this);
-        bombArmButton.setAllCaps(false);bombArmButton.setTextSize(12);
-        bombArmButton.setTextColor(0xFFFFFFFF);
-        bombArmButton.setBackgroundResource(R.drawable.lhj_button_blue);
-        bombArmButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_plant_bomb,0,0,0);
-        bombArmButton.setCompoundDrawablePadding(hudDp(5));
-        bomberControls.addView(bombArmButton,new LinearLayout.LayoutParams(-1,hudDp(44)));
-        bombStock=new TextView(this);bombStock.setTextColor(0xFF172B54);
-        bombStock.setGravity(Gravity.CENTER);bombStock.setTextSize(11);
-        bomberControls.addView(bombStock,new LinearLayout.LayoutParams(-1,-2));
-        ConstraintLayout.LayoutParams params=new ConstraintLayout.LayoutParams(0,-2);
-        params.startToEnd=R.id.ingamemenubtn;
-        params.endToEnd=ConstraintLayout.LayoutParams.PARENT_ID;
-        params.bottomToBottom=ConstraintLayout.LayoutParams.PARENT_ID;
-        params.bottomMargin=hudDp(18);
-        root.addView(bomberControls,params);
-        bombArmButton.setOnClickListener(v->{
-            if(bombChoiceLocked || currentBomberIsBot() || shuffleMatchEnding)return;
-            if(!anyBombDeparture())return;
+        RelativeLayout boardLayer=findViewById(R.id.relativeLayout);
+        bombCenterControl=new BombControlView(this);
+        bombCenterControl.setElevation(hudDp(30));
+        boardLayer.addView(bombCenterControl,new RelativeLayout.LayoutParams(hudDp(72),hudDp(72)));
+        bombCenterControl.setOnClickListener(v->{
+            if(bombChoiceLocked || currentPlayerDice>0 || currentBomberIsBot() || shuffleMatchEnding ||
+                (d!=null && d.isRolling) || !anyBombDeparture())return;
             bombArmed=!bombArmed;refreshBomberControls();
         });
+        boardLayer.post(this::refreshBomberControls);
         Piece anchor=rp.isEmpty()?(gp.isEmpty()?(bp.isEmpty()?yp.get(0):bp.get(0)):gp.get(0)):rp.get(0);
         bombOverlayHost=(android.view.ViewGroup)anchor.piece.getParent();
         bombOverlayHost.post(()->{
@@ -1101,40 +1094,48 @@ public class MainActivity extends AppCompatActivity {
         refreshBomberControls();
     }
     private void refreshBomberControls() {
-        if(!bomberEnabled || bombArmButton==null)return;
-        boolean available=anyBombDeparture();
-        boolean bot=currentBomberIsBot();
-        bombArmButton.setEnabled(available && !bombChoiceLocked && !bot && !shuffleMatchEnding);
-        bombArmButton.setText(bombArmed ?
-            (bombChoiceLocked?"Bomb Armed for this Roll":"Cancel Bomb for this Roll") : "Plant Bomb with this Roll");
-        bombArmButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-            bombArmed?0xFFC35A00:0xFF2586F5));
-        bombArmButton.setContentDescription(bombArmButton.getText()+
-            (!available?". No pawn with a bomb is on a free unsafe track square.":""));
-        if(bombArmed && !bombChoiceLocked)showCentralBombNotice();
-        else if(!bombArmed)clearCentralBombNotice();
-        bombArmButton.setAlpha(bombArmButton.isEnabled()?1f:.72f);
-        StringBuilder stock=new StringBuilder(currentPlayerColor==null?"Bomber Ludo":currentPlayerColor.toUpperCase(java.util.Locale.ROOT));
-        stock.append(" • bombs: ");
-        if(currentPlayerColor!=null) {
+        if(!bomberEnabled || bombCenterControl==null)return;
+        for(String color:new String[]{"red","green","blue","yellow"}) {
             int index=0;
-            for(Piece pawn:getPiecesByColor(currentPlayerColor)) {
-                if(index>0)stock.append(" / ");
-                stock.append("P").append(index+1).append(":").append(bomberRules.remaining(pawn.bombId));
-                pawn.piece.setContentDescription(pawn.colour+" pawn "+(++index)+", "+
-                    bomberRules.remaining(pawn.bombId)+" bombs left");
+            for(Piece pawn:getPiecesByColor(color)) {
+                int remaining=bomberRules.remaining(pawn.bombId);
+                if(pawn.bombMarker!=null)pawn.bombMarker.available(remaining>0);
+                pawn.piece.setContentDescription(pawn.colour+" pawn "+(++index)+", "+remaining+" bomb remaining");
             }
         }
-        bombStock.setText(stock.toString());
         if(bombOverlay!=null)bombOverlay.update(bomberRules.bombs());
+        int size=ludoBoard.getWidth()>0?
+            Math.max(hudDp(52),Math.min(hudDp(90),ludoBoard.getWidth()/5)):hudDp(72);
+        android.view.ViewGroup.LayoutParams params=bombCenterControl.getLayoutParams();
+        if(params.width!=size || params.height!=size) {
+            params.width=size;params.height=size;bombCenterControl.setLayoutParams(params);
+        }
+        bombCenterControl.setX(ludoBoard.getX()+(ludoBoard.getWidth()-size)/2f);
+        bombCenterControl.setY(ludoBoard.getY()+(ludoBoard.getHeight()-size)/2f);
+        boolean hasPlayer=currentPlayerColor!=null && !currentPlayerColor.isEmpty() && d!=null;
+        boolean rolling=d!=null && d.isRolling;
+        boolean resultVisible=centralDiceResultView!=null && centralDiceResultView.getVisibility()==View.VISIBLE;
+        BombControlState state=BombControlState.resolve(bomberEnabled,shuffleMatchEnding,rolling,resultVisible,
+            hasPlayer && !bombChoiceLocked && currentPlayerDice<1,bombArmed,anyBombDeparture(),
+            hasPlayer && currentPlayerDice>0);
+        bombCenterControl.bind(state,currentBomberIsBot());
+        if(state!=BombControlState.HIDDEN)bombCenterControl.bringToFront();
     }
     private void readyForBombChoice() {
-        bombArmed=false;bombChoiceLocked=false;refreshBomberControls();
+        bombArmed=false;bombChoiceLocked=false;
+        if(bomberEnabled && centralDiceResultView!=null) {
+            globalHandler.removeCallbacks(hideCentralDiceResult);
+            centralDiceResultView.setVisibility(GONE);
+        }
+        refreshBomberControls();
     }
     private void beginBombRoll() {
         if(!bomberEnabled)return;
         if(currentBomberIsBot())bombArmed=anyBombDeparture() && botTieBreaker.nextInt(100)<60;
-        if(bombArmed)showCentralBombNotice();
+        if(centralDiceResultView!=null) {
+            globalHandler.removeCallbacks(hideCentralDiceResult);
+            centralDiceResultView.setVisibility(GONE);
+        }
         bombChoiceLocked=true;refreshBomberControls();
     }
     private boolean prepareBombDeparture(Piece pawn) {
@@ -1149,8 +1150,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
     private void hideBomberControls() {
-        clearCentralBombNotice();
-        if(bomberControls!=null)bomberControls.setVisibility(GONE);
+        if(bombCenterControl!=null)bombCenterControl.bind(BombControlState.HIDDEN,false);
         if(bombOverlayHost!=null && bombOverlay!=null)bombOverlayHost.getOverlay().remove(bombOverlay);
     }
     private void animateBombBlast(int square,Runnable complete) {
@@ -1524,23 +1524,6 @@ public class MainActivity extends AppCompatActivity {
         boardLayer.addView(centralDiceResultView,params);
     }
 
-    private void clearCentralBombNotice() {
-        if(!centralBombNoticeVisible)return;
-        centralBombNoticeVisible=false;
-        if(centralDiceResultView!=null)centralDiceResultView.setVisibility(GONE);
-    }
-
-    private void showCentralBombNotice() {
-        if(centralDiceResultView==null)return;
-        centralBombNoticeVisible=true;
-        globalHandler.removeCallbacks(hideCentralDiceResult);
-        setCentralMessageSize(142,70,13);
-        centralDiceResultView.setText("BOMB ARMED\nPlants with this roll");
-        centralDiceResultView.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF9D4700));
-        centralDiceResultView.setVisibility(View.VISIBLE);
-        centralDiceResultView.bringToFront();
-    }
-
     private void setCentralMessageSize(int width,int height,int textSize) {
         android.view.ViewGroup.LayoutParams params=centralDiceResultView.getLayoutParams();
         params.width=hudDp(width);params.height=hudDp(height);
@@ -1557,7 +1540,6 @@ public class MainActivity extends AppCompatActivity {
         if ("red".equals(currentPlayerColor)) color = 0xfff04452;
         else if ("green".equals(currentPlayerColor)) color = 0xff23bf75;
         else if ("yellow".equals(currentPlayerColor)) color = 0xffffc342;
-        centralBombNoticeVisible=false;
         setCentralMessageSize(62,62,32);
         centralDiceResultView.setText(String.valueOf(result));
         centralDiceResultView.setBackgroundTintList(
@@ -1567,6 +1549,7 @@ public class MainActivity extends AppCompatActivity {
         centralDiceResultView.setVisibility(View.VISIBLE);
         centralDiceResultView.bringToFront();
         globalHandler.postDelayed(hideCentralDiceResult,1500);
+        refreshBomberControls();
     }
 
     /** Always-visible, compact stats strip above the original board, without altering its tiles. */
