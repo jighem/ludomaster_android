@@ -6,7 +6,7 @@ import java.util.Map;
 
 /** Match-scoped bomb state. Rendering, turns and animation remain outside this class. */
 public final class BomberRules {
-    public static final int BOMBS_PER_PAWN=4;
+    public static final int BOMBS_PER_PAWN=1;
     private final Map<String,Integer> spent=new HashMap<>();
     private final Map<Integer,Bomb> planted=new HashMap<>();
     public static final class Bomb {

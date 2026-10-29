@@ -75,7 +75,7 @@ public final class RoyalSetupActivity extends Activity {
         typePage.addView(text("CHOOSE GAME TYPE",22,0xff172B54));
         String[] descriptions={"The familiar race to bring all four pawns home.",
             "Homes, starts and finishing lanes swap on a timer.",
-            "Four bombs per pawn. Arm before rolling and leave one behind when moving. Any colour can trigger it. Hold a pawn to check its number and bombs."};
+            "One bomb per pawn (four per player). Arm before rolling and leave one behind when moving. Any colour can trigger it. Hold a pawn to check its number and bombs."};
         for(MatchVariant choice:MatchVariant.values()) {
             Button option=button(choice.title);
             LinearLayout.LayoutParams margin=new LinearLayout.LayoutParams(-1,dp(58));margin.topMargin=dp(14);

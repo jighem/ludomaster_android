@@ -4,23 +4,24 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class BomberRulesTest {
-    @Test public void eachPawnHasFourNonRefillingBombs() {
+    @Test public void eachPawnHasOneNonRefillingBomb() {
         BomberRules game=new BomberRules();
+        int placed=0;
         for(int pawn=0;pawn<4;pawn++) {
             String id="red:"+pawn;
-            assertEquals(4,game.remaining(id));
-            for(int shot=0;shot<4;shot++) {
-                assertTrue(game.plant(id,"red",1,true,false));
-                assertEquals(3-shot,game.remaining(id));
-                assertNotNull(game.detonate(1));
-            }
+            assertEquals(1,game.remaining(id));
+            assertTrue(game.plant(id,"red",1,true,false));
+            placed++;
+            assertEquals(0,game.remaining(id));
+            assertNotNull(game.detonate(1));
             assertFalse(game.plant(id,"red",2,true,false));
             // Capture/home/re-entry do not introduce an inventory reset.
             assertFalse(game.canPlant(id,-1,false,false));
             assertFalse(game.canPlant(id,2,true,false));
             assertEquals(0,game.remaining(id));
         }
-        assertEquals(4,game.remaining("green:0"));
+        assertEquals(4,placed);
+        assertEquals(1,game.remaining("green:0"));
     }
     @Test public void onlyUnsafeMainTrackAcceptsBombs() {
         BomberRules game=new BomberRules();
@@ -32,13 +33,13 @@ public class BomberRulesTest {
         }
         assertFalse(game.canPlant("pawn",1,false,false));
         assertFalse(game.canPlant("pawn",1,true,true));
-        assertEquals(4,game.remaining("pawn"));
+        assertEquals(1,game.remaining("pawn"));
     }
     @Test public void noDuplicateAndFailedPlantDoesNotSpend() {
         BomberRules game=new BomberRules();
         assertTrue(game.plant("red:0","red",1,true,false));
         assertFalse(game.plant("blue:0","blue",1,true,false));
-        assertEquals(4,game.remaining("blue:0"));
+        assertEquals(1,game.remaining("blue:0"));
         assertEquals("red",game.bombs().get(1).ownerColor);
         assertNotNull(game.detonate(1));
         assertTrue(game.plant("blue:0","blue",1,true,false));
@@ -65,13 +66,13 @@ public class BomberRulesTest {
         game.plant("red:0","red",3,true,false);
         assertNotNull(game.detonate(3)); // Shield decision happens after consumption.
         assertFalse(game.hasBomb(3));
-        assertEquals(3,game.remaining("red:0"));
+        assertEquals(0,game.remaining("red:0"));
     }
     @Test public void bombSnapshotIsImmutableAndMatchesAreIsolated() {
         BomberRules first=new BomberRules(),second=new BomberRules();
         first.plant("pawn","red",1,true,false);
         assertFalse(second.hasBomb(1));
-        assertEquals(4,second.remaining("pawn"));
+        assertEquals(1,second.remaining("pawn"));
         try { first.bombs().clear();fail("immutable"); } catch(UnsupportedOperationException expected) { }
         assertTrue(first.hasBomb(1));
     }
