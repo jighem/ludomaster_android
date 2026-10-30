@@ -1016,6 +1016,16 @@ public class MainActivity extends AppCompatActivity {
      * selectable pawn explicitly instead of relying on z-order or tiny hitboxes.
      */
     private void chooseStackedPieceOrMove(Piece tapped) {
+        if (bomberEnabled && bombArmed && currentPlayerDice < 1) {
+            if (tapped.colour.equals(currentPlayerColor) && canLeaveBomb(tapped)) {
+                if (bomberRules.plant(tapped.bombId,tapped.colour,tapped.currBlock,tapped.isAlive,tapped.hasCompletedItsPurpose)) {
+                    bombArmed=false;
+                    Toast.makeText(this,"Bomb planted! Roll the dice.",Toast.LENGTH_SHORT).show();
+                    refreshBomberControls();
+                }
+            }
+            return;
+        }
         if (currentPlayerDice < 1) return;
         if (tapped.currBlock < 0) {
             if (tapped.colour.equals(currentPlayerColor) && !tapped.isAlive && currentPlayerDice == 6)
@@ -1104,6 +1114,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if(bombOverlay!=null)bombOverlay.update(bomberRules.bombs());
+        if(bombArmed && !currentBomberIsBot()) {
+            for(Piece pawn:getPiecesByColor(currentPlayerColor)) {
+                boolean eligible=canLeaveBomb(pawn);
+                pawn.piece.setClickable(eligible);
+                if(eligible) {
+                    pawn.piece.bringToFront();
+                    pawn.piece.setElevation(hudDp(19));
+                    pawn.piece.setAlpha(1f);
+                    pawn.piece.setContentDescription("Plant bomb with "+pawn.colour+" pawn");
+                }
+            }
+        }
         int size=ludoBoard.getWidth()>0?
             Math.max(hudDp(52),Math.min(hudDp(90),ludoBoard.getWidth()/5)):hudDp(72);
         android.view.ViewGroup.LayoutParams params=bombCenterControl.getLayoutParams();
@@ -2012,7 +2034,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void roll() {
-            if (isRolling || shuffleMatchEnding || players == null || players.isEmpty()) return;
+            if (isRolling || shuffleMatchEnding || (bomberEnabled && bombArmed && !currentBomberIsBot()) || players == null || players.isEmpty()) return;
             ++autoMoveGeneration;
             beginBombRoll();
             isRolling = true;
