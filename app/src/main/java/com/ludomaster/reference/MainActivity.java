@@ -1187,10 +1187,50 @@ public class MainActivity extends AppCompatActivity {
         });
         blast.start();
     }
+    private void resolveBombVictim(Piece victim,Runnable survived,Runnable killed) {
+        if(immunityEnabled && getCount(immunityShields,victim.colour)>0) {
+            if(victim.isBotPiece) {
+                immunityShields.put(victim.colour,getCount(immunityShields,victim.colour)-1);
+                refreshStatsHud(); survived.run(); return;
+            }
+            new AlertDialog.Builder(this).setTitle(victim.colour.toUpperCase(java.util.Locale.ROOT)+" • Bomb explosion")
+                .setMessage("Spend 1 shield to survive the blast? Otherwise this pawn returns to its yard.")
+                .setPositiveButton("Use Shield",(dialog,which)->{
+                    immunityShields.put(victim.colour,getCount(immunityShields,victim.colour)-1);
+                    refreshStatsHud(); survived.run();
+                })
+                .setNegativeButton("Accept Explosion",(dialog,which)->killed.run())
+                .setCancelable(false).show();
+        } else killed.run();
+    }
+
     private void resolveLanding(Piece pawn,int square,java.util.function.Consumer<Boolean> continuation) {
         BomberRules.Bomb bomb=bomberEnabled?bomberRules.detonate(square):null;
         if(bomb==null){resolveCapture(pawn,square,continuation);return;}
         refreshBomberControls();
+        // An armed bomb occupied by an opposing pawn causes a mutual explosion,
+        // not a conventional capture. Each victim can independently spend a shield.
+        Piece occupant=null;
+        for(Player player:players) {
+            if(player.color.equals(pawn.colour))continue;
+            for(Piece candidate:getPiecesByColor(player.color)) {
+                if(candidate.isAlive && !candidate.returningHome && candidate.currBlock==square) {
+                    occupant=candidate;
+                    break;
+                }
+            }
+            if(occupant!=null)break;
+        }
+        if(occupant!=null) {
+            final Piece resident=occupant;
+            animateBombBlast(square,()->resolveBombVictim(resident,()->resolveBombVictim(pawn,
+                ()->continuation.accept(false),
+                ()->{ incrementCount(deathCounts,pawn.colour); refreshStatsHud(); pawn.die(()->finishPieceMove(pawn,false)); }),
+                ()->{ incrementCount(deathCounts,resident.colour); refreshStatsHud(); resident.die();
+                     resolveBombVictim(pawn,()->continuation.accept(false),
+                         ()->{ incrementCount(deathCounts,pawn.colour); refreshStatsHud(); pawn.die(()->finishPieceMove(pawn,false)); }); })));
+            return;
+        }
         animateBombBlast(square,()->{
             Runnable killed=()->{
                 String killer=BomberRules.creditedKiller(bomb,pawn.colour);
