@@ -1223,12 +1223,21 @@ public class MainActivity extends AppCompatActivity {
         }
         if(occupant!=null) {
             final Piece resident=occupant;
-            animateBombBlast(square,()->resolveBombVictim(resident,()->resolveBombVictim(pawn,
-                ()->continuation.accept(false),
-                ()->{ incrementCount(deathCounts,pawn.colour); refreshStatsHud(); pawn.die(()->finishPieceMove(pawn,false)); }),
-                ()->{ incrementCount(deathCounts,resident.colour); refreshStatsHud(); resident.die();
-                     resolveBombVictim(pawn,()->continuation.accept(false),
-                         ()->{ incrementCount(deathCounts,pawn.colour); refreshStatsHud(); pawn.die(()->finishPieceMove(pawn,false)); }); })));
+            final Runnable arrivingDies=()->{
+                incrementCount(deathCounts,pawn.colour);
+                refreshStatsHud();
+                pawn.die(()->finishPieceMove(pawn,false));
+            };
+            final Runnable decideArriving=()->resolveBombVictim(pawn,
+                ()->continuation.accept(false),arrivingDies);
+            animateBombBlast(square,()->resolveBombVictim(resident,
+                decideArriving,
+                ()->{
+                    incrementCount(deathCounts,resident.colour);
+                    refreshStatsHud();
+                    resident.die();
+                    decideArriving.run();
+                }));
             return;
         }
         animateBombBlast(square,()->{
