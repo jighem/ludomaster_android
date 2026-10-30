@@ -34,18 +34,18 @@ final class BombControlView extends LinearLayout {
         if(nextLit!=lit || icon.getDrawable()==null) {
             lit=nextLit;icon.setImageDrawable(new BombIconDrawable(lit));
         }
-        label.setText(lit?"Bomb Armed":state==BombControlState.UNAVAILABLE?"Unavailable":"Plant Bomb");
+        label.setText(state==BombControlState.ARMED?"Tap Pawn / Cancel":state==BombControlState.UNAVAILABLE?"Unavailable":"Plant Bomb");
         setAlpha(state==BombControlState.UNAVAILABLE?.38f:1f);
         boolean toggle=state.canToggle(bot);
         setEnabled(toggle);setClickable(toggle);setFocusable(toggle);
-        setContentDescription(lit?(toggle?"Bomb armed. Tap to cancel before rolling.":"Bomb armed for the selected move."):
+        setContentDescription(lit?(toggle?"Select a highlighted pawn to plant its bomb, or tap to cancel.":"Bomb selection active."):
             state==BombControlState.UNAVAILABLE?"Plant bomb unavailable. No pawn carrying a bomb can plant from its current square.":
             bot?"Computer bomb control":"Plant bomb with this roll. Tap before rolling to arm.");
         setVisibility(VISIBLE);refreshPulse();
     }
     private void refreshPulse() {
         if(icon==null)return;
-        if(!lit || getVisibility()!=VISIBLE || getWindowVisibility()!=VISIBLE || !isShown()) { stopPulse();return; }
+        if(lit || getVisibility()!=VISIBLE || getWindowVisibility()!=VISIBLE || !isShown()) { stopPulse();return; }
         if(pulse!=null && pulse.isStarted())return;
         pulse=ObjectAnimator.ofFloat(icon,View.ALPHA,1f,.68f,1f);
         pulse.setDuration(1000);pulse.setRepeatCount(ValueAnimator.INFINITE);pulse.start();

@@ -53,14 +53,15 @@ public final class RoyalResultsScreen {
         root.addView(text(a,"Powered by ludohojaye.com",13,0xff2586F5));
         TextView receipt=text(a,"Saved locally — not submitted",14,0xff172B54);
         root.addView(receipt);
+        boolean bomberTestBuild=a.getPackageName().endsWith(".bombtest");
         Button submit=action(a,"SUBMIT SCORE TO LUDOHOJAYE");
-        submit.setEnabled(canUpload);
+        submit.setEnabled(canUpload && !bomberTestBuild);
         Runnable refresh=()->{
             String status=MatchUploader.localStatus(a,uuid);
             receipt.setText(status);
             boolean uploaded=status.startsWith("Uploaded");
-            submit.setEnabled(canUpload && !uploaded);
-            submit.setText(uploaded?"ALREADY SUBMITTED":"SUBMIT SCORE TO LUDOHOJAYE");
+            submit.setEnabled(canUpload && !uploaded && !bomberTestBuild);
+            submit.setText(bomberTestBuild?"TEST BUILD — SCORE UPLOAD DISABLED":uploaded?"ALREADY SUBMITTED":"SUBMIT SCORE TO LUDOHOJAYE");
         };
         submit.setOnClickListener(v->MatchUploader.prompt(a,uuid,refresh));
         refresh.run();
@@ -72,6 +73,7 @@ public final class RoyalResultsScreen {
         refreshButton.setTextColor(0xff172B54);
         refreshButton.setOnClickListener(v->MatchUploader.refreshOne(a,uuid,refresh));
         root.addView(refreshButton,new LinearLayout.LayoutParams(-1,dp(a,50)));
+        if(bomberTestBuild)root.addView(text(a,"Bomber test build: scores stay on this device. Production uploads are intentionally disabled.",13,0xff172B54));
         if(!canUpload)root.addView(text(a,"Match could not be saved locally. Submission is unavailable.",13,0xffffaaaa));
         Button done=action(a,"DONE");
         done.setOnClickListener(v->{dialog.dismiss();a.finish();});

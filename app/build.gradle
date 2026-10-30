@@ -10,6 +10,12 @@ android {
         versionName '0.4.3-bomb-ui'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
+    buildTypes {
+        debug {
+            applicationIdSuffix '.bombtest'
+            versionNameSuffix '-test'
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17

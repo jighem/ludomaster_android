@@ -1016,6 +1016,16 @@ public class MainActivity extends AppCompatActivity {
      * selectable pawn explicitly instead of relying on z-order or tiny hitboxes.
      */
     private void chooseStackedPieceOrMove(Piece tapped) {
+        if (bomberEnabled && bombArmed && currentPlayerDice < 1) {
+            if (tapped.colour.equals(currentPlayerColor) && canLeaveBomb(tapped)) {
+                if (bomberRules.plant(tapped.bombId,tapped.colour,tapped.currBlock,tapped.isAlive,tapped.hasCompletedItsPurpose)) {
+                    bombArmed=false;
+                    Toast.makeText(this,"Bomb planted! Roll the dice.",Toast.LENGTH_SHORT).show();
+                    refreshBomberControls();
+                }
+            }
+            return;
+        }
         if (currentPlayerDice < 1) return;
         if (tapped.currBlock < 0) {
             if (tapped.colour.equals(currentPlayerColor) && !tapped.isAlive && currentPlayerDice == 6)
@@ -1050,7 +1060,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private MatchVariant matchVariant=MatchVariant.CLASSIC;
-    private boolean bomberEnabled,bombArmed,bombChoiceLocked;
+    private boolean bomberEnabled,bombArmed,bombChoiceLocked,bombSelectionHighlighting;
     private final BomberRules bomberRules=new BomberRules();
     private BombControlView bombCenterControl;
     private BombBoardDrawable bombOverlay;
@@ -1104,6 +1114,18 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if(bombOverlay!=null)bombOverlay.update(bomberRules.bombs());
+        if(bombArmed && !currentBomberIsBot() && currentPlayerDice < 1) {
+            bombSelectionHighlighting=true;
+            for(Piece pawn:getPiecesByColor(currentPlayerColor)) {
+                if(canLeaveBomb(pawn)) {
+                    pawn.activeState(); // Existing animated selection halo.
+                    pawn.piece.setContentDescription("Plant bomb with "+pawn.colour+" pawn");
+                } else pawn.inactiveState();
+            }
+        } else if(bombSelectionHighlighting) {
+            bombSelectionHighlighting=false;
+            for(Piece pawn:getPiecesByColor(currentPlayerColor)) pawn.inactiveState();
+        }
         int size=ludoBoard.getWidth()>0?
             Math.max(hudDp(52),Math.min(hudDp(90),ludoBoard.getWidth()/5)):hudDp(72);
         android.view.ViewGroup.LayoutParams params=bombCenterControl.getLayoutParams();
@@ -1165,10 +1187,59 @@ public class MainActivity extends AppCompatActivity {
         });
         blast.start();
     }
+    private void resolveBombVictim(Piece victim,Runnable survived,Runnable killed) {
+        if(immunityEnabled && getCount(immunityShields,victim.colour)>0) {
+            if(victim.isBotPiece) {
+                immunityShields.put(victim.colour,getCount(immunityShields,victim.colour)-1);
+                refreshStatsHud(); survived.run(); return;
+            }
+            new AlertDialog.Builder(this).setTitle(victim.colour.toUpperCase(java.util.Locale.ROOT)+" • Bomb explosion")
+                .setMessage("Spend 1 shield to survive the blast? Otherwise this pawn returns to its yard.")
+                .setPositiveButton("Use Shield",(dialog,which)->{
+                    immunityShields.put(victim.colour,getCount(immunityShields,victim.colour)-1);
+                    refreshStatsHud(); survived.run();
+                })
+                .setNegativeButton("Accept Explosion",(dialog,which)->killed.run())
+                .setCancelable(false).show();
+        } else killed.run();
+    }
+
     private void resolveLanding(Piece pawn,int square,java.util.function.Consumer<Boolean> continuation) {
         BomberRules.Bomb bomb=bomberEnabled?bomberRules.detonate(square):null;
         if(bomb==null){resolveCapture(pawn,square,continuation);return;}
         refreshBomberControls();
+        // An armed bomb occupied by an opposing pawn causes a mutual explosion,
+        // not a conventional capture. Each victim can independently spend a shield.
+        Piece occupant=null;
+        for(Player player:players) {
+            if(player.color.equals(pawn.colour))continue;
+            for(Piece candidate:getPiecesByColor(player.color)) {
+                if(candidate.isAlive && !candidate.returningHome && candidate.currBlock==square) {
+                    occupant=candidate;
+                    break;
+                }
+            }
+            if(occupant!=null)break;
+        }
+        if(occupant!=null) {
+            final Piece resident=occupant;
+            final Runnable arrivingDies=()->{
+                incrementCount(deathCounts,pawn.colour);
+                refreshStatsHud();
+                pawn.die(()->finishPieceMove(pawn,false));
+            };
+            final Runnable decideArriving=()->resolveBombVictim(pawn,
+                ()->continuation.accept(false),arrivingDies);
+            animateBombBlast(square,()->resolveBombVictim(resident,
+                decideArriving,
+                ()->{
+                    incrementCount(deathCounts,resident.colour);
+                    refreshStatsHud();
+                    resident.die();
+                    decideArriving.run();
+                }));
+            return;
+        }
         animateBombBlast(square,()->{
             Runnable killed=()->{
                 String killer=BomberRules.creditedKiller(bomb,pawn.colour);
@@ -2012,7 +2083,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         void roll() {
-            if (isRolling || shuffleMatchEnding || players == null || players.isEmpty()) return;
+            if (isRolling || shuffleMatchEnding || (bomberEnabled && bombArmed && !currentBomberIsBot()) || players == null || players.isEmpty()) return;
             ++autoMoveGeneration;
             beginBombRoll();
             isRolling = true;
