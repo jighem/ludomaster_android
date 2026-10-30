@@ -1060,7 +1060,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private MatchVariant matchVariant=MatchVariant.CLASSIC;
-    private boolean bomberEnabled,bombArmed,bombChoiceLocked;
+    private boolean bomberEnabled,bombArmed,bombChoiceLocked,bombSelectionHighlighting;
     private final BomberRules bomberRules=new BomberRules();
     private BombControlView bombCenterControl;
     private BombBoardDrawable bombOverlay;
@@ -1114,17 +1114,17 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if(bombOverlay!=null)bombOverlay.update(bomberRules.bombs());
-        if(bombArmed && !currentBomberIsBot()) {
+        if(bombArmed && !currentBomberIsBot() && currentPlayerDice < 1) {
+            bombSelectionHighlighting=true;
             for(Piece pawn:getPiecesByColor(currentPlayerColor)) {
-                boolean eligible=canLeaveBomb(pawn);
-                pawn.piece.setClickable(eligible);
-                if(eligible) {
-                    pawn.piece.bringToFront();
-                    pawn.piece.setElevation(hudDp(19));
-                    pawn.piece.setAlpha(1f);
+                if(canLeaveBomb(pawn)) {
+                    pawn.activeState(); // Existing animated selection halo.
                     pawn.piece.setContentDescription("Plant bomb with "+pawn.colour+" pawn");
-                }
+                } else pawn.inactiveState();
             }
+        } else if(bombSelectionHighlighting) {
+            bombSelectionHighlighting=false;
+            for(Piece pawn:getPiecesByColor(currentPlayerColor)) pawn.inactiveState();
         }
         int size=ludoBoard.getWidth()>0?
             Math.max(hudDp(52),Math.min(hudDp(90),ludoBoard.getWidth()/5)):hudDp(72);
