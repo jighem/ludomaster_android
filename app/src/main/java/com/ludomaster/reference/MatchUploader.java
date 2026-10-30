@@ -161,6 +161,10 @@ public final class MatchUploader {
         }
     }
     private static void submit(Activity activity,JSONObject match,String uuid,Runnable refresh) {
+        if(BuildConfig.DEBUG) {
+            Toast.makeText(activity,"Bomber test APK: production score uploads are disabled",Toast.LENGTH_LONG).show();
+            return;
+        }
         new Thread(()->{
             HttpsURLConnection connection=null;String message;
             try{
